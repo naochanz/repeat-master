@@ -1,0 +1,83 @@
+import { theme } from '@/constants/theme';
+import { usePathname, useRouter } from 'expo-router';
+import { Home, Library } from 'lucide-react-native';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+const CustomTabBar = () => {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const isHomeActive = pathname === '/' || pathname === '/index';
+  const isLibraryActive = pathname.includes('/library') || pathname.includes('/study') || pathname.includes('/dashboard');
+
+  return (
+    <View style={styles.container}>
+      <TouchableOpacity
+        style={styles.tab}
+        onPress={() => router.push('/')}
+        activeOpacity={0.7}
+      >
+        <Home
+          size={24}
+          color={isHomeActive ? theme.colors.primary[600] : theme.colors.secondary[400]}
+        />
+        <Text
+          style={[
+            styles.label,
+            isHomeActive && styles.labelActive
+          ]}
+        >
+          ホーム
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.tab}
+        onPress={() => router.push('/library')}
+        activeOpacity={0.7}
+      >
+        <Library
+          size={24}
+          color={isLibraryActive ? theme.colors.primary[600] : theme.colors.secondary[400]}
+        />
+        <Text
+          style={[
+            styles.label,
+            isLibraryActive && styles.labelActive
+          ]}
+        >
+          ライブラリ
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.neutral.white,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.secondary[200],
+    paddingBottom: 0,
+    height: 60,
+  },
+  tab: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  label: {
+    fontSize: 12,
+    fontFamily: 'ZenKaku-Bold',
+    color: theme.colors.secondary[400],
+    marginTop: 4,
+  },
+  labelActive: {
+    color: theme.colors.primary[600],
+  },
+});
+
+export default CustomTabBar;
