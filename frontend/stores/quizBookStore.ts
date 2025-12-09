@@ -78,13 +78,13 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     set({ isLoading: true });
     try {
       await quizBookRepository.create(quizBook);
-      
+
       // ✅ 保存後、全データを再取得
       const allBooks = await quizBookRepository.getAll();
-      set({ 
+      set({
         quizBooks: allBooks,
         currentQuizBook: null,
-        isLoading: false 
+        isLoading: false
       });
     } catch (error) {
       console.error('Failed to add quiz book:', error);
@@ -96,12 +96,12 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     set({ isLoading: true });
     try {
       await quizBookRepository.delete(id);
-      
+
       // ✅ 削除後、全データを再取得
       const allBooks = await quizBookRepository.getAll();
-      set({ 
+      set({
         quizBooks: allBooks,
-        isLoading: false 
+        isLoading: false
       });
     } catch (error) {
       console.error('Failed to delete quiz book:', error);
@@ -113,12 +113,12 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     set({ isLoading: true });
     try {
       await quizBookRepository.update(id, { ...updates, updatedAt: new Date() });
-      
+
       // ✅ 更新後、全データを再取得
       const allBooks = await quizBookRepository.getAll();
-      set({ 
+      set({
         quizBooks: allBooks,
-        isLoading: false 
+        isLoading: false
       });
     } catch (error) {
       console.error('Failed to update quiz book:', error);
@@ -221,7 +221,12 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
                   ...qa,
                   attempts: [
                     ...qa.attempts,
-                    { round: qa.attempts.length + 1, result, resultConfirmFlg: false, answeredAt: new Date() }
+                    {
+                      round: qa.attempts.length + 1,
+                      result,
+                      resultConfirmFlg: true,
+                      answeredAt: new Date()
+                    }
                   ]
                 }
                 : qa
@@ -231,7 +236,12 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
               ...answers,
               {
                 questionNumber,
-                attempts: [{ round: 1, result, resultConfirmFlg: false, answeredAt: new Date() }]
+                attempts: [{
+                  round: 1,
+                  result,
+                  resultConfirmFlg: true,
+                  answeredAt: new Date()
+                }]
               }
             ];
           }
@@ -446,7 +456,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   // ========== 章の追加・削除・更新（修正版）==========
-  
+
   addChapterToQuizBook: async (quizBookId: string, chapterTitle: string) => {
     const book = get().quizBooks.find(b => b.id === quizBookId);
     if (!book) return;
@@ -469,7 +479,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     };
 
     await quizBookRepository.update(quizBookId, updatedBook);
-    
+
     // ✅ 保存後、全データを再取得して確実に反映
     const allBooks = await quizBookRepository.getAll();
     set({ quizBooks: allBooks });
@@ -493,7 +503,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     };
 
     await quizBookRepository.update(quizBookId, updatedBook);
-    
+
     // ✅ 保存後、全データを再取得
     const allBooks = await quizBookRepository.getAll();
     set({ quizBooks: allBooks });
@@ -512,14 +522,14 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     };
 
     await quizBookRepository.update(quizBookId, updatedBook);
-    
+
     // ✅ 保存後、全データを再取得
     const allBooks = await quizBookRepository.getAll();
     set({ quizBooks: allBooks });
   },
 
   // ========== 節の追加・削除・更新（修正版）==========
-  
+
   addSectionToChapter: async (quizBookId: string, chapterId: string, sectionTitle: string) => {
     const book = get().quizBooks.find(b => b.id === quizBookId);
     if (!book) return;
@@ -548,7 +558,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     };
 
     await quizBookRepository.update(quizBookId, updatedBook);
-    
+
     // ✅ 保存後、全データを再取得
     const allBooks = await quizBookRepository.getAll();
     set({ quizBooks: allBooks });
@@ -578,7 +588,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     };
 
     await quizBookRepository.update(quizBookId, updatedBook);
-    
+
     // ✅ 保存後、全データを再取得
     const allBooks = await quizBookRepository.getAll();
     set({ quizBooks: allBooks });
@@ -604,14 +614,14 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     };
 
     await quizBookRepository.update(quizBookId, updatedBook);
-    
+
     // ✅ 保存後、全データを再取得
     const allBooks = await quizBookRepository.getAll();
     set({ quizBooks: allBooks });
   },
 
   // ========== 問題の追加・削除（修正版）==========
-  
+
   addQuestionToTarget: async (chapterId: string, sectionId: string | null) => {
     const targetBook = get().quizBooks.find(book =>
       book.chapters.some(ch => ch.id === chapterId)
@@ -645,7 +655,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     };
 
     await quizBookRepository.update(targetBook.id, updatedBook);
-    
+
     // ✅ 保存後、全データを再取得
     const allBooks = await quizBookRepository.getAll();
     set({ quizBooks: allBooks });
@@ -701,7 +711,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     };
 
     await quizBookRepository.update(targetBook.id, updatedBook);
-    
+
     // ✅ 保存後、全データを再取得
     const allBooks = await quizBookRepository.getAll();
     set({ quizBooks: allBooks });

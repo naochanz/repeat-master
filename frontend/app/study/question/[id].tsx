@@ -15,7 +15,6 @@ const QuestionList = () => {
     const quizBooks = useQuizBookStore(state => state.quizBooks);
     const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
     const saveAnswer = useQuizBookStore(state => state.saveAnswer);
-    const toggleAnswerLock = useQuizBookStore(state => state.toggleAnswerLock);
     const saveMemo = useQuizBookStore(state => state.saveMemo);
     const getQuestionAnswers = useQuizBookStore(state => state.getQuestionAnswers);
     const updateLastAnswer = useQuizBookStore(state => state.updateLastAnswer);
@@ -30,6 +29,10 @@ const QuestionList = () => {
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedQuestion, setSelectedQuestion] = useState<number | null>(null);
     const [memoText, setMemoText] = useState('');
+    const [mode, setMode] = useState<'view' | 'answer'>('answer');
+    const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set()); //展開済みの問題番号をSet<number>に入れる
+    const [activeFabQuestion, setActiveFabQuestion] = useState<number | null>(null);
+
 
     // ✅ 画面フォーカス時にデータを再取得
     useFocusEffect(
@@ -88,49 +91,35 @@ const QuestionList = () => {
         );
     }
 
-    const addAnswer = async (questionNumber: number, answer: '○' | '×') => {
-        await saveAnswer(chapterId, sectionId, questionNumber, answer);
-    };
-
-    const toggleAnswer = async (questionNumber: number) => {
-        const questionData = getQuestionAnswers(chapterId, sectionId, questionNumber);
-        if (!questionData) return;
-
-        const lastAttempt = questionData.attempts[questionData.attempts.length - 1];
-        if (!lastAttempt || lastAttempt.resultConfirmFlg) return;
-
-        if (lastAttempt.result === '○') {
-            await updateLastAnswer(chapterId, sectionId, questionNumber, '×');
-        } else {
-            await deleteLastAnswer(chapterId, sectionId, questionNumber);
-        }
-    };
-
-    const handleDoubleTap = async (questionNumber: number) => {
-        const now = Date.now();
-        const DOUBLE_PRESS_DELAY = 300;
-
-        if (now - lastTap.current < DOUBLE_PRESS_DELAY) {
-            const questionData = getQuestionAnswers(chapterId, sectionId, questionNumber);
-
-            if (!questionData) {
-                await addAnswer(questionNumber, '○');
-            } else {
-                const lastAttempt = questionData.attempts[questionData.attempts.length - 1];
-                const isLocked = lastAttempt?.resultConfirmFlg;
-
-                if (isLocked) {
-                    await addAnswer(questionNumber, '○');
+    const handleCardPress = async (questionNumber: number) => {
+        if (mode === 'view') {
+            // 閲覧モード: 履歴の展開/折りたたみ
+            setExpandedQuestions(prev => {
+                const newSet = new Set(prev);
+                if (newSet.has(questionNumber)) {
+                    newSet.delete(questionNumber)
                 } else {
-                    await toggleAnswer(questionNumber);
+                    newSet.add(questionNumber);
                 }
+                return newSet;
+            })
+        } else {
+            // 回答モード: FABの表示/非表示をトグル
+            if (activeFabQuestion === questionNumber) {
+                // 既に表示中 → 非表示にする
+                setActiveFabQuestion(null);
+            } else {
+                // 非表示中 → 表示する
+                // ✅ ここでは何もしない（Stateの変更だけで新カードとして扱う）
+                setActiveFabQuestion(questionNumber);
             }
         }
-        lastTap.current = now;
-    };
+    }
 
-    const handleLongPress = (questionNumber: number) => {
-        toggleAnswerLock(chapterId, sectionId, questionNumber);
+    const handleAnswerFromFab = async (questionNumber: number, answer: '○' | '×') => {
+        await saveAnswer(chapterId, sectionId, questionNumber, answer);
+        //FABを非表示
+        setActiveFabQuestion(null);
     };
 
     const handleAddQuestion = async () => {
@@ -166,13 +155,15 @@ const QuestionList = () => {
 
     return (
         <>
-            <SafeAreaView style={styles.safeArea}>
+            <View style={styles.safeArea}>
                 <Stack.Screen
                     options={{
                         headerTitle: () => (
-                            <Text style={styles.questionCount}>
-                                全{displayInfo.questionCount}問
-                            </Text>
+                            <View style={styles.headerTitleContainer}>
+                                <Text style={styles.questionCount}>
+                                    全{displayInfo.questionCount}問
+                                </Text>
+                            </View>
                         ),
                         headerLeft: () => (
                             <TouchableOpacity
@@ -182,169 +173,275 @@ const QuestionList = () => {
                                 <ArrowLeft size={24} color={theme.colors.secondary[900]} />
                             </TouchableOpacity>
                         ),
+                        headerRight: () => (
+                            <View style={styles.modeToggleContainer}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modeToggleButton,
+                                        mode === 'view' && styles.modeToggleButtonActive
+                                    ]}
+                                    onPress={() => setMode('view')}
+                                >
+                                    <Text style={[
+                                        styles.modeToggleText,
+                                        mode === 'view' && styles.modeToggleTextActive
+                                    ]}>
+                                        閲覧
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modeToggleButton,
+                                        mode === 'answer' && styles.modeToggleButtonActive
+                                    ]}
+                                    onPress={() => setMode('answer')}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.modeToggleText,
+                                            mode === 'answer' && styles.modeToggleTextActive
+                                        ]}>
+                                        回答
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        ),
                         gestureEnabled: false,
                     }}
                 />
                 <ScrollView style={styles.container}>
-                    <View>
-                        {Array.from({ length: displayInfo.questionCount }, (_, i) => i + 1).map((num) => {
-                            const questionData = getQuestionAnswers(chapterId, sectionId, num);
-                            const history = questionData?.attempts || [];
-                            const actualCount = history.length;
-                            const lastIsLocked = history[history.length - 1]?.resultConfirmFlg || false;
-                            const displayCount = lastIsLocked ? actualCount + 1 : actualCount;
+                    {Array.from({ length: displayInfo.questionCount }, (_, i) => i + 1).map((num) => {
+                        const questionData = getQuestionAnswers(chapterId, sectionId, num);
+                        const history = questionData?.attempts || [];
+                        const isExpanded = expandedQuestions.has(num);
+                        const showFab = activeFabQuestion === num;
 
-                            const getCardWidth = () => {
-                                if (displayCount === 0) return undefined;
-                                if (displayCount === 1) return undefined;
-                                if (displayCount === 2) return '48%';
-                                if (displayCount === 3) return '31%';
-                                return 150;
-                            };
+                        // ✅ 確定済み履歴をフィルタ
+                        const confirmedHistory = history.filter(a => a.resultConfirmFlg === true);
+                        const lastConfirmedAttempt = confirmedHistory[confirmedHistory.length - 1];
 
-                            const cardWidth = getCardWidth();
-                            const needsScroll = displayCount >= 4;
+                        // ✅ 表示する周回数の計算
+                        let displayRound;
+                        if (showFab) {
+                            displayRound = confirmedHistory.length + 1;
+                        } else {
+                            displayRound = Math.max(confirmedHistory.length, 1);
+                        }
 
-                            return (
-                                <View key={num} style={styles.questionGroup}>
-                                    <View style={styles.labelContainer}>
-                                        <Text style={styles.questionNumberLabel}>問題 {num}</Text>
-                                        <View style={styles.buttonGroup}>
-                                            <TouchableOpacity
-                                                style={styles.memoButton}
-                                                onPress={() => handleOpenMemo(num)}
-                                            >
-                                                <Text style={styles.memoText}>MEMO</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={styles.deleteButton}
-                                                onPress={() => handleDeleteQuestion(num)}
-                                            >
-                                                {/* @ts-ignore */}
-                                                <Trash2 size={16} color={theme.colors.error[600]} />
-                                            </TouchableOpacity>
-                                        </View>
+                        return (
+                            <View key={num} style={styles.questionGroup}>
+                                {/* ラベル部分（MEMO、削除ボタン） */}
+                                <View style={styles.labelContainer}>
+                                    <Text style={styles.questionNumberLabel}>問題 {num}</Text>
+                                    <View style={styles.buttonGroup}>
+                                        <TouchableOpacity
+                                            style={styles.memoButton}
+                                            onPress={() => handleOpenMemo(num)}
+                                        >
+                                            <Text style={styles.memoText}>MEMO</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={styles.deleteButton}
+                                            onPress={() => handleDeleteQuestion(num)}
+                                        >
+                                            <Trash2 size={16} color={theme.colors.error[600]} />
+                                        </TouchableOpacity>
                                     </View>
+                                </View>
 
-                                    {
-                                        needsScroll ? (
-                                            <ScrollView
-                                                horizontal={true}
-                                                showsHorizontalScrollIndicator={false}
-                                                contentContainerStyle={styles.cardRow}
-                                            >
-                                                {history.map((attempt, attemptIndex) => {
-                                                    const isLocked = attempt.resultConfirmFlg;
-                                                    const isLastAttempt = attemptIndex === history.length - 1;
+                                {/* カード表示部分 */}
+                                {mode === 'view' && isExpanded ? (
+                                    // 閲覧モード: 展開状態（履歴一覧）
+                                    <View style={styles.expandedHistory}>
+                                        {confirmedHistory.length > 0 ? (
+                                            confirmedHistory.map((attempt, index) => (
+                                                <View
+                                                    key={`${num}-${index}`}
+                                                    style={[
+                                                        styles.historyCard,
+                                                        attempt.result === '○' ? styles.correctCard : styles.incorrectCard
+                                                    ]}
+                                                >
+                                                    <Text style={styles.attemptNumber}>{index + 1}周目</Text>
+                                                    <Text style={styles.answerMark}>
+                                                        {attempt.result === '○' ? '✅' : '❌'}
+                                                    </Text>
+                                                    <Text style={styles.historyDate}>
+                                                        {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
+                                                            month: '2-digit',
+                                                            day: '2-digit',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit'
+                                                        })}
+                                                    </Text>
+                                                </View>
+                                            ))
+                                        ) : (
+                                            <View style={styles.historyCard}>
+                                                <Text style={{ color: theme.colors.secondary[500] }}>
+                                                    まだ履歴がありません
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                ) : (
+                                    // 折りたたみ状態（スタック表示）
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.stackContainer,
+                                            {
+                                                height: 100 + (showFab ? confirmedHistory.length * 4 : Math.max((confirmedHistory.length - 1) * 4, 0))
+                                            }
+                                        ]}
+                                        onPress={() => handleCardPress(num)}
+                                        activeOpacity={0.7}
+                                    >
+                                        {showFab ? (
+                                            // ✅ FAB表示中: 確定済み履歴を全て背景に + 最前面に未回答カード
+                                            <>
+                                                {/* 背景: 確定済み履歴全て */}
+                                                {confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
+                                                    const index = confirmedHistory.length - 1 - reverseIndex;
+                                                    const stackIndex = confirmedHistory.length - 1 - index;
+                                                    const offset = (stackIndex + 1) * 4;
 
                                                     return (
-                                                        <TouchableOpacity
-                                                            key={`${num}-${attemptIndex}`}
+                                                        <View
+                                                            key={`stack-${num}-${index}`}
                                                             style={[
                                                                 styles.questionCard,
-                                                                { width: 110 },
-                                                                attempt.result === '○' && styles.correctCard,
-                                                                attempt.result === '×' && styles.incorrectCard,
-                                                                isLocked && styles.lockedCard,
+                                                                {
+                                                                    position: 'absolute',
+                                                                    top: offset,
+                                                                    left: offset,
+                                                                    right: -offset,
+                                                                    zIndex: confirmedHistory.length - stackIndex,
+                                                                    opacity: Math.max(1 - (stackIndex * 0.1), 0.3),
+                                                                },
+                                                                attempt.result === '○' ? styles.correctCard : styles.incorrectCard,
                                                             ]}
-                                                            onPress={isLastAttempt ? () => handleDoubleTap(num) : undefined}
-                                                            onLongPress={isLastAttempt ? () => handleLongPress(num) : undefined}
-                                                            delayLongPress={500}
-                                                            disabled={!isLastAttempt}
-                                                        >
-                                                            {isLocked && <Text style={styles.lockIcon}>🔒</Text>}
-                                                            <Text style={styles.attemptNumber}>{attemptIndex + 1}周目</Text>
-                                                            <Text style={[
-                                                                styles.answerMark,
-                                                                attempt.result === '○' ? styles.correctMark : styles.incorrectMark
-                                                            ]}>
-                                                                {attempt.result}
-                                                            </Text>
-                                                        </TouchableOpacity>
+                                                        />
                                                     );
                                                 })}
-                                                {lastIsLocked && (
-                                                    <TouchableOpacity
-                                                        style={[styles.questionCard, styles.unattemptedCard, { width: 110 }]}
-                                                        onPress={() => handleDoubleTap(num)}
-                                                    >
-                                                        <Text style={styles.attemptNumber}>{actualCount + 1}周目</Text>
-                                                    </TouchableOpacity>
-                                                )}
-                                            </ScrollView>
+
+                                                {/* 最前面: 未回答カード */}
+                                                <View
+                                                    style={[
+                                                        styles.questionCard,
+                                                        styles.topCard,
+                                                        styles.unattemptedCard,
+                                                    ]}
+                                                >
+                                                    <Text style={styles.attemptNumber}>
+                                                        {displayRound}周目
+                                                    </Text>
+                                                    <Text style={styles.questionNumber}>{num}</Text>
+                                                </View>
+                                            </>
                                         ) : (
-                                            <View style={styles.cardRowNonScroll}>
-                                                {history.length > 0 ? (
-                                                    <>
-                                                        {history.map((attempt, attemptIndex) => {
-                                                            const isLocked = attempt.resultConfirmFlg;
-                                                            const isLastAttempt = attemptIndex === history.length - 1;
+                                            // ✅ FAB非表示: 確定済み履歴のスタック表示のみ
+                                            <>
+                                                {confirmedHistory.length > 0 ? (
+                                                    // 確定済み履歴がある場合: スタック表示
+                                                    confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
+                                                        const index = confirmedHistory.length - 1 - reverseIndex;
+                                                        const stackIndex = confirmedHistory.length - 1 - index;
+                                                        const offset = stackIndex * 4;
+                                                        const isTopCard = stackIndex === 0;
 
-                                                            return (
-                                                                <TouchableOpacity
-                                                                    key={`${num}-${attemptIndex}`}
-                                                                    style={[
-                                                                        styles.questionCard,
-                                                                        cardWidth ? { width: cardWidth } : { flex: 1 },
-                                                                        attempt.result === '○' && styles.correctCard,
-                                                                        attempt.result === '×' && styles.incorrectCard,
-                                                                        isLocked && styles.lockedCard,
-                                                                    ]}
-                                                                    onPress={isLastAttempt ? () => handleDoubleTap(num) : undefined}
-                                                                    onLongPress={isLastAttempt ? () => handleLongPress(num) : undefined}
-                                                                    delayLongPress={500}
-                                                                    disabled={!isLastAttempt}
-                                                                >
-                                                                    {isLocked && <Text style={styles.lockIcon}>🔒</Text>}
-                                                                    <Text style={styles.attemptNumber}>{attemptIndex + 1}周目</Text>
-                                                                    <Text style={[
-                                                                        styles.answerMark,
-                                                                        attempt.result === '○' ? styles.correctMark : styles.incorrectMark
-                                                                    ]}>
-                                                                        {attempt.result}
-                                                                    </Text>
-                                                                </TouchableOpacity>
-                                                            );
-                                                        })}
-
-                                                        {lastIsLocked && (
-                                                            <TouchableOpacity
+                                                        return (
+                                                            <View
+                                                                key={`stack-${num}-${index}`}
                                                                 style={[
                                                                     styles.questionCard,
-                                                                    styles.unattemptedCard,
-                                                                    cardWidth ? { width: cardWidth } : { flex: 1 }
+                                                                    {
+                                                                        position: 'absolute',
+                                                                        top: offset,
+                                                                        left: offset,
+                                                                        right: -offset,
+                                                                        zIndex: confirmedHistory.length - stackIndex,
+                                                                        opacity: Math.max(1 - (stackIndex * 0.1), 0.3),
+                                                                    },
+                                                                    attempt.result === '○' ? styles.correctCard : styles.incorrectCard,
                                                                 ]}
-                                                                onPress={() => handleDoubleTap(num)}
                                                             >
-                                                                <Text style={styles.attemptNumber}>{actualCount + 1}周目</Text>
-                                                            </TouchableOpacity>
-                                                        )}
-                                                    </>
+                                                                {/* ✅ 最前面のカードのみ情報を表示 */}
+                                                                {isTopCard && (
+                                                                    <>
+                                                                        <Text style={styles.attemptNumber}>
+                                                                            {confirmedHistory.length}周目
+                                                                        </Text>
+                                                                        <Text style={styles.answerMark}>
+                                                                            {attempt.result === '○' ? '✅' : '❌'}
+                                                                        </Text>
+                                                                        <Text style={styles.cardDate}>
+                                                                            {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
+                                                                                month: '2-digit',
+                                                                                day: '2-digit',
+                                                                                hour: '2-digit',
+                                                                                minute: '2-digit'
+                                                                            })}
+                                                                        </Text>
+                                                                    </>
+                                                                )}
+                                                            </View>
+                                                        );
+                                                    })
                                                 ) : (
-                                                    <TouchableOpacity
-                                                        style={[styles.questionCard, styles.unattemptedCard, { flex: 1 }]}
-                                                        onPress={() => handleDoubleTap(num)}
+                                                    // 確定済み履歴がない場合: 初回カード（未回答）
+                                                    <View
+                                                        style={[
+                                                            styles.questionCard,
+                                                            styles.topCard,
+                                                            styles.unattemptedCard,
+                                                        ]}
                                                     >
                                                         <Text style={styles.questionNumber}>{num}</Text>
-                                                    </TouchableOpacity>
+                                                    </View>
                                                 )}
-                                            </View>
-                                        )
-                                    }
-                                </View>
-                            );
-                        })}
+                                            </>
+                                        )}
 
-                        <TouchableOpacity
-                            style={styles.addQuestionButton}
-                            onPress={handleAddQuestion}
-                            activeOpacity={0.7}
-                        >
-                            {/* @ts-ignore */}
-                            <Plus size={24} color={theme.colors.primary[600]} strokeWidth={2.5} />
-                            <Text style={styles.addQuestionButtonText}>問題を追加</Text>
-                        </TouchableOpacity>
-                    </View>
+                                        {/* 履歴カウント表示 */}
+                                        {!showFab && confirmedHistory.length > 0 && (
+                                            <Text style={styles.historyCount}>
+                                                {confirmedHistory.length}枚の履歴 ↗️
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+                                )}
+
+                                {/* FAB表示（回答モード + アクティブな問題のみ） */}
+                                {showFab && (
+                                    <View style={styles.fabContainer}>
+                                        <TouchableOpacity
+                                            style={[styles.fab, styles.fabIncorrect]}
+                                            onPress={() => handleAnswerFromFab(num, '×')}
+                                        >
+                                            <Text style={styles.fabText}>×</Text>
+                                            <Text style={styles.fabLabel}>不正解</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.fab, styles.fabCorrect]}
+                                            onPress={() => handleAnswerFromFab(num, '○')}
+                                        >
+                                            <Text style={styles.fabText}>○</Text>
+                                            <Text style={styles.fabLabel}>正解</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
+                        );
+                    })}
+
+                    <TouchableOpacity
+                        style={styles.addQuestionButton}
+                        onPress={handleAddQuestion}
+                        activeOpacity={0.7}
+                    >
+                        <Plus size={24} color={theme.colors.primary[600]} strokeWidth={2.5} />
+                        <Text style={styles.addQuestionButtonText}>問題を追加</Text>
+                    </TouchableOpacity>
 
                     <MemoModal
                         visible={modalVisible}
@@ -365,7 +462,7 @@ const QuestionList = () => {
                 </ScrollView>
 
                 <CustomTabBar />
-            </SafeAreaView>
+            </View>
         </>
     )
 }
@@ -403,6 +500,129 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontFamily: theme.typography.fontFamilies.regular,
     },
+    headerTitleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    modeToggleContainer: {
+        flexDirection: 'row',
+        backgroundColor: theme.colors.neutral[100],
+        borderRadius: theme.borderRadius.md,
+        padding: 2,
+        marginRight: 8,
+    },
+    modeToggleButton: {
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: theme.spacing.xs,
+        borderRadius: theme.borderRadius.sm,
+        textAlign: 'center'
+    },
+    modeToggleButtonActive: {
+        backgroundColor: theme.colors.primary[600],
+    },
+    modeToggleText: {
+        fontSize: theme.typography.fontSizes.sm,
+        fontWeight: theme.typography.fontWeights.semibold,
+        color: theme.colors.secondary[600],
+    },
+    modeToggleTextActive: {
+        color: theme.colors.neutral.white,
+    },
+
+    // ✅ スタック表示関連
+    stackContainer: {
+        position: 'relative',
+        minHeight: 130,
+        marginHorizontal: theme.spacing.md,
+        marginBottom: theme.spacing.md,
+        marginTop: theme.spacing.sm,
+    },
+    topCard: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1000, // 確実に最前面
+        backgroundColor: theme.colors.neutral.white,
+    },
+    historyCount: {
+        position: 'absolute',
+        bottom: 8,
+        right: 8,
+        fontSize: theme.typography.fontSizes.xs,
+        color: theme.colors.secondary[500],
+        fontWeight: theme.typography.fontWeights.medium,
+        zIndex: 1001, // 最前面
+    },
+
+    questionCard: {
+        backgroundColor: theme.colors.neutral.white,
+        padding: theme.spacing.lg,
+        borderRadius: theme.borderRadius.lg,
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...theme.shadows.md,
+        minHeight: 100,
+        borderWidth: 2,
+        borderColor: theme.colors.neutral[200],
+    },
+
+    // ✅ 追加: 展開履歴表示
+    expandedHistory: {
+        paddingHorizontal: theme.spacing.md,
+        gap: theme.spacing.sm,
+        marginBottom: theme.spacing.md,
+    },
+    historyCard: {
+        backgroundColor: theme.colors.neutral.white,
+        padding: theme.spacing.md,
+        borderRadius: theme.borderRadius.md,
+        borderWidth: 2,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        ...theme.shadows.sm,
+    },
+    historyDate: {
+        fontSize: theme.typography.fontSizes.xs,
+        color: theme.colors.secondary[500],
+    },
+
+    // ✅ 追加: FAB関連
+    fabContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: theme.spacing.md,
+        marginTop: theme.spacing.md,
+        marginHorizontal: theme.spacing.md,
+        marginBottom: theme.spacing.lg,
+    },
+    fab: {
+        width: 100,
+        height: 100,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...theme.shadows.lg,
+    },
+    fabCorrect: {
+        backgroundColor: theme.colors.success[500],
+    },
+    fabIncorrect: {
+        backgroundColor: theme.colors.error[500],
+    },
+    fabText: {
+        fontSize: 32,
+        fontWeight: theme.typography.fontWeights.bold,
+        color: theme.colors.neutral.white,
+    },
+    fabLabel: {
+        fontSize: theme.typography.fontSizes.xs,
+        fontWeight: theme.typography.fontWeights.semibold,
+        color: theme.colors.neutral.white,
+        marginTop: 4,
+    },
+
     correctCard: {
         backgroundColor: theme.colors.success[50],
         borderColor: theme.colors.success[500],
@@ -465,16 +685,6 @@ const styles = StyleSheet.create({
     cardRow: {
         paddingHorizontal: theme.spacing.md,
         gap: theme.spacing.sm,
-    },
-    questionCard: {
-        backgroundColor: theme.colors.neutral.white,
-        padding: theme.spacing.lg,
-        borderRadius: theme.borderRadius.lg,
-        marginVertical: 0,
-        alignItems: 'center',
-        justifyContent: 'center',
-        ...theme.shadows.md,
-        minHeight: 80,
     },
     attemptNumber: {
         position: 'absolute',
@@ -623,6 +833,14 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+    },
+    cardDate: {
+        position: 'absolute',
+        bottom: theme.spacing.sm,
+        left: theme.spacing.sm,
+        fontSize: theme.typography.fontSizes.xs,
+        color: theme.colors.secondary[500],
+        fontFamily: theme.typography.fontFamilies.regular,
     },
 });
 
