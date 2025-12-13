@@ -29,14 +29,31 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   const lastConfirmedAttempt = confirmedHistory[confirmedHistory.length - 1];
 
   // アニメーション用
-  const animatedValues = useRef(
-    confirmedHistory.map(() => new Animated.Value(0))
-  ).current;
+  const animatedValues = useRef<Animated.Value[]>([]);
+
+  // Initialize/update animated values when confirmedHistory changes
+  useEffect(() => {
+    const neededLength = confirmedHistory.length;
+    const currentLength = animatedValues.current.length;
+
+    if (neededLength > currentLength) {
+      // Add new values
+      for (let i = currentLength; i < neededLength; i++) {
+        animatedValues.current.push(new Animated.Value(0));
+      }
+    } else if (neededLength < currentLength) {
+      // Remove excess values
+      animatedValues.current = animatedValues.current.slice(0, neededLength);
+    }
+  }, [confirmedHistory.length]);
 
   useEffect(() => {
     if (mode === 'view' && isExpanded) {
+      // Reset all values to 0 first (except the first one which stays visible)
+      animatedValues.current.slice(1).forEach(anim => anim.setValue(0));
+
       // 展開時: 各カードを順番にスライドイン（一番上は除く）
-      const animations = animatedValues.slice(1).map((anim, index) => {
+      const animations = animatedValues.current.slice(1).map((anim, index) => {
         return Animated.timing(anim, {
           toValue: 1,
           duration: 100,
@@ -45,21 +62,24 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         });
       });
       // 一番上のカードは即座に表示
-      if (animatedValues[0]) {
-        animatedValues[0].setValue(1);
+      if (animatedValues.current[0]) {
+        animatedValues.current[0].setValue(1);
       }
       Animated.parallel(animations).start();
     } else if (mode === 'view' && !isExpanded) {
       // 収納時: アニメーション（一番上は除く）
-      const animations = animatedValues.slice(1).map((anim, index) => {
+      const animations = animatedValues.current.slice(1).map((anim, index) => {
         return Animated.timing(anim, {
           toValue: 0,
           duration: 100,
-          delay: (animatedValues.length - 2 - index) * 30, // 逆順
+          delay: (animatedValues.current.length - 2 - index) * 30, // 逆順
           useNativeDriver: true,
         });
       });
       Animated.parallel(animations).start();
+    } else if (mode === 'answer') {
+      // Reset all values when in answer mode
+      animatedValues.current.forEach(anim => anim.setValue(0));
     }
   }, [isExpanded, mode]);
 
@@ -77,7 +97,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         {confirmedHistory.length > 0 ? (
           confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
             const originalIndex = confirmedHistory.length - 1 - reverseIndex;
-            const animValue = animatedValues[reverseIndex] || new Animated.Value(1);
+            const animValue = animatedValues.current[reverseIndex] || new Animated.Value(1);
             const isFirstCard = reverseIndex === 0;
 
             // 一番上のカードはアニメーションなし
