@@ -56,11 +56,6 @@ const StudyHome = () => {
         }
     }, [autoNavigateToSection, autoNavigateToQuestion]);
 
-    // 自動遷移中は何も表示しない
-    if (autoNavigateToSection || autoNavigateToQuestion) {
-        return null;
-    }
-
     // ✅ 修正: quizBooks から直接検索
     const quizBook = quizBooks.find(book => book.id === id);
 

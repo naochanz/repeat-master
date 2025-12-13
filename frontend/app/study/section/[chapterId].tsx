@@ -40,11 +40,6 @@ const SectionList = () => {
     }
   }, [autoNavigateToQuestion]);
 
-  // 自動遷移中は何も表示しない
-  if (autoNavigateToQuestion) {
-    return null;
-  }
-
   let chapterData = null;
   for (const book of quizBooks) {
     const chapter = book.chapters.find(ch => ch.id === chapterId);
