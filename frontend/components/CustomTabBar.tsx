@@ -14,7 +14,8 @@ const CustomTabBar = () => {
   const isLibraryActive = pathname.includes('/library') || pathname.includes('/study') || pathname.includes('/dashboard');
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <View style={{ backgroundColor: theme.colors.neutral.white }}>
+      <View style={styles.container}>
       <TouchableOpacity
         style={styles.tab}
         onPress={() => router.push('/')}
@@ -53,6 +54,8 @@ const CustomTabBar = () => {
         </Text>
       </TouchableOpacity>
     </View>
+    <View style={{ height: insets.bottom }} />
+  </View>
   );
 };
 
