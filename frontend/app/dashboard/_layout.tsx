@@ -7,7 +7,7 @@ export default function DashboardLayout() {
         headerShown: true,
         animation: 'fade',
         presentation: 'card',
-        animationDuration: 300,
+        animationDuration: 200,
         gestureEnabled: true,
       }}
     />

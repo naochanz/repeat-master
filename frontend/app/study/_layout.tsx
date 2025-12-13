@@ -7,7 +7,7 @@ export default function StudyLayout() {
         headerShown: true,
         animation: 'fade',
         presentation: 'card',
-        animationDuration: 300,
+        animationDuration: 200,
         headerBackTitle: '',
         gestureEnabled: true,
         fullScreenGestureEnabled: false,
