@@ -1,5 +1,5 @@
 import { theme } from '@/constants/theme';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface Attempt {
@@ -28,6 +28,10 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   const confirmedHistory = history.filter(a => a.resultConfirmFlg === true);
   const lastConfirmedAttempt = confirmedHistory[confirmedHistory.length - 1];
 
+  // 収納アニメーション中かどうか
+  const [isCollapsing, setIsCollapsing] = useState(false);
+  const prevIsExpandedRef = useRef(isExpanded);
+
   // アニメーション用
   const animatedValues = useRef<Animated.Value[]>([]);
 
@@ -48,7 +52,12 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   }, [confirmedHistory.length]);
 
   useEffect(() => {
-    if (mode === 'view' && isExpanded) {
+    const prevIsExpanded = prevIsExpandedRef.current;
+    prevIsExpandedRef.current = isExpanded;
+
+    if (mode === 'view' && isExpanded && !prevIsExpanded) {
+      // 展開開始
+      setIsCollapsing(false);
       // Reset all values to 0 first (except the first one which stays visible)
       animatedValues.current.slice(1).forEach(anim => anim.setValue(0));
 
@@ -66,7 +75,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         animatedValues.current[0].setValue(1);
       }
       Animated.parallel(animations).start();
-    } else if (mode === 'view' && !isExpanded) {
+    } else if (mode === 'view' && !isExpanded && prevIsExpanded) {
+      // 収納開始
+      setIsCollapsing(true);
       // 収納時: アニメーション（一番上は除く）
       const animations = animatedValues.current.slice(1).map((anim, index) => {
         return Animated.timing(anim, {
@@ -76,9 +87,13 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           useNativeDriver: true,
         });
       });
-      Animated.parallel(animations).start();
+      Animated.parallel(animations).start(() => {
+        // アニメーション完了後に収納状態を解除
+        setIsCollapsing(false);
+      });
     } else if (mode === 'answer') {
       // Reset all values when in answer mode
+      setIsCollapsing(false);
       animatedValues.current.forEach(anim => anim.setValue(0));
     }
   }, [isExpanded, mode]);
@@ -90,7 +105,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     displayRound = Math.max(confirmedHistory.length, 1);
   }
 
-  if (mode === 'view' && isExpanded) {
+  if (mode === 'view' && (isExpanded || isCollapsing)) {
     // 閲覧モード: 展開状態（履歴一覧）最新から降順で表示
     return (
       <View style={styles.expandedHistory}>
