@@ -5,12 +5,12 @@ import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, ArrowLeft, MoreVertical, Plus } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SectionList = () => {
-  const { chapterId } = useLocalSearchParams();
+  const { chapterId, autoNavigateToQuestion } = useLocalSearchParams();
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
   const updateQuizBook = useQuizBookStore(state => state.updateQuizBook);
@@ -28,6 +28,20 @@ const SectionList = () => {
       fetchQuizBooks();
     }, [fetchQuizBooks])
   );
+
+  // 自動遷移処理（ホームから来た場合）
+  useEffect(() => {
+    if (autoNavigateToQuestion) {
+      // 少し遅延させて自動的に問題リストに遷移
+      const timer = setTimeout(() => {
+        router.push({
+          pathname: '/study/question/[id]',
+          params: { id: autoNavigateToQuestion }
+        });
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [autoNavigateToQuestion]);
 
   let chapterData = null;
   for (const book of quizBooks) {

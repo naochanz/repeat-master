@@ -118,7 +118,7 @@ export default function LibraryScreen() {
   };
 
   const handleCardPress = (quizBookId: string) => {
-    router.navigate(`/study/${quizBookId}` as any);
+    router.push(`/study/${quizBookId}` as any);
   };
 
   const handleDelete = async (quizBookId: string) => {

@@ -11,7 +11,7 @@ import QuestionCard from './components/QuestionCard';
 import MemoModal from './compornent/MemoModal';
 
 const QuestionList = () => {
-  const { id, fromHome, backToSection, backToChapter, bookId } = useLocalSearchParams();
+  const { id } = useLocalSearchParams();
 
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
@@ -142,22 +142,7 @@ const QuestionList = () => {
   }
 
   const handleBack = () => {
-    if (fromHome === 'true') {
-      // ホームから来た場合、適切なリストに戻る（replaceでアニメーションなし）
-      if (backToSection) {
-        // 節リストに戻る
-        router.replace(`/study/section/${backToSection}` as any);
-      } else if (backToChapter) {
-        // 章リストに戻る
-        router.replace(`/study/${backToChapter}` as any);
-      } else {
-        // フォールバック: ホームに戻る
-        router.back();
-      }
-    } else {
-      // 通常の戻る動作
-      router.back();
-    }
+    router.back();
   };
 
   const handleCardPress = async (questionNumber: number) => {

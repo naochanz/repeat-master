@@ -112,22 +112,19 @@ export default function DashboardScreen() {
 
   const handleRecentStudyPress = (item: RecentStudyItem) => {
     if (item.type === 'section') {
-      // 節がある場合 → 問題リストへ（戻り先として節リストを指定）
+      // 節がある場合 → 節リストへ（自動的に問題リストに遷移させる）
       router.push({
-        pathname: `/study/question/${item.sectionId}` as any,
+        pathname: `/study/section/${item.chapterId}` as any,
         params: {
-          fromHome: 'true',
-          backToSection: item.chapterId,
-          bookId: item.bookId
+          autoNavigateToQuestion: item.sectionId
         }
       });
     } else {
-      // 節がない場合 → 問題リストへ（戻り先として章リストを指定）
+      // 節がない場合 → 章リストへ（自動的に問題リストに遷移させる）
       router.push({
-        pathname: `/study/question/${item.chapterId}` as any,
+        pathname: `/study/${item.bookId}` as any,
         params: {
-          fromHome: 'true',
-          backToChapter: item.bookId
+          autoNavigateToQuestion: item.chapterId
         }
       });
     }
