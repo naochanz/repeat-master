@@ -37,15 +37,14 @@ export default function LibraryScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // 初期状態は透明
       opacity.value = 0;
-      opacity.value = withTiming(1, { duration: 50 });
 
       // スタディスタックの履歴をリセット
       const rootState = navigation.getState();
       if (rootState && rootState.routes) {
         const studyRoute = rootState.routes.find((route: any) => route.name === 'study');
         if (studyRoute && studyRoute.state) {
-          // studyスタックに履歴が残っている場合、リセットする
           navigation.dispatch(
             CommonActions.reset({
               ...rootState,
@@ -59,6 +58,13 @@ export default function LibraryScreen() {
           );
         }
       }
+
+      // レンダリング完了後にフェードイン開始
+      const timer = setTimeout(() => {
+        opacity.value = withTiming(1, { duration: 50 });
+      }, 16); // 1フレーム待つ（約16ms）
+
+      return () => clearTimeout(timer);
     }, [])
   );
 
