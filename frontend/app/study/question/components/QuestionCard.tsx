@@ -41,12 +41,13 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       <View style={styles.expandedHistory}>
         {confirmedHistory.length > 0 ? (
           confirmedHistory.map((attempt, index) => (
-            <View
+            <TouchableOpacity
               key={`${questionNumber}-${index}`}
               style={[
                 styles.historyCard,
                 attempt.result === '○' ? styles.correctCard : styles.incorrectCard
               ]}
+              onPress={() => onPress(questionNumber)}
             >
               <Text style={styles.attemptNumber}>{index + 1}周目</Text>
               <Text style={styles.answerMark}>
@@ -60,14 +61,17 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                   minute: '2-digit'
                 })}
               </Text>
-            </View>
+            </TouchableOpacity>
           ))
         ) : (
-          <View style={styles.historyCard}>
+          <TouchableOpacity
+            style={styles.historyCard}
+            onPress={() => onPress(questionNumber)}
+          >
             <Text style={{ color: theme.colors.secondary[500] }}>
               まだ履歴がありません
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
       </View>
     );

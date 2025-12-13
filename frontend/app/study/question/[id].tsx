@@ -139,6 +139,7 @@ const QuestionList = () => {
     setActiveFabQuestion(null);
   };
 
+
   const handleAddQuestion = async () => {
     await addQuestionToTarget(chapterId, sectionId);
   };
@@ -237,7 +238,19 @@ const QuestionList = () => {
               <View key={num} style={styles.questionGroup}>
                 {/* ラベル部分（MEMO、削除ボタン） */}
                 <View style={styles.labelContainer}>
+                  <View style={styles.labelLeft}>
                   <Text style={styles.questionNumberLabel}>問題 {num}</Text>
+                  {mode === 'view' && (
+                    <TouchableOpacity
+                      style={styles.expansionToggleButton}
+                      onPress={() => handleCardPress(num)}
+                    >
+                      <Text style={styles.expansionToggleText}>
+                        {isExpanded ? '▼' : '▶'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  </View>
                   <View style={styles.buttonGroup}>
                     <TouchableOpacity
                       style={styles.memoButton}
@@ -362,7 +375,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.base,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
+    fontFamily: theme.typography.fontFamilies.bold,
   },
   labelContainer: {
     flexDirection: 'row',
@@ -370,6 +383,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: theme.spacing.md,
     marginBottom: theme.spacing.sm,
+  },
+  labelLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  expansionToggleButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.colors.neutral[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[300],
+  },
+  expansionToggleText: {
+    fontSize: 12,
+    color: theme.colors.secondary[600],
   },
   buttonGroup: {
     flexDirection: 'row',
