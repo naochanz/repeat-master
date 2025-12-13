@@ -143,13 +143,13 @@ const QuestionList = () => {
 
   const handleBack = () => {
     if (fromHome === 'true') {
-      // ホームから来た場合、適切なリストに戻る
+      // ホームから来た場合、適切なリストに戻る（replaceでアニメーションなし）
       if (backToSection) {
         // 節リストに戻る
-        router.push(`/study/section/${backToSection}` as any);
+        router.replace(`/study/section/${backToSection}` as any);
       } else if (backToChapter) {
         // 章リストに戻る
-        router.push(`/study/${backToChapter}` as any);
+        router.replace(`/study/${backToChapter}` as any);
       } else {
         // フォールバック: ホームに戻る
         router.back();
