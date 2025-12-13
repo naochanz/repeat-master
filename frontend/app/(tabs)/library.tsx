@@ -1,9 +1,10 @@
 import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { AlertCircle, Edit, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import AddItemModal from '../_compornents/AddItemModal';
 import CategorySelectModal from '../_compornents/CategorySelectModal';
 import ConfirmDialog from '../_compornents/ConfirmDialog';
@@ -29,6 +30,21 @@ export default function LibraryScreen() {
   const [editedCategoryName, setEditedCategoryName] = useState('');
   const [targetCategory, setTargetCategory] = useState<string>('');
   const [deleteCategoryDialogVisible, setDeleteCategoryDialogVisible] = useState(false);
+
+  const opacity = useSharedValue(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      opacity.value = 0;
+      opacity.value = withTiming(1, { duration: 50 });
+    }, [])
+  );
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: opacity.value,
+    };
+  });
   
   const registeredCategories = useMemo(() => {
     return [...new Set(quizBooks.map(book => book.category))];
@@ -175,15 +191,16 @@ export default function LibraryScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>登録済み問題集</Text>
-      </View>
+      <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>登録済み問題集</Text>
+        </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         {quizBooks.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyContent}>
@@ -223,6 +240,7 @@ export default function LibraryScreen() {
           ))
         )}
       </ScrollView>
+      </Animated.View>
 
       <TouchableOpacity
         style={styles.fab}
