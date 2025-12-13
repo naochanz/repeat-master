@@ -5,7 +5,7 @@ import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, MoreVertical, Plus, ArrowLeft } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
@@ -14,7 +14,7 @@ import { useNavigation } from 'expo-router';
 
 const StudyHome = () => {
     const navigation = useNavigation();
-    const { id, fromHome, autoNavigateToSection, autoNavigateToQuestion } = useLocalSearchParams();
+    const { id } = useLocalSearchParams();
     console.log('Can go back:', navigation.canGoBack());
 
     // ✅ 修正: quizBooks を直接購読
@@ -35,26 +35,6 @@ const StudyHome = () => {
             fetchQuizBooks();
         }, [fetchQuizBooks])
     );
-
-    // 自動遷移処理（ホームから来た場合）
-    useEffect(() => {
-        if (autoNavigateToSection && autoNavigateToQuestion) {
-            // 節がある場合: 章リスト → 節リスト → 問題リスト
-            router.push({
-                pathname: '/study/section/[chapterId]',
-                params: {
-                    chapterId: autoNavigateToSection,
-                    autoNavigateToQuestion: autoNavigateToQuestion
-                }
-            });
-        } else if (autoNavigateToQuestion) {
-            // 節がない場合: 章リスト → 問題リスト
-            router.push({
-                pathname: '/study/question/[id]',
-                params: { id: autoNavigateToQuestion }
-            });
-        }
-    }, [autoNavigateToSection, autoNavigateToQuestion]);
 
     // ✅ 修正: quizBooks から直接検索
     const quizBook = quizBooks.find(book => book.id === id);
