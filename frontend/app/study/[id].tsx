@@ -1,4 +1,4 @@
-import EditDeleteModal from '@/app/compornents/EditDeleteModal';
+import EditDeleteModal from '@/app/_compornents/EditDeleteModal';
 import CustomTabBar from '@/components/CustomTabBar';
 import Card from '@/components/ui/Card';
 import { theme } from '@/constants/theme';

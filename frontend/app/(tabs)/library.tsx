@@ -4,11 +4,11 @@ import { router } from 'expo-router';
 import { AlertCircle, Edit, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import AddItemModal from '../compornents/AddItemModal';
-import CategorySelectModal from '../compornents/CategorySelectModal';
-import ConfirmDialog from '../compornents/ConfirmDialog';
-import QuizBookCard from '../compornents/QuizBookCard';
-import QuizBookTitleModal from '../compornents/QuizBookTitleModal';
+import AddItemModal from '../_compornents/AddItemModal';
+import CategorySelectModal from '../_compornents/CategorySelectModal';
+import ConfirmDialog from '../_compornents/ConfirmDialog';
+import QuizBookCard from '../_compornents/QuizBookCard';
+import QuizBookTitleModal from '../_compornents/QuizBookTitleModal';
 
 export default function LibraryScreen() {
   const quizBooks = useQuizBookStore(state => state.quizBooks);

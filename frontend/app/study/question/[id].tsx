@@ -1,4 +1,4 @@
-import ConfirmDialog from '@/app/compornents/ConfirmDialog';
+import ConfirmDialog from '@/app/_compornents/ConfirmDialog';
 import CustomTabBar from '@/components/CustomTabBar';
 import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
@@ -6,9 +6,9 @@ import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import AnswerFAB from './components/AnswerFAB';
-import QuestionCard from './components/QuestionCard';
-import MemoModal from './compornent/MemoModal';
+import AnswerFAB from './_components/AnswerFAB';
+import QuestionCard from './_components/QuestionCard';
+import MemoModal from './_compornent/MemoModal';
 
 const QuestionList = () => {
   const { id } = useLocalSearchParams();

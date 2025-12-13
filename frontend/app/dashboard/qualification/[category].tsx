@@ -1,4 +1,4 @@
-import ConfirmDialog from '@/app/compornents/ConfirmDialog';
+import ConfirmDialog from '@/app/_compornents/ConfirmDialog';
 import CustomTabBar from '@/components/CustomTabBar';
 import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
