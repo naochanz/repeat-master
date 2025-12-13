@@ -27,7 +27,7 @@ export default function AuthLayout() {
             screenOptions={{
                 headerShown: false,
                 animation: 'fade',
-                animationDuration: 200,
+                animationDuration: 50,
             }}
         >
             <Stack.Screen name='login' component={LoginScreen} />

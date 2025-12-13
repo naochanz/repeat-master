@@ -68,7 +68,7 @@ function RootLayoutNav() {
           headerShown: false,
           animation: 'fade',
           presentation: 'card',
-          animationDuration: 200,
+          animationDuration: 50,
         }}
       />
     </ThemeProvider>
