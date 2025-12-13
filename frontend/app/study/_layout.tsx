@@ -1,14 +1,30 @@
 import { Stack } from 'expo-router';
+import { CardStyleInterpolators } from '@react-navigation/stack';
 
 export default function StudyLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: true,
-        animation: 'default',
+        animation: 'fade',
+        cardStyleInterpolator: CardStyleInterpolators.forFadeFromBottomAndroid,
+        transitionSpec: {
+          open: {
+            animation: 'timing',
+            config: {
+              duration: 300,
+            },
+          },
+          close: {
+            animation: 'timing',
+            config: {
+              duration: 300,
+            },
+          },
+        },
         headerBackTitle: '',
-        gestureEnabled: false, // ✅ スワイプバックを有効化
-        fullScreenGestureEnabled: false, // iOS専用
+        gestureEnabled: true,
+        fullScreenGestureEnabled: false,
       }}
     />
   );
