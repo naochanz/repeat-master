@@ -111,7 +111,7 @@ const SectionList = () => {
   if (book.useSections === undefined) {
     return (
       <>
-        <SafeAreaView style={styles.wrapper} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={styles.wrapper} edges={['left', 'right']}>
           <Stack.Screen
             options={{
               headerTitle: () => (
@@ -170,7 +170,7 @@ const SectionList = () => {
   // 節を使用する場合
   return (
     <>
-      <SafeAreaView style={styles.wrapper} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={styles.wrapper} edges={['left', 'right']}>
         <Stack.Screen
           options={{
             headerTitle: () => (

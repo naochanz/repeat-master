@@ -139,7 +139,7 @@ const StudyHome = () => {
                 }}
             />
 
-            <SafeAreaView style={styles.wrapper} edges={['top', 'left', 'right']}>
+            <SafeAreaView style={styles.wrapper} edges={['left', 'right']}>
                 <ScrollView
                     style={styles.container}
                     contentContainerStyle={styles.scrollContent}
