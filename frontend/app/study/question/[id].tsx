@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.neutral[50],
   },
   viewModeBackground: {
-    backgroundColor: theme.colors.primary[50],
+    backgroundColor: '#E0E0E0',
   },
   container: {
     flex: 1,
