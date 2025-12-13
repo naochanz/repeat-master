@@ -1,12 +1,13 @@
 import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { AlertCircle, BookOpen, ChevronDown, ChevronRight, ChevronUp, Edit3, Target } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { RecentStudyItem } from '@/types/QuizBook';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { CommonActions } from '@react-navigation/native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_WIDTH = SCREEN_WIDTH - (theme.spacing.lg * 4);
@@ -30,12 +31,33 @@ export default function DashboardScreen() {
   const [tempGoal, setTempGoal] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
+  const navigation = useNavigation();
   const opacity = useSharedValue(0);
 
   useFocusEffect(
     useCallback(() => {
       opacity.value = 0;
       opacity.value = withTiming(1, { duration: 50 });
+
+      // スタディスタックの履歴をリセット
+      const rootState = navigation.getState();
+      if (rootState && rootState.routes) {
+        const studyRoute = rootState.routes.find((route: any) => route.name === 'study');
+        if (studyRoute && studyRoute.state) {
+          // studyスタックに履歴が残っている場合、リセットする
+          navigation.dispatch(
+            CommonActions.reset({
+              ...rootState,
+              routes: rootState.routes.map((route: any) => {
+                if (route.name === 'study') {
+                  return { ...route, state: undefined };
+                }
+                return route;
+              }),
+            })
+          );
+        }
+      }
     }, [])
   );
 

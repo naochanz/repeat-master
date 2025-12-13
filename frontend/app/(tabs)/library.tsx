@@ -1,10 +1,11 @@
 import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { AlertCircle, Edit, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { CommonActions } from '@react-navigation/native';
 import AddItemModal from '../_compornents/AddItemModal';
 import CategorySelectModal from '../_compornents/CategorySelectModal';
 import ConfirmDialog from '../_compornents/ConfirmDialog';
@@ -31,12 +32,33 @@ export default function LibraryScreen() {
   const [targetCategory, setTargetCategory] = useState<string>('');
   const [deleteCategoryDialogVisible, setDeleteCategoryDialogVisible] = useState(false);
 
+  const navigation = useNavigation();
   const opacity = useSharedValue(0);
 
   useFocusEffect(
     useCallback(() => {
       opacity.value = 0;
       opacity.value = withTiming(1, { duration: 50 });
+
+      // スタディスタックの履歴をリセット
+      const rootState = navigation.getState();
+      if (rootState && rootState.routes) {
+        const studyRoute = rootState.routes.find((route: any) => route.name === 'study');
+        if (studyRoute && studyRoute.state) {
+          // studyスタックに履歴が残っている場合、リセットする
+          navigation.dispatch(
+            CommonActions.reset({
+              ...rootState,
+              routes: rootState.routes.map((route: any) => {
+                if (route.name === 'study') {
+                  return { ...route, state: undefined };
+                }
+                return route;
+              }),
+            })
+          );
+        }
+      }
     }, [])
   );
 
