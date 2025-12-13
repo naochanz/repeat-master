@@ -134,13 +134,8 @@ const StudyHome = () => {
     };
 
     const handleBack = () => {
-        if (fromHome === 'true') {
-            // ホームから来た場合はライブラリに戻る
-            router.replace('/(tabs)/library' as any);
-        } else {
-            // 通常の戻る動作
-            router.back();
-        }
+        // 章リストは常にライブラリに戻る（タブナビゲーションの外に出ているため）
+        router.replace('/(tabs)/library' as any);
     };
 
     return (

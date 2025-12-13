@@ -6,9 +6,9 @@ import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import AnswerFAB from './_components/AnswerFAB';
-import QuestionCard from './_components/QuestionCard';
-import MemoModal from './_compornent/MemoModal';
+import AnswerFAB from '@/src/components/study/question/AnswerFAB';
+import QuestionCard from '@/src/components/study/question/QuestionCard';
+import MemoModal from '@/src/components/study/question/MemoModal';
 
 const QuestionList = () => {
   const { id } = useLocalSearchParams();
