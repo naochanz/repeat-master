@@ -5,7 +5,7 @@ import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, MoreVertical, Plus, ArrowLeft } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
@@ -36,31 +36,30 @@ const StudyHome = () => {
         }, [fetchQuizBooks])
     );
 
-    // 自動遷移処理（ホームから来た場合）
-    useEffect(() => {
+    // 自動遷移処理（ホームから来た場合）- useLayoutEffectで画面描画前に実行
+    useLayoutEffect(() => {
         if (autoNavigateToSection && autoNavigateToQuestion) {
             // 節がある場合: 章リスト → 節リスト → 問題リスト
-            const timer = setTimeout(() => {
-                router.push({
-                    pathname: '/study/section/[chapterId]',
-                    params: {
-                        chapterId: autoNavigateToSection,
-                        autoNavigateToQuestion: autoNavigateToQuestion
-                    }
-                });
-            }, 10);
-            return () => clearTimeout(timer);
+            router.push({
+                pathname: '/study/section/[chapterId]',
+                params: {
+                    chapterId: autoNavigateToSection,
+                    autoNavigateToQuestion: autoNavigateToQuestion
+                }
+            });
         } else if (autoNavigateToQuestion) {
             // 節がない場合: 章リスト → 問題リスト
-            const timer = setTimeout(() => {
-                router.push({
-                    pathname: '/study/question/[id]',
-                    params: { id: autoNavigateToQuestion }
-                });
-            }, 10);
-            return () => clearTimeout(timer);
+            router.push({
+                pathname: '/study/question/[id]',
+                params: { id: autoNavigateToQuestion }
+            });
         }
     }, [autoNavigateToSection, autoNavigateToQuestion]);
+
+    // 自動遷移中は何も表示しない
+    if (autoNavigateToSection || autoNavigateToQuestion) {
+        return null;
+    }
 
     // ✅ 修正: quizBooks から直接検索
     const quizBook = quizBooks.find(book => book.id === id);

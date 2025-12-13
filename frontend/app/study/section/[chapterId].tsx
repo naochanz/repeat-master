@@ -5,7 +5,7 @@ import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, ArrowLeft, MoreVertical, Plus } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -29,19 +29,21 @@ const SectionList = () => {
     }, [fetchQuizBooks])
   );
 
-  // 自動遷移処理（ホームから来た場合）
-  useEffect(() => {
+  // 自動遷移処理（ホームから来た場合）- useLayoutEffectで画面描画前に実行
+  useLayoutEffect(() => {
     if (autoNavigateToQuestion) {
-      // 自動的に問題リストに遷移
-      const timer = setTimeout(() => {
-        router.push({
-          pathname: '/study/question/[id]',
-          params: { id: autoNavigateToQuestion }
-        });
-      }, 10);
-      return () => clearTimeout(timer);
+      // 即座に問題リストに遷移
+      router.push({
+        pathname: '/study/question/[id]',
+        params: { id: autoNavigateToQuestion }
+      });
     }
   }, [autoNavigateToQuestion]);
+
+  // 自動遷移中は何も表示しない
+  if (autoNavigateToQuestion) {
+    return null;
+  }
 
   let chapterData = null;
   for (const book of quizBooks) {
