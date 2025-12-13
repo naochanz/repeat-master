@@ -11,7 +11,7 @@ import QuestionCard from './components/QuestionCard';
 import MemoModal from './compornent/MemoModal';
 
 const QuestionList = () => {
-  const { id } = useLocalSearchParams();
+  const { id, fromHome, backToSection, backToChapter, bookId } = useLocalSearchParams();
 
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
@@ -141,6 +141,25 @@ const QuestionList = () => {
     );
   }
 
+  const handleBack = () => {
+    if (fromHome === 'true') {
+      // ホームから来た場合、適切なリストに戻る
+      if (backToSection) {
+        // 節リストに戻る
+        router.push(`/study/section/${backToSection}` as any);
+      } else if (backToChapter) {
+        // 章リストに戻る
+        router.push(`/study/${backToChapter}` as any);
+      } else {
+        // フォールバック: ホームに戻る
+        router.back();
+      }
+    } else {
+      // 通常の戻る動作
+      router.back();
+    }
+  };
+
   const handleCardPress = async (questionNumber: number) => {
     if (mode === 'view') {
       // 閲覧モード: 履歴の展開/折りたたみ
@@ -227,7 +246,7 @@ const QuestionList = () => {
             ),
             headerLeft: () => (
               <TouchableOpacity
-                onPress={() => router.back()}
+                onPress={handleBack}
                 style={{ marginLeft: 8 }}
               >
                 <ArrowLeft size={24} color={theme.colors.secondary[900]} />
