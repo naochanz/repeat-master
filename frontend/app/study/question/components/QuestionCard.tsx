@@ -35,19 +35,31 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 
   useEffect(() => {
     if (mode === 'view' && isExpanded) {
-      // 展開時: 各カードを順番にスライドイン
-      const animations = animatedValues.map((anim, index) => {
+      // 展開時: 各カードを順番にスライドイン（一番上は除く）
+      const animations = animatedValues.slice(1).map((anim, index) => {
         return Animated.timing(anim, {
           toValue: 1,
-          duration: 200,
-          delay: index * 50,
+          duration: 100,
+          delay: index * 30,
+          useNativeDriver: true,
+        });
+      });
+      // 一番上のカードは即座に表示
+      if (animatedValues[0]) {
+        animatedValues[0].setValue(1);
+      }
+      Animated.parallel(animations).start();
+    } else if (mode === 'view' && !isExpanded) {
+      // 収納時: アニメーション（一番上は除く）
+      const animations = animatedValues.slice(1).map((anim, index) => {
+        return Animated.timing(anim, {
+          toValue: 0,
+          duration: 100,
+          delay: (animatedValues.length - 2 - index) * 30, // 逆順
           useNativeDriver: true,
         });
       });
       Animated.parallel(animations).start();
-    } else {
-      // 折りたたみ時: リセット
-      animatedValues.forEach(anim => anim.setValue(0));
     }
   }, [isExpanded, mode]);
 
@@ -66,7 +78,37 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
             const originalIndex = confirmedHistory.length - 1 - reverseIndex;
             const animValue = animatedValues[reverseIndex] || new Animated.Value(1);
+            const isFirstCard = reverseIndex === 0;
 
+            // 一番上のカードはアニメーションなし
+            if (isFirstCard) {
+              return (
+                <View key={`${questionNumber}-${originalIndex}`}>
+                  <TouchableOpacity
+                    style={[
+                      styles.historyCard,
+                      attempt.result === '○' ? styles.correctCard : styles.incorrectCard
+                    ]}
+                    onPress={() => onPress(questionNumber)}
+                  >
+                    <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
+                    <Text style={styles.answerMark}>
+                      {attempt.result === '○' ? '✅' : '❌'}
+                    </Text>
+                    <Text style={styles.historyDate}>
+                      {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            }
+
+            // 2番目以降のカードはアニメーション
             return (
               <Animated.View
                 key={`${questionNumber}-${originalIndex}`}
@@ -75,7 +117,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     {
                       translateY: animValue.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [-20, 0],
+                        outputRange: [-30, 0],
                       }),
                     },
                   ],

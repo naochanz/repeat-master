@@ -37,6 +37,23 @@ const QuestionList = () => {
   const scrollViewRef = useRef<ScrollView>(null);
   const questionRefs = useRef<{ [key: number]: View | null }>({});
 
+  // スクロール関数
+  const scrollToQuestion = useCallback((questionNumber: number) => {
+    const questionView = questionRefs.current[questionNumber];
+    if (questionView && scrollViewRef.current) {
+      questionView.measureLayout(
+        scrollViewRef.current as any,
+        (x, y) => {
+          scrollViewRef.current?.scrollTo({
+            y: Math.max(0, y - 20), // 20pxの余白
+            animated: true,
+          });
+        },
+        () => {}
+      );
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       fetchQuizBooks();
@@ -56,12 +73,20 @@ const QuestionList = () => {
           return newSet;
         });
         setActiveFabQuestion(null);
+        // スクロール
+        setTimeout(() => {
+          scrollToQuestion(activeFabQuestion);
+        }, 150);
       }
     } else if (mode === 'answer') {
       // 回答モードに切り替え
       // 保存されたFAB状態を復元
       if (savedFabQuestion.current !== null) {
         setActiveFabQuestion(savedFabQuestion.current);
+        // スクロール
+        setTimeout(() => {
+          scrollToQuestion(savedFabQuestion.current!);
+        }, 100);
         savedFabQuestion.current = null;
       }
     }
@@ -115,22 +140,6 @@ const QuestionList = () => {
       </View>
     );
   }
-
-  const scrollToQuestion = (questionNumber: number) => {
-    const questionView = questionRefs.current[questionNumber];
-    if (questionView && scrollViewRef.current) {
-      questionView.measureLayout(
-        scrollViewRef.current as any,
-        (x, y) => {
-          scrollViewRef.current?.scrollTo({
-            y: Math.max(0, y - 20), // 20pxの余白
-            animated: true,
-          });
-        },
-        () => {}
-      );
-    }
-  };
 
   const handleCardPress = async (questionNumber: number) => {
     if (mode === 'view') {
