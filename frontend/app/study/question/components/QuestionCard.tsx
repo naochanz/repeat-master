@@ -31,6 +31,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   // 収納アニメーション中かどうか
   const [isCollapsing, setIsCollapsing] = useState(false);
   const prevIsExpandedRef = useRef(isExpanded);
+  const prevModeRef = useRef(mode);
 
   // アニメーション用
   const animatedValues = useRef<Animated.Value[]>([]);
@@ -53,7 +54,17 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
 
   useEffect(() => {
     const prevIsExpanded = prevIsExpandedRef.current;
+    const prevMode = prevModeRef.current;
     prevIsExpandedRef.current = isExpanded;
+    prevModeRef.current = mode;
+
+    // answer → view へのモード切り替えで、既に展開状態の場合
+    if (prevMode === 'answer' && mode === 'view' && isExpanded) {
+      // アニメーションなしで即座に全て表示
+      setIsCollapsing(false);
+      animatedValues.current.forEach(anim => anim.setValue(1));
+      return;
+    }
 
     if (mode === 'view' && isExpanded && !prevIsExpanded) {
       // 展開開始
