@@ -1,5 +1,4 @@
 import { Stack } from 'expo-router';
-import { CardStyleInterpolators } from '@react-navigation/stack';
 
 export default function StudyLayout() {
   return (
@@ -7,21 +6,8 @@ export default function StudyLayout() {
       screenOptions={{
         headerShown: true,
         animation: 'fade',
-        cardStyleInterpolator: CardStyleInterpolators.forFadeFromBottomAndroid,
-        transitionSpec: {
-          open: {
-            animation: 'timing',
-            config: {
-              duration: 300,
-            },
-          },
-          close: {
-            animation: 'timing',
-            config: {
-              duration: 300,
-            },
-          },
-        },
+        presentation: 'card',
+        animationDuration: 300,
         headerBackTitle: '',
         gestureEnabled: true,
         fullScreenGestureEnabled: false,
