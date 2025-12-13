@@ -1,6 +1,6 @@
 import { theme } from '@/constants/theme';
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface Attempt {
   result: '○' | '×';
@@ -28,6 +28,29 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   const confirmedHistory = history.filter(a => a.resultConfirmFlg === true);
   const lastConfirmedAttempt = confirmedHistory[confirmedHistory.length - 1];
 
+  // アニメーション用
+  const animatedValues = useRef(
+    confirmedHistory.map(() => new Animated.Value(0))
+  ).current;
+
+  useEffect(() => {
+    if (mode === 'view' && isExpanded) {
+      // 展開時: 各カードを順番にスライドイン
+      const animations = animatedValues.map((anim, index) => {
+        return Animated.timing(anim, {
+          toValue: 1,
+          duration: 200,
+          delay: index * 50,
+          useNativeDriver: true,
+        });
+      });
+      Animated.parallel(animations).start();
+    } else {
+      // 折りたたみ時: リセット
+      animatedValues.forEach(anim => anim.setValue(0));
+    }
+  }, [isExpanded, mode]);
+
   let displayRound;
   if (showFab) {
     displayRound = confirmedHistory.length + 1;
@@ -42,28 +65,44 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         {confirmedHistory.length > 0 ? (
           confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
             const originalIndex = confirmedHistory.length - 1 - reverseIndex;
+            const animValue = animatedValues[reverseIndex] || new Animated.Value(1);
+
             return (
-              <TouchableOpacity
+              <Animated.View
                 key={`${questionNumber}-${originalIndex}`}
-                style={[
-                  styles.historyCard,
-                  attempt.result === '○' ? styles.correctCard : styles.incorrectCard
-                ]}
-                onPress={() => onPress(questionNumber)}
+                style={{
+                  transform: [
+                    {
+                      translateY: animValue.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-20, 0],
+                      }),
+                    },
+                  ],
+                  opacity: animValue,
+                }}
               >
-                <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
-                <Text style={styles.answerMark}>
-                  {attempt.result === '○' ? '✅' : '❌'}
-                </Text>
-                <Text style={styles.historyDate}>
-                  {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.historyCard,
+                    attempt.result === '○' ? styles.correctCard : styles.incorrectCard
+                  ]}
+                  onPress={() => onPress(questionNumber)}
+                >
+                  <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
+                  <Text style={styles.answerMark}>
+                    {attempt.result === '○' ? '✅' : '❌'}
+                  </Text>
+                  <Text style={styles.historyDate}>
+                    {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
             );
           })
         ) : (

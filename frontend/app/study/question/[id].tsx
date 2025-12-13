@@ -33,6 +33,10 @@ const QuestionList = () => {
   // FABの状態を保持（モード切り替え時に復元するため）
   const savedFabQuestion = useRef<number | null>(null);
 
+  // スクロール用
+  const scrollViewRef = useRef<ScrollView>(null);
+  const questionRefs = useRef<{ [key: number]: View | null }>({});
+
   useFocusEffect(
     useCallback(() => {
       fetchQuizBooks();
@@ -112,9 +116,26 @@ const QuestionList = () => {
     );
   }
 
+  const scrollToQuestion = (questionNumber: number) => {
+    const questionView = questionRefs.current[questionNumber];
+    if (questionView && scrollViewRef.current) {
+      questionView.measureLayout(
+        scrollViewRef.current as any,
+        (x, y) => {
+          scrollViewRef.current?.scrollTo({
+            y: Math.max(0, y - 20), // 20pxの余白
+            animated: true,
+          });
+        },
+        () => {}
+      );
+    }
+  };
+
   const handleCardPress = async (questionNumber: number) => {
     if (mode === 'view') {
       // 閲覧モード: 履歴の展開/折りたたみ
+      const wasExpanded = expandedQuestions.has(questionNumber);
       setExpandedQuestions(prev => {
         const newSet = new Set(prev);
         if (newSet.has(questionNumber)) {
@@ -123,13 +144,25 @@ const QuestionList = () => {
           newSet.add(questionNumber);
         }
         return newSet;
-      })
+      });
+
+      // 展開する場合のみスクロール
+      if (!wasExpanded) {
+        // アニメーション完了後にスクロール
+        setTimeout(() => {
+          scrollToQuestion(questionNumber);
+        }, 100);
+      }
     } else {
       // 回答モード: FABの表示/非表示をトグル
       if (activeFabQuestion === questionNumber) {
         setActiveFabQuestion(null);
       } else {
         setActiveFabQuestion(questionNumber);
+        // FAB表示時にスクロール
+        setTimeout(() => {
+          scrollToQuestion(questionNumber);
+        }, 50);
       }
     }
   }
@@ -227,7 +260,7 @@ const QuestionList = () => {
             gestureEnabled: false,
           }}
         />
-        <ScrollView style={styles.container}>
+        <ScrollView ref={scrollViewRef} style={styles.container}>
           {Array.from({ length: displayInfo.questionCount }, (_, i) => i + 1).map((num) => {
             const questionData = getQuestionAnswers(chapterId, sectionId, num);
             const history = questionData?.attempts || [];
@@ -235,7 +268,13 @@ const QuestionList = () => {
             const showFab = mode === 'answer' && activeFabQuestion === num;
 
             return (
-              <View key={num} style={styles.questionGroup}>
+              <View
+                key={num}
+                style={styles.questionGroup}
+                ref={(ref) => {
+                  questionRefs.current[num] = ref;
+                }}
+              >
                 {/* ラベル部分（MEMO、削除ボタン） */}
                 <View style={styles.labelContainer}>
                   <View style={styles.labelLeft}>
