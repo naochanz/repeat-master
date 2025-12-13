@@ -3,16 +3,18 @@ import { usePathname, useRouter } from 'expo-router';
 import { Home, Library } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CustomTabBar = () => {
   const router = useRouter();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
 
   const isHomeActive = pathname === '/' || pathname === '/index';
   const isLibraryActive = pathname.includes('/library') || pathname.includes('/study') || pathname.includes('/dashboard');
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <TouchableOpacity
         style={styles.tab}
         onPress={() => router.push('/')}
@@ -60,8 +62,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.neutral.white,
     borderTopWidth: 1,
     borderTopColor: theme.colors.secondary[200],
-    paddingBottom: 0,
-    height: 60,
+    minHeight: 60,
   },
   tab: {
     flex: 1,
