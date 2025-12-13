@@ -36,33 +36,36 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   }
 
   if (mode === 'view' && isExpanded) {
-    // 閲覧モード: 展開状態（履歴一覧）
+    // 閲覧モード: 展開状態（履歴一覧）最新から降順で表示
     return (
       <View style={styles.expandedHistory}>
         {confirmedHistory.length > 0 ? (
-          confirmedHistory.map((attempt, index) => (
-            <TouchableOpacity
-              key={`${questionNumber}-${index}`}
-              style={[
-                styles.historyCard,
-                attempt.result === '○' ? styles.correctCard : styles.incorrectCard
-              ]}
-              onPress={() => onPress(questionNumber)}
-            >
-              <Text style={styles.attemptNumber}>{index + 1}周目</Text>
-              <Text style={styles.answerMark}>
-                {attempt.result === '○' ? '✅' : '❌'}
-              </Text>
-              <Text style={styles.historyDate}>
-                {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
-                  month: '2-digit',
-                  day: '2-digit',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </Text>
-            </TouchableOpacity>
-          ))
+          confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
+            const originalIndex = confirmedHistory.length - 1 - reverseIndex;
+            return (
+              <TouchableOpacity
+                key={`${questionNumber}-${originalIndex}`}
+                style={[
+                  styles.historyCard,
+                  attempt.result === '○' ? styles.correctCard : styles.incorrectCard
+                ]}
+                onPress={() => onPress(questionNumber)}
+              >
+                <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
+                <Text style={styles.answerMark}>
+                  {attempt.result === '○' ? '✅' : '❌'}
+                </Text>
+                <Text style={styles.historyDate}>
+                  {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </Text>
+              </TouchableOpacity>
+            );
+          })
         ) : (
           <TouchableOpacity
             style={styles.historyCard}
