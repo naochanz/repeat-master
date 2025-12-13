@@ -5,10 +5,12 @@ import { router } from 'expo-router';
 import { AlertCircle, BookOpen, ChevronDown, ChevronRight, ChevronUp, Edit3, Target } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Dimensions, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { RecentStudyItem } from '@/types/QuizBook';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_WIDTH = SCREEN_WIDTH - (theme.spacing.lg * 4);
 const MAX_BAR_HEIGHT = 120;
+
 
 interface QualificationStats {
   category: string;
@@ -20,10 +22,13 @@ interface QualificationStats {
 
 export default function DashboardScreen() {
   const quizBooks = useQuizBookStore(state => state.quizBooks);
+  const getRecentStudyItems = useQuizBookStore(state => state.getRecentStudyItems);
+  const recentStudies = getRecentStudyItems();
   const [goal, setGoal] = useState('');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [tempGoal, setTempGoal] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
 
   useEffect(() => {
     loadGoal();
@@ -103,6 +108,16 @@ export default function DashboardScreen() {
       pathname: '/dashboard/qualification/[category]' as any,
       params: { category },
     });
+  };
+
+  const handleRecentStudyPress = (item: RecentStudyItem) => {
+    if (item.type === 'section') {
+      // 節がある場合 → 問題リストへ
+      router.push(`/study/question/${item.sectionId}` as any);
+    } else {
+      // 節がない場合 → 問題リストへ
+      router.push(`/study/question/${item.chapterId}` as any);
+    }
   };
 
   const toggleCategoryExpanded = (category: string) => {
@@ -191,6 +206,46 @@ export default function DashboardScreen() {
             {goal || '目標を設定してください'}
           </Text>
         </TouchableOpacity>
+
+        {recentStudies.length > 0 && (
+          <View style={styles.recentStudySection}>
+            <Text style={styles.sectionTitle}>最近の学習</Text>
+            <View style={styles.recentCardsVertical}>
+              {recentStudies.map((item, index) => (
+                <TouchableOpacity
+                  key={`${item.chapterId}-${item.sectionId || 'chapter'}-${index}`}
+                  style={styles.recentCardVertical}
+                  onPress={() => handleRecentStudyPress(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.recentCardTop}>
+                    <Text style={styles.recentCardPath} numberOfLines={1}>
+                      {item.bookTitle} 第{item.chapterNumber}章
+                      {item.sectionTitle && ` ${item.sectionNumber}節`}
+                    </Text>
+                    <Text style={styles.recentCardQuestion}>
+                      問題{item.lastQuestionNumber} {item.lastResult}
+                    </Text>
+
+                  </View>
+
+
+                  <View style={styles.recentCardBottom}>
+                    <Text style={styles.recentCardDate}>
+                      {new Date(item.lastAnsweredAt).toLocaleDateString('ja-JP', {
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Text>
+                    <Text style={styles.recentCardCategory}>{item.category}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
         {qualificationStats.length === 0 ? (
           <View style={styles.emptyState}>
@@ -305,7 +360,6 @@ export default function DashboardScreen() {
   );
 }
 
-// styles は同じなので省略
 
 const styles = StyleSheet.create({
   container: {
@@ -555,6 +609,63 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.base,
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.neutral.white,
+    fontFamily: 'ZenKaku-Bold',
+  },
+  recentStudySection: {
+    marginBottom: theme.spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: theme.typography.fontSizes.lg,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+    marginBottom: theme.spacing.md,
+  },
+  recentCardsVertical: {
+    gap: theme.spacing.sm,
+  },
+  recentCardVertical: {
+    backgroundColor: theme.colors.neutral.white,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    ...theme.shadows.md,
+    borderWidth: 2,
+    borderColor: theme.colors.primary[200],
+    height: 70, // ✅ 固定高さ
+  },
+  recentCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  recentCardPath: {
+    fontSize: theme.typography.fontSizes.sm,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+    flex: 1,
+  },
+  recentCardDate: {
+    fontSize: theme.typography.fontSizes.xs,
+    color: theme.colors.secondary[500],
+    fontFamily: 'ZenKaku-Regular',
+    marginLeft: theme.spacing.sm,
+  },
+  recentCardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  recentCardQuestion: {
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.secondary[700],
+    fontFamily: 'ZenKaku-Bold',
+  },
+  recentCardCategory: {
+    fontSize: theme.typography.fontSizes.xs,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.primary[600],
     fontFamily: 'ZenKaku-Bold',
   },
 });

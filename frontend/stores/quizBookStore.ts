@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { quizBookRepository } from '@/app/repositories/QuizBookRepository';
-import { QuizBook, Chapter, Section, QuestionAnswer } from '@/types/QuizBook';
+import { QuizBook, Chapter, Section, QuestionAnswer, RecentStudyItem } from '@/types/QuizBook';
 
 interface QuizBookStore {
   // 状態
@@ -41,6 +41,7 @@ interface QuizBookStore {
   updateSectionInChapter: (quizBookId: string, chapterId: string, sectionId: string, updates: Partial<Section>) => Promise<void>;
   addQuestionToTarget: (chapterId: string, sectionId: string | null) => Promise<void>;
   deleteQuestionFromTarget: (chapterId: string, sectionId: string | null, questionNumber: number) => Promise<void>;
+  getRecentStudyItems: () => RecentStudyItem[];
 }
 
 export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
@@ -716,4 +717,82 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     const allBooks = await quizBookRepository.getAll();
     set({ quizBooks: allBooks });
   },
+
+  getRecentStudyItems: () => {
+    const { quizBooks } = get();
+    const recentItems: RecentStudyItem[] = [];
+
+    quizBooks.forEach(book => {
+      book.chapters.forEach(chapter => {
+        if (book.useSections && chapter.sections) {
+          // 節がある場合
+          chapter.sections.forEach(section => {
+            const lastAnswer = getLastConfirmedAnswer(section.questionAnswers);
+            if (lastAnswer) {
+              recentItems.push({
+                type: 'section',
+                bookId: book.id,
+                bookTitle: book.title,
+                category: book.category,
+                chapterId: chapter.id,
+                chapterNumber: chapter.chapterNumber,
+                chapterTitle: chapter.title,
+                sectionId: section.id,
+                sectionNumber: section.sectionNumber,
+                sectionTitle: section.title,
+                lastAnsweredAt: lastAnswer.answeredAt,
+                lastQuestionNumber: lastAnswer.questionNumber,
+                lastResult: lastAnswer.result,
+              });
+            }
+          });
+        } else {
+          // 節がない場合
+          const lastAnswer = getLastConfirmedAnswer(chapter.questionAnswers);
+          if (lastAnswer) {
+            recentItems.push({ 
+              type: 'chapter',
+              bookId: book.id,
+              bookTitle: book.title,
+              category: book.category,
+              chapterId: chapter.id,
+              chapterNumber: chapter.chapterNumber,
+              chapterTitle: chapter.title,
+              lastAnsweredAt: lastAnswer.answeredAt,
+              lastQuestionNumber: lastAnswer.questionNumber,
+              lastResult: lastAnswer.result,
+            });
+          }
+        }
+      });
+    });
+    return recentItems
+      .sort((a, b) => b.lastAnsweredAt.getTime() - a.lastAnsweredAt.getTime())
+      .slice(0, 3);
+  },
 }));
+
+// ========== ヘルパー関数 ==========
+function getLastConfirmedAnswer(
+  questionAnswers?: QuestionAnswer[]
+): { questionNumber: number; result: '○' | '×'; answeredAt: Date } | null {
+  if (!questionAnswers || questionAnswers.length === 0) return null;
+
+  let lastAnswer: { questionNumber: number; result: '○' | '×'; answeredAt: Date } | null = null;
+
+  questionAnswers.forEach(qa => {
+    const confirmedAttempts = qa.attempts.filter(a => a.resultConfirmFlg);
+    if (confirmedAttempts.length > 0) {
+      const latest = confirmedAttempts[confirmedAttempts.length - 1];
+      if (!lastAnswer || latest.answeredAt.getTime() > lastAnswer.answeredAt.getTime()) {
+        lastAnswer = {
+          questionNumber: qa.questionNumber,
+          result: latest.result,
+          answeredAt: latest.answeredAt,
+        };
+      }
+    }
+  });
+
+  return lastAnswer;
+}

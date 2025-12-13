@@ -426,7 +426,6 @@ const styles = StyleSheet.create({
     marginHorizontal: theme.spacing.xs,
     borderWidth: 2,
     borderColor: theme.colors.primary[400],
-    ...theme.shadows.lg,
   },
   questionNumberLabel: {
     fontSize: theme.typography.fontSizes.base,
