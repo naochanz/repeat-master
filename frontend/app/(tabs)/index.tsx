@@ -112,10 +112,12 @@ export default function DashboardScreen() {
 
   const handleRecentStudyPress = (item: RecentStudyItem) => {
     if (item.type === 'section') {
-      // 節がある場合 → 節リストへ（自動的に問題リストに遷移させる）
+      // 節がある場合 → 章リストへ（章リスト→節リスト→問題リストと遷移）
       router.push({
-        pathname: `/study/section/${item.chapterId}` as any,
+        pathname: `/study/${item.bookId}` as any,
         params: {
+          fromHome: 'true',
+          autoNavigateToSection: item.chapterId,
           autoNavigateToQuestion: item.sectionId
         }
       });
@@ -124,6 +126,7 @@ export default function DashboardScreen() {
       router.push({
         pathname: `/study/${item.bookId}` as any,
         params: {
+          fromHome: 'true',
           autoNavigateToQuestion: item.chapterId
         }
       });

@@ -32,13 +32,13 @@ const SectionList = () => {
   // 自動遷移処理（ホームから来た場合）
   useEffect(() => {
     if (autoNavigateToQuestion) {
-      // 少し遅延させて自動的に問題リストに遷移
+      // 自動的に問題リストに遷移
       const timer = setTimeout(() => {
         router.push({
           pathname: '/study/question/[id]',
           params: { id: autoNavigateToQuestion }
         });
-      }, 50);
+      }, 10);
       return () => clearTimeout(timer);
     }
   }, [autoNavigateToQuestion]);

@@ -14,7 +14,7 @@ import { useNavigation } from 'expo-router';
 
 const StudyHome = () => {
     const navigation = useNavigation();
-    const { id, autoNavigateToQuestion } = useLocalSearchParams();
+    const { id, fromHome, autoNavigateToSection, autoNavigateToQuestion } = useLocalSearchParams();
     console.log('Can go back:', navigation.canGoBack());
 
     // ✅ 修正: quizBooks を直接購読
@@ -38,17 +38,29 @@ const StudyHome = () => {
 
     // 自動遷移処理（ホームから来た場合）
     useEffect(() => {
-        if (autoNavigateToQuestion) {
-            // 少し遅延させて自動的に問題リストに遷移
+        if (autoNavigateToSection && autoNavigateToQuestion) {
+            // 節がある場合: 章リスト → 節リスト → 問題リスト
+            const timer = setTimeout(() => {
+                router.push({
+                    pathname: '/study/section/[chapterId]',
+                    params: {
+                        chapterId: autoNavigateToSection,
+                        autoNavigateToQuestion: autoNavigateToQuestion
+                    }
+                });
+            }, 10);
+            return () => clearTimeout(timer);
+        } else if (autoNavigateToQuestion) {
+            // 節がない場合: 章リスト → 問題リスト
             const timer = setTimeout(() => {
                 router.push({
                     pathname: '/study/question/[id]',
                     params: { id: autoNavigateToQuestion }
                 });
-            }, 50);
+            }, 10);
             return () => clearTimeout(timer);
         }
-    }, [autoNavigateToQuestion]);
+    }, [autoNavigateToSection, autoNavigateToQuestion]);
 
     // ✅ 修正: quizBooks から直接検索
     const quizBook = quizBooks.find(book => book.id === id);
@@ -122,6 +134,15 @@ const StudyHome = () => {
         setEditingChapter(null);
     };
 
+    const handleBack = () => {
+        if (fromHome === 'true') {
+            // ホームから来た場合はライブラリに戻る
+            router.replace('/(tabs)/library' as any);
+        } else {
+            // 通常の戻る動作
+            router.back();
+        }
+    };
 
     return (
         <>
@@ -140,7 +161,7 @@ const StudyHome = () => {
                     ),
                     headerLeft: () => (
                         <TouchableOpacity
-                            onPress={() => router.back()}
+                            onPress={handleBack}
                             style={{ marginLeft: 8 }}
                         >
                             <ArrowLeft size={24} color={theme.colors.secondary[900]} />
