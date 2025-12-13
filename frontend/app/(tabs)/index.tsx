@@ -262,6 +262,7 @@ export default function DashboardScreen() {
 
         {qualificationStats.length === 0 ? (
           <View style={styles.emptyState}>
+            <Text style={styles.sectionTitle}>学習の分析</Text>
             <AlertCircle size={64} color={theme.colors.primary[300]} />
             <Text style={styles.emptyTitle}>まだ資格が登録されていません</Text>
             <Text style={styles.emptyDescription}>
@@ -277,6 +278,7 @@ export default function DashboardScreen() {
           </View>
         ) : (
           <View style={styles.qualificationList}>
+            <Text style={styles.sectionTitle}>学習の分析</Text>
             {qualificationStats.map((qual) => {
               // ✅ 資格が1つの場合は常に展開、2つ以上の場合はトグル状態を見る
               const isExpanded = qualificationStats.length === 1 || expandedCategories.has(qual.category);
