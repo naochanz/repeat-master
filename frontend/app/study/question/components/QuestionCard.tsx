@@ -65,7 +65,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       const animations = animatedValues.current.slice(1).map((anim, index) => {
         return Animated.timing(anim, {
           toValue: 1,
-          duration: 100,
+          duration: 30,
           delay: index * 30,
           useNativeDriver: true,
         });
@@ -82,7 +82,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       const animations = animatedValues.current.slice(1).map((anim, index) => {
         return Animated.timing(anim, {
           toValue: 0,
-          duration: 100,
+          duration: 30,
           delay: (animatedValues.current.length - 2 - index) * 30, // 逆順
           useNativeDriver: true,
         });

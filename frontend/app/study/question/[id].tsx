@@ -49,7 +49,7 @@ const QuestionList = () => {
             animated: true,
           });
         },
-        () => {}
+        () => { }
       );
     }
   }, []);
@@ -287,17 +287,17 @@ const QuestionList = () => {
                 {/* ラベル部分（MEMO、削除ボタン） */}
                 <View style={styles.labelContainer}>
                   <View style={styles.labelLeft}>
-                  <Text style={styles.questionNumberLabel}>問題 {num}</Text>
-                  {mode === 'view' && (
-                    <TouchableOpacity
-                      style={styles.expansionToggleButton}
-                      onPress={() => handleCardPress(num)}
-                    >
-                      <Text style={styles.expansionToggleText}>
-                        {isExpanded ? '▼' : '▶'}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                    <Text style={styles.questionNumberLabel}>問題 {num}</Text>
+                    {mode === 'view' && (
+                      <TouchableOpacity
+                        style={styles.expansionToggleButton}
+                        onPress={() => handleCardPress(num)}
+                      >
+                        <Text style={styles.expansionToggleText}>
+                          {isExpanded ? '▼' : '▶'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                   <View style={styles.buttonGroup}>
                     <TouchableOpacity
@@ -316,14 +316,16 @@ const QuestionList = () => {
                 </View>
 
                 {/* カード表示 */}
-                <QuestionCard
-                  questionNumber={num}
-                  mode={mode}
-                  isExpanded={isExpanded}
-                  showFab={showFab}
-                  history={history}
-                  onPress={handleCardPress}
-                />
+                <View style={showFab && styles.selectedCardContainer}>
+                  <QuestionCard
+                    questionNumber={num}
+                    mode={mode}
+                    isExpanded={isExpanded}
+                    showFab={showFab}
+                    history={history}
+                    onPress={handleCardPress}
+                  />
+                </View>
               </View>
             );
           })}
@@ -418,6 +420,13 @@ const styles = StyleSheet.create({
   },
   questionGroup: {
     marginTop: theme.spacing.lg,
+  },
+  selectedCardContainer: {
+    borderRadius: theme.borderRadius.lg,
+    marginHorizontal: theme.spacing.xs,
+    borderWidth: 2,
+    borderColor: theme.colors.primary[400],
+    ...theme.shadows.lg,
   },
   questionNumberLabel: {
     fontSize: theme.typography.fontSizes.base,
