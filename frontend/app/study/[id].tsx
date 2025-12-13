@@ -6,7 +6,8 @@ import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, MoreVertical, Plus, ArrowLeft } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
-import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
 
 
@@ -135,7 +136,7 @@ const StudyHome = () => {
                 }}
             />
 
-            <SafeAreaView style={styles.wrapper}>
+            <SafeAreaView style={styles.wrapper} edges={['top', 'left', 'right']}>
                 <ScrollView
                     style={styles.container}
                     contentContainerStyle={styles.scrollContent}

@@ -6,7 +6,8 @@ import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, ArrowLeft, MoreVertical, Plus } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
-import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SectionList = () => {
   const { chapterId } = useLocalSearchParams();
@@ -110,7 +111,7 @@ const SectionList = () => {
   if (book.useSections === undefined) {
     return (
       <>
-        <SafeAreaView style={styles.wrapper}>
+        <SafeAreaView style={styles.wrapper} edges={['top', 'left', 'right']}>
           <Stack.Screen
             options={{
               headerTitle: () => (
@@ -169,7 +170,7 @@ const SectionList = () => {
   // 節を使用する場合
   return (
     <>
-      <SafeAreaView style={styles.wrapper}>
+      <SafeAreaView style={styles.wrapper} edges={['top', 'left', 'right']}>
         <Stack.Screen
           options={{
             headerTitle: () => (
