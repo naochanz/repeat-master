@@ -8,6 +8,9 @@ import { router } from 'expo-router';
 import { theme } from '@/constants/theme';
 
 const signupSchema = z.object({
+    name: z
+        .string()
+        .min(1, "ユーザーネームを入力してください"),
     email: z
         .string()
         .min(1, "メールアドレスは必須です")
@@ -54,6 +57,25 @@ const signup = () => {
                 </View>
 
                 <View style={styles.formContainer}>
+                    <Controller
+                        control={control}
+                        name="name"
+                        render={({ field: { onChange, value } }) => (
+                            <View style={styles.nameContainer}>
+                                <View>
+                                    <Text style={styles.nameText}>ユーザーネーム：</Text>
+                                    <TextInput
+                                        value={value}
+                                        onChangeText={onChange}
+                                        placeholder="山田　太郎"
+                                        style={styles.name}
+                                        placeholderTextColor={theme.colors.secondary[400]}
+                                    />
+                                    {errors.name && <Text style={styles.error}>{errors.name.message}</Text>}
+                                </View>
+                            </View>
+                        )}
+                    />
 
                     {/* Email */}
                     <View style={styles.mailContainer}>
@@ -155,6 +177,25 @@ const styles = StyleSheet.create({
         flex: 1,
         width: '100%',
         padding: theme.spacing.md,
+    },
+    nameContainer:{
+        marginBottom: theme.spacing.md,
+    },
+    nameText: {
+        color: theme.colors.secondary[700],
+        paddingVertical: theme.spacing.xs,
+        fontFamily: 'ZenKaku-Medium',
+        fontSize: theme.typography.fontSizes.base,
+    },
+    name:{
+        padding: theme.spacing.md,
+        borderWidth: 1,
+        borderRadius: theme.borderRadius.md,
+        borderColor: theme.colors.secondary[300],
+        width: '100%',
+        backgroundColor: theme.colors.neutral.white,
+        fontSize: theme.typography.fontSizes.base,
+        fontFamily: 'ZenKaku-Regular',
     },
     mailContainer: {
         marginBottom: theme.spacing.md,
