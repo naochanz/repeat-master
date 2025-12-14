@@ -21,6 +21,9 @@ export class QuizBooksController {
 
   @Post()
   create(@Body() createQuizBookDto: CreateQuizBookDto, @Request() req) {
+    console.log('📨 POST /quiz-books called');
+    console.log('🔑 Authorization header:', req.headers.authorization);
+    console.log('👤 User from request:', req.user);
     return this.quizBooksService.create(createQuizBookDto, req.user.id);
   }
 
