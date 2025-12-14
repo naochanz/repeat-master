@@ -1,6 +1,6 @@
 import { theme } from '@/constants/theme';
 import { usePathname, useRouter } from 'expo-router';
-import { Home, Library } from 'lucide-react-native';
+import { Home, Library, Settings } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ const CustomTabBar = () => {
 
   const isHomeActive = pathname === '/' || pathname === '/index';
   const isLibraryActive = pathname.includes('/library') || pathname.includes('/study') || pathname.includes('/dashboard');
+  const isSettingsActive = pathname.includes('/settings');
 
   return (
     <View style={{ backgroundColor: theme.colors.neutral.white }}>
@@ -51,6 +52,25 @@ const CustomTabBar = () => {
           ]}
         >
           ライブラリ
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.tab}
+        onPress={() => router.push('/settings')}
+        activeOpacity={0.7}
+      >
+        <Settings
+          size={24}
+          color={isSettingsActive ? theme.colors.primary[600] : theme.colors.secondary[400]}
+        />
+        <Text
+          style={[
+            styles.label,
+            isSettingsActive && styles.labelActive
+          ]}
+        >
+          設定
         </Text>
       </TouchableOpacity>
     </View>
