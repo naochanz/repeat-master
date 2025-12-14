@@ -571,14 +571,15 @@ const styles = StyleSheet.create({
     },
     modalActions: {
         flexDirection: 'row',
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
         gap: theme.spacing.md,
+        marginTop: 10,
     },
     modalButton: {
         paddingVertical: theme.spacing.sm,
         paddingHorizontal: theme.spacing.lg,
         borderRadius: theme.borderRadius.md,
-        minWidth: 80,
+        width: 120,
         alignItems: 'center',
     },
     cancelButton: {
@@ -586,7 +587,7 @@ const styles = StyleSheet.create({
     },
     cancelButtonText: {
         color: theme.colors.secondary[700],
-        fontSize: theme.typography.fontSizes.base,
+        fontSize: theme.typography.fontSizes.sm,
         fontWeight: theme.typography.fontWeights.semibold as any,
         fontFamily: 'ZenKaku-Medium',
     },

@@ -318,13 +318,6 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           )}
         </>
       )}
-
-      {/* 履歴カウント表示 */}
-      {!showFab && confirmedHistory.length > 0 && (
-        <Text style={styles.historyCount}>
-          {confirmedHistory.length}枚の履歴 ↗️
-        </Text>
-      )}
     </TouchableOpacity>
   );
 };
