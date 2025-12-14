@@ -108,13 +108,13 @@ const styles = StyleSheet.create({
     container: {
         margin: 0,
         flex: 1,
-        padding: theme.spacing.xl,
+        padding: theme.spacing.md,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: theme.colors.neutral[50],
     },
     loginContainer: {
-        flex: 0.5,
+        flex: 0.2,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
         fontSize: theme.typography.fontSizes.base,
     },
     email: {
-        padding: theme.spacing.md,
+        padding: theme.spacing.sm,
         borderWidth: 1,
         borderRadius: theme.borderRadius.md,
         borderColor: theme.colors.secondary[300],
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
         fontSize: theme.typography.fontSizes.base,
     },
     password: {
-        padding: theme.spacing.md,
+        padding: theme.spacing.sm,
         borderWidth: 1,
         borderRadius: theme.borderRadius.md,
         borderColor: theme.colors.secondary[300],
