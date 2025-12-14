@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { PassportModule } from '@nestjs/passport'; // ✅ 追加
+import { AuthModule } from '../auth/auth.module';
 import { QuizBooksService } from './quiz-books.service';
 import { QuizBooksController } from './quiz-books.controller';
 import { QuizBook } from './entities/quiz-book.entity';
@@ -11,7 +11,7 @@ import { QuestionAnswer } from './entities/question-answer.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([QuizBook, Chapter, Section, QuestionAnswer]),
-    PassportModule, // ✅ 追加
+    AuthModule,
   ],
   controllers: [QuizBooksController],
   providers: [QuizBooksService],
