@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native'
 import React from 'react'
 import AppName from '../_compornents/Header';
 import { z } from 'zod';
@@ -6,6 +6,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import { theme } from '@/constants/theme';
+import { useAuthStore } from '@/stores/authStore';
 
 const signupSchema = z.object({
     name: z
@@ -32,17 +33,33 @@ const signupSchema = z.object({
 type SignupFormData = z.infer<typeof signupSchema>;
 
 const signup = () => {
+    const register = useAuthStore(state => state.register);
+    const isLoading = useAuthStore(state => state.isLoading);
+
     const {
         control,
         handleSubmit,
         formState: { errors }
     } = useForm<SignupFormData>({
-        resolver: zodResolver(signupSchema)
+        resolver: zodResolver(signupSchema),
+        defaultValues: {
+            name: '',
+            email: '',
+            password: '',
+            confirmPassword: ''
+        }
     });
 
-    const onSubmit = (data: SignupFormData) => {
-        console.log("サインアップデータ", data);
-        router.replace('/(tabs)');
+    const onSubmit = async (data: SignupFormData) => {
+        try {
+            await register(data.email, data.password, data.name);
+            router.replace('/(tabs)');
+        } catch (error: any) {
+            Alert.alert(
+                'エラー',
+                error.response?.data?.message || '登録に失敗しました'
+            );
+        }
     };
 
     return (
@@ -140,8 +157,14 @@ const signup = () => {
                         )}
                     />
 
-                    <TouchableOpacity style={styles.signupButton} onPress={handleSubmit(onSubmit)}>
-                        <Text style={styles.buttonText}>新規登録</Text>
+                    <TouchableOpacity
+                        style={styles.signupButton}
+                        onPress={handleSubmit(onSubmit)}
+                        disabled={isLoading}
+                    >
+                        <Text style={styles.buttonText}>
+                            {isLoading ? '登録中...' : '新規登録'}
+                        </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/login')}>
@@ -178,7 +201,7 @@ const styles = StyleSheet.create({
         width: '100%',
         padding: theme.spacing.md,
     },
-    nameContainer:{
+    nameContainer: {
         marginBottom: theme.spacing.sm,
     },
     nameText: {
@@ -187,7 +210,7 @@ const styles = StyleSheet.create({
         fontFamily: 'ZenKaku-Medium',
         fontSize: theme.typography.fontSizes.base,
     },
-    name:{
+    name: {
         padding: theme.spacing.sm,
         borderWidth: 1,
         borderRadius: theme.borderRadius.md,

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native'
 import React from 'react'
 import AppName from '../_compornents/Header';
 import { z } from 'zod';
@@ -6,8 +6,10 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import { theme } from '@/constants/theme';
+import { useAuthStore } from '@/stores/authStore';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const signupSchema = z.object({
+const loginSchema = z.object({
     email: z
         .string()
         .min(1, "メールアドレスは必須です")
@@ -19,28 +21,37 @@ const signupSchema = z.object({
         .min(8, "パスワードは8文字以上で入力してください"),
 });
 
-type SignupFormData = z.infer<typeof signupSchema>;
+type loginFormData = z.infer<typeof loginSchema>;
 
 const login = () => {
+    const loginAction = useAuthStore(state => state.login);
+    const isLoading = useAuthStore(state => state.isLoading);
 
     const {
         control,
         handleSubmit,
         formState: { errors }
-    } = useForm<SignupFormData>({
-        resolver: zodResolver(signupSchema)
+    } = useForm<loginFormData>({
+        resolver: zodResolver(loginSchema)
     });
 
-    const onSubmit = (data: SignupFormData) => {
-        console.log('ログインデータ', data);
-        router.replace('/(tabs)');
+    const onSubmit = async (data: loginFormData) => {
+        try {
+            await loginAction(data.email, data.password);
+            router.replace('/(tabs)');
+        } catch (error: any) {
+            Alert.alert(
+                'エラー',
+                error.response?.data?.message || 'ログインに失敗しました'
+            );
+        }
     };
 
     return (
         <>
-            <View>
+            <SafeAreaView>
                 <AppName />
-            </View>
+            </SafeAreaView>
 
             <View style={styles.container}>
                 <View style={styles.loginContainer}>
@@ -90,8 +101,14 @@ const login = () => {
                         )}
                     />
 
-                    <TouchableOpacity style={styles.loginButton} onPress={handleSubmit(onSubmit)}>
-                        <Text style={styles.buttonText}>ログイン</Text>
+                    <TouchableOpacity
+                        style={styles.loginButton}
+                        onPress={handleSubmit(onSubmit)}
+                        disabled={isLoading}
+                    >
+                        <Text style={styles.buttonText}>
+                            {isLoading ? 'ログイン中...' : 'ログイン'}
+                        </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.signupButton} onPress={() => router.replace('/signup')}>

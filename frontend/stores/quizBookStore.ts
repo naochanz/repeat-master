@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { quizBookRepository } from '@/app/repositories/QuizBookRepository';
+import { quizBookRepository } from '@/repositories/QuizBookRepository';
 import { QuizBook, Chapter, Section, QuestionAnswer, RecentStudyItem } from '@/types/QuizBook';
 
 interface QuizBookStore {
