@@ -64,10 +64,8 @@ const signup = () => {
     };
 
     return (
-        <>
-            <SafeAreaView>
-                <AppName />
-            </SafeAreaView>
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+            <AppName />
 
             <View style={styles.container}>
                 <View style={styles.loginContainer}>
@@ -174,11 +172,15 @@ const signup = () => {
 
                 </View>
             </View>
-        </>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: theme.colors.neutral[50],
+    },
     container: {
         margin: 0,
         flex: 1,
