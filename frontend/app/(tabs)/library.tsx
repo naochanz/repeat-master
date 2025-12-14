@@ -3,7 +3,7 @@ import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { AlertCircle, Edit, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { CommonActions } from '@react-navigation/native';
 import AddItemModal from '../_compornents/AddItemModal';
@@ -11,6 +11,7 @@ import CategorySelectModal from '../_compornents/CategorySelectModal';
 import ConfirmDialog from '../_compornents/ConfirmDialog';
 import QuizBookCard from '../_compornents/QuizBookCard';
 import QuizBookTitleModal from '../_compornents/QuizBookTitleModal';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LibraryScreen() {
   const quizBooks = useQuizBookStore(state => state.quizBooks);
@@ -384,7 +385,7 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: theme.colors.neutral[50],
+    backgroundColor: theme.colors.neutral.white,
   },
   sectionContainer: {
     paddingHorizontal: theme.spacing.lg,

@@ -48,74 +48,76 @@ const login = () => {
     };
 
     return (
-        <SafeAreaView style={styles.safeArea} edges={['top']}>
-            <AppName />
+        <>
+            <SafeAreaView style={styles.safeArea} edges={['top']}>
+                <AppName />
 
-            <View style={styles.container}>
-                <View style={styles.loginContainer}>
-                    <Text style={styles.loginContainerText}>ログイン情報を入力してください</Text>
-                </View>
+                <View style={styles.container}>
+                    <View style={styles.loginContainer}>
+                        <Text style={styles.loginContainerText}>ログイン情報を入力してください</Text>
+                    </View>
 
-                <View style={styles.formContainer}>
+                    <View style={styles.formContainer}>
 
-                    {/* Email */}
-                    <View style={styles.mailContainer}>
+                        {/* Email */}
+                        <View style={styles.mailContainer}>
+                            <Controller
+                                control={control}
+                                name="email"
+                                render={({ field: { onChange, value } }) => (
+                                    <View>
+                                        <Text style={styles.mailText}>メールアドレス：</Text>
+                                        <TextInput
+                                            value={value}
+                                            onChangeText={onChange}
+                                            placeholder="example@e-mail.com"
+                                            style={styles.email}
+                                            placeholderTextColor={theme.colors.secondary[400]}
+                                        />
+                                        {errors.email && <Text style={styles.error}>{errors.email.message}</Text>}
+                                    </View>
+                                )}
+                            />
+                        </View>
+
+                        {/* Password */}
                         <Controller
                             control={control}
-                            name="email"
+                            name="password"
                             render={({ field: { onChange, value } }) => (
-                                <View>
-                                    <Text style={styles.mailText}>メールアドレス：</Text>
+                                <View style={styles.passContainer}>
+                                    <Text style={styles.passText}>パスワード：</Text>
                                     <TextInput
                                         value={value}
                                         onChangeText={onChange}
-                                        placeholder="example@e-mail.com"
-                                        style={styles.email}
+                                        placeholder="パスワードを入力してください"
+                                        style={styles.password}
+                                        secureTextEntry={true}
                                         placeholderTextColor={theme.colors.secondary[400]}
                                     />
-                                    {errors.email && <Text style={styles.error}>{errors.email.message}</Text>}
+                                    {errors.password && <Text style={styles.error}>{errors.password.message}</Text>}
                                 </View>
                             )}
                         />
+
+                        <TouchableOpacity
+                            style={styles.loginButton}
+                            onPress={handleSubmit(onSubmit)}
+                            disabled={isLoading}
+                        >
+                            <Text style={styles.buttonText}>
+                                {isLoading ? 'ログイン中...' : 'ログイン'}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.signupButton} onPress={() => router.replace('/signup')}>
+                            <Text style={[styles.buttonText, { color: theme.colors.secondary[700] }]}>新規登録</Text>
+                        </TouchableOpacity>
+
                     </View>
-
-                    {/* Password */}
-                    <Controller
-                        control={control}
-                        name="password"
-                        render={({ field: { onChange, value } }) => (
-                            <View style={styles.passContainer}>
-                                <Text style={styles.passText}>パスワード：</Text>
-                                <TextInput
-                                    value={value}
-                                    onChangeText={onChange}
-                                    placeholder="パスワードを入力してください"
-                                    style={styles.password}
-                                    secureTextEntry={true}
-                                    placeholderTextColor={theme.colors.secondary[400]}
-                                />
-                                {errors.password && <Text style={styles.error}>{errors.password.message}</Text>}
-                            </View>
-                        )}
-                    />
-
-                    <TouchableOpacity
-                        style={styles.loginButton}
-                        onPress={handleSubmit(onSubmit)}
-                        disabled={isLoading}
-                    >
-                        <Text style={styles.buttonText}>
-                            {isLoading ? 'ログイン中...' : 'ログイン'}
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.signupButton} onPress={() => router.replace('/signup')}>
-                        <Text style={[styles.buttonText, { color: theme.colors.secondary[700] }]}>新規登録</Text>
-                    </TouchableOpacity>
-
                 </View>
-            </View>
-        </SafeAreaView>
+            </SafeAreaView>
+        </>
     );
 };
 
