@@ -158,13 +158,13 @@ const styles = StyleSheet.create({
     container: {
         margin: 0,
         flex: 1,
-        padding: theme.spacing.xl,
+        padding: theme.spacing.md,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: theme.colors.neutral[50],
     },
     loginContainer: {
-        flex: 0.5,
+        flex: 0.1,
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
         padding: theme.spacing.md,
     },
     nameContainer:{
-        marginBottom: theme.spacing.md,
+        marginBottom: theme.spacing.sm,
     },
     nameText: {
         color: theme.colors.secondary[700],
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
         fontSize: theme.typography.fontSizes.base,
     },
     name:{
-        padding: theme.spacing.md,
+        padding: theme.spacing.sm,
         borderWidth: 1,
         borderRadius: theme.borderRadius.md,
         borderColor: theme.colors.secondary[300],
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
         fontFamily: 'ZenKaku-Regular',
     },
     mailContainer: {
-        marginBottom: theme.spacing.md,
+        marginBottom: theme.spacing.sm,
     },
     mailText: {
         color: theme.colors.secondary[700],
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
         fontSize: theme.typography.fontSizes.base,
     },
     email: {
-        padding: theme.spacing.md,
+        padding: theme.spacing.sm,
         borderWidth: 1,
         borderRadius: theme.borderRadius.md,
         borderColor: theme.colors.secondary[300],
@@ -217,8 +217,8 @@ const styles = StyleSheet.create({
         fontFamily: 'ZenKaku-Regular',
     },
     passContainer: {
-        marginTop: theme.spacing.md,
-        marginBottom: theme.spacing.md,
+        marginTop: theme.spacing.sm,
+        marginBottom: theme.spacing.sm,
     },
     passText: {
         color: theme.colors.secondary[700],
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
         fontSize: theme.typography.fontSizes.base,
     },
     password: {
-        padding: theme.spacing.md,
+        padding: theme.spacing.sm,
         borderWidth: 1,
         borderRadius: theme.borderRadius.md,
         borderColor: theme.colors.secondary[300],
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: '100%',
         backgroundColor: theme.colors.primary[600],
-        marginTop: theme.spacing.xl * 2,
+        marginTop: theme.spacing.md,
         borderRadius: theme.borderRadius.md,
         ...theme.shadows.md,
     },
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: '100%',
         backgroundColor: theme.colors.secondary[200],
-        marginVertical: theme.spacing.lg,
+        marginVertical: theme.spacing.md,
         borderRadius: theme.borderRadius.md,
     },
     buttonText: {
