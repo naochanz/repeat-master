@@ -53,14 +53,14 @@ const login = () => {
                     <View style={styles.mailContainer}>
                         <Controller
                             control={control}
-                            name='email'
+                            name="email"
                             render={({ field: { onChange, value } }) => (
                                 <View>
                                     <Text style={styles.mailText}>メールアドレス：</Text>
                                     <TextInput
                                         value={value}
                                         onChangeText={onChange}
-                                        placeholder='example@e-mail.com'
+                                        placeholder="example@e-mail.com"
                                         style={styles.email}
                                         placeholderTextColor={theme.colors.secondary[400]}
                                     />
@@ -73,14 +73,14 @@ const login = () => {
                     {/* Password */}
                     <Controller
                         control={control}
-                        name='password'
+                        name="password"
                         render={({ field: { onChange, value } }) => (
                             <View style={styles.passContainer}>
                                 <Text style={styles.passText}>パスワード：</Text>
                                 <TextInput
                                     value={value}
                                     onChangeText={onChange}
-                                    placeholder='パスワードを入力してください'
+                                    placeholder="パスワードを入力してください"
                                     style={styles.password}
                                     secureTextEntry={true}
                                     placeholderTextColor={theme.colors.secondary[400]}
