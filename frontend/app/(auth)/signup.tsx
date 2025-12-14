@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { useAuthStore } from '@/stores/authStore';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const signupSchema = z.object({
     name: z
@@ -64,9 +65,9 @@ const signup = () => {
 
     return (
         <>
-            <View>
+            <SafeAreaView>
                 <AppName />
-            </View>
+            </SafeAreaView>
 
             <View style={styles.container}>
                 <View style={styles.loginContainer}>
