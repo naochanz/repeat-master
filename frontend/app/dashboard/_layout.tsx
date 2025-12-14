@@ -8,7 +8,7 @@ export default function DashboardLayout() {
         animation: 'fade',
         presentation: 'card',
         animationDuration: 50,
-        gestureEnabled: true,
+        gestureEnabled: false,
       }}
     />
   );

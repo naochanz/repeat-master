@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Modal, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { theme } from '@/constants/theme';
 
 type MemoModalProps = {
     visible: boolean;
@@ -149,7 +150,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     saveButton: {
-        backgroundColor: '#4caf50',
+        backgroundColor: theme.colors.primary[600],
     },
     saveButtonText: {
         color: '#fff',

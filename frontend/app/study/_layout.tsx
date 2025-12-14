@@ -9,7 +9,7 @@ export default function StudyLayout() {
         presentation: 'card',
         animationDuration: 50,
         headerBackTitle: '',
-        gestureEnabled: true,
+        gestureEnabled: false,
         fullScreenGestureEnabled: false,
       }}
     />
