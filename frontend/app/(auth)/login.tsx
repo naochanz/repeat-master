@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
+import { theme } from '@/constants/theme';
 
 const signupSchema = z.object({
     email: z
@@ -61,7 +62,7 @@ const login = () => {
                                         onChangeText={onChange}
                                         placeholder='example@e-mail.com'
                                         style={styles.email}
-                                        placeholderTextColor="rgba(100, 100, 100, 0.7)"
+                                        placeholderTextColor={theme.colors.secondary[400]}
                                     />
                                     {errors.email && <Text style={styles.error}>{errors.email.message}</Text>}
                                 </View>
@@ -82,7 +83,7 @@ const login = () => {
                                     placeholder='パスワードを入力してください'
                                     style={styles.password}
                                     secureTextEntry={true}
-                                    placeholderTextColor="rgba(100, 100, 100, 0.7)"
+                                    placeholderTextColor={theme.colors.secondary[400]}
                                 />
                                 {errors.password && <Text style={styles.error}>{errors.password.message}</Text>}
                             </View>
@@ -94,7 +95,7 @@ const login = () => {
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.signupButton} onPress={() => router.replace('/signup')}>
-                        <Text style={styles.buttonText}>新規登録</Text>
+                        <Text style={[styles.buttonText, { color: theme.colors.secondary[700] }]}>新規登録</Text>
                     </TouchableOpacity>
 
                 </View>
@@ -107,10 +108,10 @@ const styles = StyleSheet.create({
     container: {
         margin: 0,
         flex: 1,
-        padding: 20,
+        padding: theme.spacing.xl,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#525150'
+        backgroundColor: theme.colors.neutral[50],
     },
     loginContainer: {
         flex: 0.5,
@@ -118,72 +119,84 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     loginContainerText: {
-        fontSize: 20,
-        color: 'white',
+        fontSize: theme.typography.fontSizes.xl,
+        color: theme.colors.secondary[900],
+        fontFamily: 'ZenKaku-Bold',
     },
     formContainer: {
         flex: 1,
         width: '100%',
-        padding: 10,
+        padding: theme.spacing.md,
     },
     mailContainer: {
-        marginBottom: 10,
+        marginBottom: theme.spacing.md,
     },
     mailText: {
-        color: 'white',
-        paddingVertical: 5
+        color: theme.colors.secondary[700],
+        paddingVertical: theme.spacing.xs,
+        fontFamily: 'ZenKaku-Medium',
+        fontSize: theme.typography.fontSizes.base,
     },
     email: {
-        padding: 10,
+        padding: theme.spacing.md,
         borderWidth: 1,
-        borderRadius: 5,
-        borderColor: 'black',
+        borderRadius: theme.borderRadius.md,
+        borderColor: theme.colors.secondary[300],
         width: '100%',
-        backgroundColor: 'white'
+        backgroundColor: theme.colors.neutral.white,
+        fontSize: theme.typography.fontSizes.base,
+        fontFamily: 'ZenKaku-Regular',
     },
     passContainer: {
-        marginTop: 10,
-        marginBottom: 10,
+        marginTop: theme.spacing.md,
+        marginBottom: theme.spacing.md,
     },
     passText: {
-        color: 'white',
-        paddingVertical: 5
+        color: theme.colors.secondary[700],
+        paddingVertical: theme.spacing.xs,
+        fontFamily: 'ZenKaku-Medium',
+        fontSize: theme.typography.fontSizes.base,
     },
     password: {
-        padding: 10,
+        padding: theme.spacing.md,
         borderWidth: 1,
-        borderRadius: 5,
-        borderColor: 'black',
+        borderRadius: theme.borderRadius.md,
+        borderColor: theme.colors.secondary[300],
         width: '100%',
-        backgroundColor: 'white'
+        backgroundColor: theme.colors.neutral.white,
+        fontSize: theme.typography.fontSizes.base,
+        fontFamily: 'ZenKaku-Regular',
     },
     loginButton: {
-        padding: 10,
+        padding: theme.spacing.md,
         justifyContent: 'center',
         alignItems: 'center',
         width: '100%',
-        backgroundColor: '#418cba',
-        marginTop: 40,
-        borderWidth: 1,
-        borderColor: 'black',
-        borderRadius: 5,
+        backgroundColor: theme.colors.primary[600],
+        marginTop: theme.spacing.xl * 2,
+        borderRadius: theme.borderRadius.md,
+        ...theme.shadows.md,
     },
     signupButton: {
-        padding: 10,
+        padding: theme.spacing.md,
         justifyContent: 'center',
         alignItems: 'center',
         width: '100%',
-        backgroundColor: '#de6f2f',
-        marginVertical: 20,
-        borderWidth: 1,
-        borderColor: 'black',
-        borderRadius: 5,
+        backgroundColor: theme.colors.secondary[200],
+        marginVertical: theme.spacing.lg,
+        borderRadius: theme.borderRadius.md,
     },
     buttonText: {
-        fontWeight: 'bold'
+        fontWeight: theme.typography.fontWeights.bold as any,
+        color: theme.colors.neutral.white,
+        fontFamily: 'ZenKaku-Bold',
+        fontSize: theme.typography.fontSizes.base,
     },
     error: {
-        color: 'red'
+        color: theme.colors.error[600],
+        fontSize: theme.typography.fontSizes.sm,
+        fontFamily: 'ZenKaku-Regular',
+        marginTop: theme.spacing.xs,
     },
 });
 
