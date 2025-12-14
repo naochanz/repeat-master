@@ -3,10 +3,14 @@ import React from 'react';
 import { theme } from '@/constants/theme';
 import { router } from 'expo-router';
 import { LogOut } from 'lucide-react-native';
+import { useAuthStore } from '@/stores/authStore';
 
 export default function SettingsScreen() {
-  const handleLogout = () => {
-    // ログアウト処理
+  const logout = useAuthStore(state => state.logout);
+
+  const handleLogout = async () => {
+    // ログアウト処理（セッションクリア）
+    await logout();
     router.replace('/login');
   };
 
