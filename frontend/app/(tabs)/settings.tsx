@@ -45,12 +45,14 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.secondary[200],
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: theme.typography.fontSizes.xl,
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Bold',
+    textAlign: 'center',
   },
   content: {
     flex: 1,

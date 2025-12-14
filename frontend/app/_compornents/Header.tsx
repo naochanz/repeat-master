@@ -32,8 +32,7 @@ const styles = StyleSheet.create({
     //...theme.shadows.sm,
   },
   titleContainer: {
-    flex: 1,
-    marginRight: theme.spacing.sm,
+    alignItems: 'center',
   },
   appTitle: {
     fontSize: theme.typography.fontSizes.xl,
@@ -41,6 +40,7 @@ const styles = StyleSheet.create({
     color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Bold',
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
 });
 

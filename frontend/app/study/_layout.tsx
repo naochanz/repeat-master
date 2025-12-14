@@ -11,6 +11,7 @@ export default function StudyLayout() {
         headerBackTitle: '',
         gestureEnabled: false,
         fullScreenGestureEnabled: false,
+        headerTitleAlign: 'center',
       }}
     />
   );

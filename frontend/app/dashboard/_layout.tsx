@@ -9,6 +9,7 @@ export default function DashboardLayout() {
         presentation: 'card',
         animationDuration: 50,
         gestureEnabled: false,
+        headerTitleAlign: 'center',
       }}
     />
   );
