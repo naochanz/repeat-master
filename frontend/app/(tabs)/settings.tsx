@@ -1,9 +1,10 @@
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import React from 'react';
 import { theme } from '@/constants/theme';
 import { router } from 'expo-router';
 import { LogOut } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/authStore';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
   const logout = useAuthStore(state => state.logout);
@@ -37,7 +38,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.neutral[50],
+    backgroundColor: theme.colors.neutral.white,
   },
   header: {
     backgroundColor: theme.colors.neutral.white,
@@ -48,10 +49,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: theme.typography.fontSizes.xl,
+    fontSize: theme.typography.fontSizes.lg,
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
+    fontFamily: 'ZenKaku',
     textAlign: 'center',
   },
   content: {

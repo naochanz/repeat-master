@@ -393,12 +393,13 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.neutral.white,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.secondary[200],
+    alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: theme.typography.fontSizes.xl,
+    fontSize: theme.typography.fontSizes.lg,
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
+    fontFamily: 'Zenkaku',
   },
   scrollView: {
     flex: 1,
