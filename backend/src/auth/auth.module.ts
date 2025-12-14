@@ -9,7 +9,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 @Module({
   imports: [
     UsersModule,
-    PassportModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }), // ✅ 修正
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'your-super-secret-jwt-key',
       signOptions: { expiresIn: '7d' },
@@ -19,4 +19,4 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   providers: [AuthService, JwtStrategy],
   exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}
