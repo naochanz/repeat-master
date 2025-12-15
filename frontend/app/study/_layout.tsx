@@ -5,10 +5,13 @@ export default function StudyLayout() {
     <Stack
       screenOptions={{
         headerShown: true,
-        animation: 'default',
+        animation: 'fade',
+        presentation: 'card',
+        animationDuration: 50,
         headerBackTitle: '',
-        gestureEnabled: false, // ✅ スワイプバックを有効化
-        fullScreenGestureEnabled: false, // iOS専用
+        gestureEnabled: false,
+        fullScreenGestureEnabled: false,
+        headerTitleAlign: 'center',
       }}
     />
   );

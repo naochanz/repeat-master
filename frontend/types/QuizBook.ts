@@ -40,3 +40,19 @@ export interface QuestionAnswer {
     answeredAt: Date;
   }[];
 }
+
+export interface RecentStudyItem {
+  type: 'chapter' | 'section';
+  bookId: string;
+  bookTitle: string;
+  category: string;
+  chapterId: String;
+  chapterNumber: number;
+  chapterTitle: string;
+  sectionId?: string;
+  sectionNumber?: number;
+  sectionTitle?: string;
+  lastAnsweredAt: Date;
+  lastQuestionNumber: number;
+  lastResult: '○' | '×';
+}

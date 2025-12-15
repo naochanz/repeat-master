@@ -1,12 +1,18 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native'
 import React from 'react'
-import AppName from '../compornents/Header';
+import AppName from '../_compornents/Header';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
+import { theme } from '@/constants/theme';
+import { useAuthStore } from '@/stores/authStore';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const signupSchema = z.object({
+    name: z
+        .string()
+        .min(1, "ユーザーネームを入力してください"),
     email: z
         .string()
         .min(1, "メールアドレスは必須です")
@@ -28,24 +34,38 @@ const signupSchema = z.object({
 type SignupFormData = z.infer<typeof signupSchema>;
 
 const signup = () => {
+    const register = useAuthStore(state => state.register);
+    const isLoading = useAuthStore(state => state.isLoading);
+
     const {
         control,
         handleSubmit,
         formState: { errors }
     } = useForm<SignupFormData>({
-        resolver: zodResolver(signupSchema)
+        resolver: zodResolver(signupSchema),
+        defaultValues: {
+            name: '',
+            email: '',
+            password: '',
+            confirmPassword: ''
+        }
     });
 
-    const onSubmit = (data: SignupFormData) => {
-        console.log("サインアップデータ", data);
-        router.replace('/(tabs)');
+    const onSubmit = async (data: SignupFormData) => {
+        try {
+            await register(data.email, data.password, data.name);
+            router.replace('/(tabs)');
+        } catch (error: any) {
+            Alert.alert(
+                'エラー',
+                error.response?.data?.message || '登録に失敗しました'
+            );
+        }
     };
 
     return (
-        <>
-            <View>
-                <AppName />
-            </View>
+        <SafeAreaView style={styles.safeArea} edges={['top']}>
+            <AppName />
 
             <View style={styles.container}>
                 <View style={styles.loginContainer}>
@@ -53,6 +73,25 @@ const signup = () => {
                 </View>
 
                 <View style={styles.formContainer}>
+                    <Controller
+                        control={control}
+                        name="name"
+                        render={({ field: { onChange, value } }) => (
+                            <View style={styles.nameContainer}>
+                                <View>
+                                    <Text style={styles.nameText}>ユーザーネーム：</Text>
+                                    <TextInput
+                                        value={value}
+                                        onChangeText={onChange}
+                                        placeholder="山田　太郎"
+                                        style={styles.name}
+                                        placeholderTextColor={theme.colors.secondary[400]}
+                                    />
+                                    {errors.name && <Text style={styles.error}>{errors.name.message}</Text>}
+                                </View>
+                            </View>
+                        )}
+                    />
 
                     {/* Email */}
                     <View style={styles.mailContainer}>
@@ -67,7 +106,7 @@ const signup = () => {
                                         onChangeText={onChange}
                                         placeholder="example@e-mail.com"
                                         style={styles.email}
-                                        placeholderTextColor="rgba(100, 100, 100, 0.7)"
+                                        placeholderTextColor={theme.colors.secondary[400]}
                                     />
                                     {errors.email && <Text style={styles.error}>{errors.email.message}</Text>}
                                 </View>
@@ -88,7 +127,7 @@ const signup = () => {
                                     placeholder="パスワードを入力してください"
                                     style={styles.password}
                                     secureTextEntry={true}
-                                    placeholderTextColor="rgba(100, 100, 100, 0.7)"
+                                    placeholderTextColor={theme.colors.secondary[400]}
                                 />
                                 {errors.password && <Text style={styles.error}>{errors.password.message}</Text>}
                             </View>
@@ -108,7 +147,7 @@ const signup = () => {
                                     placeholder="確認用パスワードを入力してください"
                                     style={styles.password}
                                     secureTextEntry={true}
-                                    placeholderTextColor="rgba(100, 100, 100, 0.7)"
+                                    placeholderTextColor={theme.colors.secondary[400]}
                                 />
                                 {errors.confirmPassword && (
                                     <Text style={styles.error}>{errors.confirmPassword.message}</Text>
@@ -117,101 +156,142 @@ const signup = () => {
                         )}
                     />
 
-                    <TouchableOpacity style={styles.signupButton} onPress={handleSubmit(onSubmit)}>
-                        <Text style={styles.buttonText}>新規登録</Text>
+                    <TouchableOpacity
+                        style={styles.signupButton}
+                        onPress={handleSubmit(onSubmit)}
+                        disabled={isLoading}
+                    >
+                        <Text style={styles.buttonText}>
+                            {isLoading ? '登録中...' : '新規登録'}
+                        </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/login')}>
-                        <Text style={styles.buttonText}>ログイン画面へ戻る</Text>
+                        <Text style={[styles.buttonText, { color: theme.colors.secondary[700] }]}>ログイン画面へ戻る</Text>
                     </TouchableOpacity>
 
                 </View>
             </View>
-        </>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
+    safeArea: {
+        flex: 1,
+        backgroundColor: theme.colors.neutral[50],
+    },
     container: {
         margin: 0,
         flex: 1,
-        padding: 20,
+        padding: theme.spacing.md,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#525150'
+        backgroundColor: theme.colors.neutral[50],
     },
     loginContainer: {
-        flex: 0.5,
+        flex: 0.1,
         justifyContent: 'center',
         alignItems: 'center',
     },
     loginContainerText: {
-        fontSize: 20,
-        color: 'white',
+        fontSize: theme.typography.fontSizes.xl,
+        color: theme.colors.secondary[900],
+        fontFamily: 'ZenKaku-Bold',
     },
     formContainer: {
         flex: 1,
         width: '100%',
-        padding: 10,
+        padding: theme.spacing.md,
+    },
+    nameContainer: {
+        marginBottom: theme.spacing.sm,
+    },
+    nameText: {
+        color: theme.colors.secondary[700],
+        paddingVertical: theme.spacing.xs,
+        fontFamily: 'ZenKaku-Medium',
+        fontSize: theme.typography.fontSizes.base,
+    },
+    name: {
+        padding: theme.spacing.sm,
+        borderWidth: 1,
+        borderRadius: theme.borderRadius.md,
+        borderColor: theme.colors.secondary[300],
+        width: '100%',
+        backgroundColor: theme.colors.neutral.white,
+        fontSize: theme.typography.fontSizes.base,
+        fontFamily: 'ZenKaku-Regular',
     },
     mailContainer: {
-        marginBottom: 10,
+        marginBottom: theme.spacing.sm,
     },
     mailText: {
-        color: 'white',
-        paddingVertical: 5
+        color: theme.colors.secondary[700],
+        paddingVertical: theme.spacing.xs,
+        fontFamily: 'ZenKaku-Medium',
+        fontSize: theme.typography.fontSizes.base,
     },
     email: {
-        padding: 10,
+        padding: theme.spacing.sm,
         borderWidth: 1,
-        borderRadius: 5,
-        borderColor: 'black',
+        borderRadius: theme.borderRadius.md,
+        borderColor: theme.colors.secondary[300],
         width: '100%',
-        backgroundColor: 'white'
+        backgroundColor: theme.colors.neutral.white,
+        fontSize: theme.typography.fontSizes.base,
+        fontFamily: 'ZenKaku-Regular',
     },
     passContainer: {
-        marginTop: 10,
-        marginBottom: 10,
+        marginTop: theme.spacing.sm,
+        marginBottom: theme.spacing.sm,
     },
     passText: {
-        color: 'white',
-        paddingVertical: 5
+        color: theme.colors.secondary[700],
+        paddingVertical: theme.spacing.xs,
+        fontFamily: 'ZenKaku-Medium',
+        fontSize: theme.typography.fontSizes.base,
     },
     password: {
-        padding: 10,
+        padding: theme.spacing.sm,
         borderWidth: 1,
-        borderRadius: 5,
-        borderColor: 'black',
+        borderRadius: theme.borderRadius.md,
+        borderColor: theme.colors.secondary[300],
         width: '100%',
-        backgroundColor: 'white'
+        backgroundColor: theme.colors.neutral.white,
+        fontSize: theme.typography.fontSizes.base,
+        fontFamily: 'ZenKaku-Regular',
     },
     signupButton: {
-        padding: 10,
+        padding: theme.spacing.md,
         justifyContent: 'center',
         alignItems: 'center',
         width: '100%',
-        backgroundColor: '#418cba',
-        marginTop: 40,
-        borderWidth: 1,
-        borderColor: 'black',
-        borderRadius: 5,
+        backgroundColor: theme.colors.primary[600],
+        marginTop: theme.spacing.md,
+        borderRadius: theme.borderRadius.md,
+        ...theme.shadows.md,
     },
     loginButton: {
-        padding: 10,
+        padding: theme.spacing.md,
         justifyContent: 'center',
         alignItems: 'center',
         width: '100%',
-        backgroundColor: '#de6f2f',
-        marginVertical: 20,
-        borderWidth: 1,
-        borderColor: 'black',
-        borderRadius: 5,
+        backgroundColor: theme.colors.secondary[200],
+        marginVertical: theme.spacing.md,
+        borderRadius: theme.borderRadius.md,
     },
     buttonText: {
-        fontWeight: 'bold'
+        fontWeight: theme.typography.fontWeights.bold as any,
+        color: theme.colors.neutral.white,
+        fontFamily: 'ZenKaku-Bold',
+        fontSize: theme.typography.fontSizes.base,
     },
     error: {
-        color: 'red'
+        color: theme.colors.error[600],
+        fontSize: theme.typography.fontSizes.sm,
+        fontFamily: 'ZenKaku-Regular',
+        marginTop: theme.spacing.xs,
     },
 });
 

@@ -26,6 +26,8 @@ export default function AuthLayout() {
             initialRouteName='login'
             screenOptions={{
                 headerShown: false,
+                animation: 'fade',
+                animationDuration: 50,
             }}
         >
             <Stack.Screen name='login' component={LoginScreen} />

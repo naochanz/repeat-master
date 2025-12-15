@@ -1,4 +1,4 @@
-import EditDeleteModal from '@/app/compornents/EditDeleteModal';
+import EditDeleteModal from '@/app/_compornents/EditDeleteModal';
 import CustomTabBar from '@/components/CustomTabBar';
 import Card from '@/components/ui/Card';
 import { theme } from '@/constants/theme';
@@ -6,7 +6,8 @@ import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, MoreVertical, Plus, ArrowLeft } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
-import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from 'expo-router';
 
 
@@ -22,11 +23,14 @@ const StudyHome = () => {
     const addChapterToQuizBook = useQuizBookStore(state => state.addChapterToQuizBook);
     const deleteChapterFromQuizBook = useQuizBookStore(state => state.deleteChapterFromQuizBook);
     const updateChapterInQuizBook = useQuizBookStore(state => state.updateChapterInQuizBook);
+    const updateQuizBook = useQuizBookStore(state => state.updateQuizBook);
 
     const [showAddModal, setShowAddModal] = useState(false);
     const [newChapterTitle, setNewChapterTitle] = useState('');
     const [editingChapter, setEditingChapter] = useState<any>(null);
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
+    const [showConfirmRoundModal, setShowConfirmRoundModal] = useState(false);
+    const [unansweredQuestionsWarning, setUnansweredQuestionsWarning] = useState<string>('');
 
     // ✅ 追加: 画面フォーカス時にデータを再取得
     useFocusEffect(
@@ -107,6 +111,68 @@ const StudyHome = () => {
         setEditingChapter(null);
     };
 
+    const handleBack = () => {
+        // 章リストは常にライブラリに戻る（タブナビゲーションの外に出ているため）
+        router.replace('/(tabs)/library' as any);
+    };
+
+    const checkUnansweredQuestions = () => {
+        if (!quizBook) return '';
+
+        const currentRound = quizBook.currentRound || 0;
+        const nextRound = currentRound + 1;
+        let unansweredCount = 0;
+
+        quizBook.chapters.forEach((chapter) => {
+            if (chapter.sections && chapter.sections.length > 0) {
+                // 節がある場合
+                chapter.sections.forEach((section) => {
+                    if (section.questionAnswers && section.questionAnswers.length > 0) {
+                        section.questionAnswers.forEach((qa) => {
+                            const hasAnswerInCurrentRound = qa.attempts?.some(
+                                (attempt) => attempt.round === nextRound
+                            );
+                            if (!hasAnswerInCurrentRound) {
+                                unansweredCount++;
+                            }
+                        });
+                    }
+                });
+            } else {
+                // 節がない場合
+                if (chapter.questionAnswers && chapter.questionAnswers.length > 0) {
+                    chapter.questionAnswers.forEach((qa) => {
+                        const hasAnswerInCurrentRound = qa.attempts?.some(
+                            (attempt) => attempt.round === nextRound
+                        );
+                        if (!hasAnswerInCurrentRound) {
+                            unansweredCount++;
+                        }
+                    });
+                }
+            }
+        });
+
+        if (unansweredCount > 0) {
+            return `第${nextRound}周で未回答の問題が${unansweredCount}問あります。`;
+        }
+        return '';
+    };
+
+    const handleConfirmRound = () => {
+        const warning = checkUnansweredQuestions();
+        setUnansweredQuestionsWarning(warning);
+        setShowConfirmRoundModal(true);
+    };
+
+    const handleExecuteConfirmRound = async () => {
+        if (!quizBook) return;
+
+        const newRound = (quizBook.currentRound || 0) + 1;
+        await updateQuizBook(quizBook.id, { currentRound: newRound });
+        setShowConfirmRoundModal(false);
+        setUnansweredQuestionsWarning('');
+    };
 
     return (
         <>
@@ -125,17 +191,24 @@ const StudyHome = () => {
                     ),
                     headerLeft: () => (
                         <TouchableOpacity
-                            onPress={() => router.navigate('/(tabs)/library')}
+                            onPress={handleBack}
                             style={{ marginLeft: 8 }}
                         >
                             <ArrowLeft size={24} color={theme.colors.secondary[900]} />
                         </TouchableOpacity>
                     ),
-                    gestureEnabled: false,
                 }}
             />
 
-            <SafeAreaView style={styles.wrapper}>
+            <SafeAreaView style={styles.wrapper} edges={['left', 'right']}>
+                <TouchableOpacity
+                    style={styles.confirmRoundButton}
+                    onPress={handleConfirmRound}
+                    activeOpacity={0.7}
+                >
+                    <Text style={styles.confirmRoundButtonText}>周回を確定する</Text>
+                </TouchableOpacity>
+
                 <ScrollView
                     style={styles.container}
                     contentContainerStyle={styles.scrollContent}
@@ -259,6 +332,45 @@ const StudyHome = () => {
                     editPlaceholder="章名を入力"
                 />
 
+                <Modal
+                    visible={showConfirmRoundModal}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setShowConfirmRoundModal(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>周回確定</Text>
+                            <Text style={styles.modalMessage}>
+                                {quizBook.title}の第{(quizBook.currentRound || 0) + 1}周を確定しますか？
+                            </Text>
+                            {unansweredQuestionsWarning && (
+                                <View style={styles.warningContainer}>
+                                    <AlertCircle size={20} color={theme.colors.warning[600]} />
+                                    <Text style={styles.warningText}>{unansweredQuestionsWarning}</Text>
+                                </View>
+                            )}
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.cancelButton]}
+                                    onPress={() => {
+                                        setShowConfirmRoundModal(false);
+                                        setUnansweredQuestionsWarning('');
+                                    }}
+                                >
+                                    <Text style={styles.cancelButtonText}>キャンセル</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.confirmButton]}
+                                    onPress={handleExecuteConfirmRound}
+                                >
+                                    <Text style={styles.confirmButtonText}>確定</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
+
                 <CustomTabBar />
             </SafeAreaView>
         </>
@@ -269,6 +381,21 @@ const styles = StyleSheet.create({
     wrapper: {
         flex: 1,
         backgroundColor: theme.colors.neutral[50],
+    },
+    confirmRoundButton: {
+        backgroundColor: theme.colors.primary[600],
+        marginHorizontal: theme.spacing.lg,
+        marginVertical: 10,
+        paddingVertical: theme.spacing.md,
+        borderRadius: theme.borderRadius.md,
+        alignItems: 'center',
+        ...theme.shadows.sm,
+    },
+    confirmRoundButtonText: {
+        fontSize: theme.typography.fontSizes.base,
+        fontWeight: theme.typography.fontWeights.bold as any,
+        color: theme.colors.neutral.white,
+        fontFamily: 'ZenKaku-Bold',
     },
     titleContainer: {
         flexDirection: 'row',
@@ -444,14 +571,15 @@ const styles = StyleSheet.create({
     },
     modalActions: {
         flexDirection: 'row',
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
         gap: theme.spacing.md,
+        marginTop: 10,
     },
     modalButton: {
         paddingVertical: theme.spacing.sm,
         paddingHorizontal: theme.spacing.lg,
         borderRadius: theme.borderRadius.md,
-        minWidth: 80,
+        width: 120,
         alignItems: 'center',
     },
     cancelButton: {
@@ -459,7 +587,7 @@ const styles = StyleSheet.create({
     },
     cancelButtonText: {
         color: theme.colors.secondary[700],
-        fontSize: theme.typography.fontSizes.base,
+        fontSize: theme.typography.fontSizes.sm,
         fontWeight: theme.typography.fontWeights.semibold as any,
         fontFamily: 'ZenKaku-Medium',
     },
@@ -471,6 +599,30 @@ const styles = StyleSheet.create({
         fontSize: theme.typography.fontSizes.base,
         fontWeight: theme.typography.fontWeights.semibold as any,
         fontFamily: 'ZenKaku-Medium',
+    },
+    warningContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.sm,
+        backgroundColor: theme.colors.warning[50],
+        padding: theme.spacing.md,
+        borderRadius: theme.borderRadius.md,
+        borderWidth: 1,
+        borderColor: theme.colors.warning[200],
+        marginTop: theme.spacing.md,
+    },
+    warningText: {
+        flex: 1,
+        fontSize: theme.typography.fontSizes.sm,
+        color: theme.colors.warning[800],
+        fontFamily: 'ZenKaku-Regular',
+    },
+    modalMessage: {
+        fontSize: theme.typography.fontSizes.base,
+        color: theme.colors.secondary[700],
+        fontFamily: 'ZenKaku-Regular',
+        textAlign: 'center',
+        lineHeight: 24,
     },
 });
 

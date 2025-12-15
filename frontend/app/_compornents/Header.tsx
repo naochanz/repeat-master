@@ -1,8 +1,6 @@
 import { theme } from '@/constants/theme';
-import { Settings } from 'lucide-react-native';
 import React from 'react';
-import { Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-;
+import { Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
 
 const Header = () => {
   return (
@@ -11,9 +9,6 @@ const Header = () => {
         <View style={styles.titleContainer}>
           <Text style={styles.appTitle} numberOfLines={1}>RepeatMaster</Text>
         </View>
-        <TouchableOpacity style={styles.settingsButton}>
-          <Settings size={20} color={theme.colors.secondary[700]} />
-        </TouchableOpacity>
       </View>
     </View>
   )
@@ -26,30 +21,26 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.neutral.white,
+    backgroundColor: theme.colors.neutral[50],
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.secondary[200],
-    ...theme.shadows.sm,
+    color: theme.colors.secondary[900],
+    //...theme.shadows.sm,
   },
   titleContainer: {
-    flex: 1,
-    marginRight: theme.spacing.sm,
+    alignItems: 'center',
   },
   appTitle: {
-    fontSize: theme.typography.fontSizes.lg,
+    fontSize: theme.typography.fontSizes.xl,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Bold',
     letterSpacing: 0.5,
-  },
-  settingsButton: {
-    padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    flexShrink: 0,
+    textAlign: 'center',
   },
 });
 

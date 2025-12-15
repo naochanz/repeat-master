@@ -1,14 +1,17 @@
 import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
-import { router } from 'expo-router';
+import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { AlertCircle, Edit, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
-import { Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import AddItemModal from '../compornents/AddItemModal';
-import CategorySelectModal from '../compornents/CategorySelectModal';
-import ConfirmDialog from '../compornents/ConfirmDialog';
-import QuizBookCard from '../compornents/QuizBookCard';
-import QuizBookTitleModal from '../compornents/QuizBookTitleModal';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { CommonActions } from '@react-navigation/native';
+import AddItemModal from '../_compornents/AddItemModal';
+import CategorySelectModal from '../_compornents/CategorySelectModal';
+import ConfirmDialog from '../_compornents/ConfirmDialog';
+import QuizBookCard from '../_compornents/QuizBookCard';
+import QuizBookTitleModal from '../_compornents/QuizBookTitleModal';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LibraryScreen() {
   const quizBooks = useQuizBookStore(state => state.quizBooks);
@@ -29,6 +32,48 @@ export default function LibraryScreen() {
   const [editedCategoryName, setEditedCategoryName] = useState('');
   const [targetCategory, setTargetCategory] = useState<string>('');
   const [deleteCategoryDialogVisible, setDeleteCategoryDialogVisible] = useState(false);
+
+  const navigation = useNavigation();
+  const opacity = useSharedValue(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      // 初期状態は透明
+      opacity.value = 0;
+
+      // スタディスタックの履歴をリセット
+      const rootState = navigation.getState();
+      if (rootState && rootState.routes) {
+        const studyRoute = rootState.routes.find((route: any) => route.name === 'study');
+        if (studyRoute && studyRoute.state) {
+          navigation.dispatch(
+            CommonActions.reset({
+              ...rootState,
+              routes: rootState.routes.map((route: any) => {
+                if (route.name === 'study') {
+                  return { ...route, state: undefined };
+                }
+                return route;
+              }),
+            })
+          );
+        }
+      }
+
+      // レンダリング完了後にフェードイン開始
+      const timer = setTimeout(() => {
+        opacity.value = withTiming(1, { duration: 50 });
+      }, 16); // 1フレーム待つ（約16ms）
+
+      return () => clearTimeout(timer);
+    }, [])
+  );
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: opacity.value,
+    };
+  });
   
   const registeredCategories = useMemo(() => {
     return [...new Set(quizBooks.map(book => book.category))];
@@ -118,7 +163,7 @@ export default function LibraryScreen() {
   };
 
   const handleCardPress = (quizBookId: string) => {
-    router.navigate(`/study/${quizBookId}` as any);
+    router.push(`/study/${quizBookId}` as any);
   };
 
   const handleDelete = async (quizBookId: string) => {
@@ -175,15 +220,16 @@ export default function LibraryScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.sectionContainer}>
-        <Text style={styles.sectionTitle}>登録済み問題集</Text>
-      </View>
+      <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>登録済み問題集</Text>
+        </View>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         {quizBooks.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyContent}>
@@ -223,6 +269,7 @@ export default function LibraryScreen() {
           ))
         )}
       </ScrollView>
+      </Animated.View>
 
       <TouchableOpacity
         style={styles.fab}
@@ -338,7 +385,7 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: theme.colors.neutral[50],
+    backgroundColor: theme.colors.neutral.white,
   },
   sectionContainer: {
     paddingHorizontal: theme.spacing.lg,
@@ -346,12 +393,13 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.neutral.white,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.secondary[200],
+    alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: theme.typography.fontSizes.xl,
+    fontSize: theme.typography.fontSizes.lg,
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
+    fontFamily: 'Zenkaku',
   },
   scrollView: {
     flex: 1,

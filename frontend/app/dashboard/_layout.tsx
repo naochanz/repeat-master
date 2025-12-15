@@ -5,6 +5,11 @@ export default function DashboardLayout() {
     <Stack
       screenOptions={{
         headerShown: true,
+        animation: 'fade',
+        presentation: 'card',
+        animationDuration: 50,
+        gestureEnabled: false,
+        headerTitleAlign: 'center',
       }}
     />
   );

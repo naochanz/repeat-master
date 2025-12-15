@@ -1,14 +1,18 @@
 import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
+import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { AlertCircle, BookOpen, ChevronDown, ChevronRight, ChevronUp, Edit3, Target } from 'lucide-react-native';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { RecentStudyItem } from '@/types/QuizBook';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { CommonActions } from '@react-navigation/native';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_WIDTH = SCREEN_WIDTH - (theme.spacing.lg * 4);
 const MAX_BAR_HEIGHT = 120;
+
 
 interface QualificationStats {
   category: string;
@@ -20,10 +24,55 @@ interface QualificationStats {
 
 export default function DashboardScreen() {
   const quizBooks = useQuizBookStore(state => state.quizBooks);
+  const getRecentStudyItems = useQuizBookStore(state => state.getRecentStudyItems);
+  const recentStudies = getRecentStudyItems();
   const [goal, setGoal] = useState('');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [tempGoal, setTempGoal] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+
+  const navigation = useNavigation();
+  const opacity = useSharedValue(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      // 初期状態は透明
+      opacity.value = 0;
+
+      // スタディスタックの履歴をリセット
+      const rootState = navigation.getState();
+      if (rootState && rootState.routes) {
+        const studyRoute = rootState.routes.find((route: any) => route.name === 'study');
+        if (studyRoute && studyRoute.state) {
+          navigation.dispatch(
+            CommonActions.reset({
+              ...rootState,
+              routes: rootState.routes.map((route: any) => {
+                if (route.name === 'study') {
+                  return { ...route, state: undefined };
+                }
+                return route;
+              }),
+            })
+          );
+        }
+      }
+
+      // レンダリング完了後にフェードイン開始
+      const timer = setTimeout(() => {
+        opacity.value = withTiming(1, { duration: 50 });
+      }, 16); // 1フレーム待つ（約16ms）
+
+      return () => clearTimeout(timer);
+    }, [])
+  );
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: opacity.value,
+    };
+  });
+
 
   useEffect(() => {
     loadGoal();
@@ -105,6 +154,16 @@ export default function DashboardScreen() {
     });
   };
 
+  const handleRecentStudyPress = (item: RecentStudyItem) => {
+    if (item.type === 'section') {
+      // 節がある場合 → 問題リストへ
+      router.push(`/study/question/${item.sectionId}` as any);
+    } else {
+      // 節がない場合 → 問題リストへ
+      router.push(`/study/question/${item.chapterId}` as any);
+    }
+  };
+
   const toggleCategoryExpanded = (category: string) => {
     // ✅ 資格が2つ以上の場合のみトグル可能
     if (qualificationStats.length > 1) {
@@ -170,11 +229,12 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         <TouchableOpacity
           style={styles.goalCard}
           onPress={handleEditGoal}
@@ -192,8 +252,49 @@ export default function DashboardScreen() {
           </Text>
         </TouchableOpacity>
 
+        {recentStudies.length > 0 && (
+          <View style={styles.recentStudySection}>
+            <Text style={styles.sectionTitle}>最近の学習</Text>
+            <View style={styles.recentCardsVertical}>
+              {recentStudies.map((item, index) => (
+                <TouchableOpacity
+                  key={`${item.chapterId}-${item.sectionId || 'chapter'}-${index}`}
+                  style={styles.recentCardVertical}
+                  onPress={() => handleRecentStudyPress(item)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.recentCardTop}>
+                    <Text style={styles.recentCardPath} numberOfLines={1}>
+                      {item.bookTitle} 第{item.chapterNumber}章
+                      {item.sectionTitle && ` ${item.sectionNumber}節`}
+                    </Text>
+                    <Text style={styles.recentCardQuestion}>
+                      問題{item.lastQuestionNumber} {item.lastResult}
+                    </Text>
+
+                  </View>
+
+
+                  <View style={styles.recentCardBottom}>
+                    <Text style={styles.recentCardDate}>
+                      {new Date(item.lastAnsweredAt).toLocaleDateString('ja-JP', {
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </Text>
+                    <Text style={styles.recentCardCategory}>{item.category}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
         {qualificationStats.length === 0 ? (
           <View style={styles.emptyState}>
+            <Text style={styles.sectionTitle}>学習の分析</Text>
             <AlertCircle size={64} color={theme.colors.primary[300]} />
             <Text style={styles.emptyTitle}>まだ資格が登録されていません</Text>
             <Text style={styles.emptyDescription}>
@@ -209,6 +310,7 @@ export default function DashboardScreen() {
           </View>
         ) : (
           <View style={styles.qualificationList}>
+            <Text style={styles.sectionTitle}>学習の分析</Text>
             {qualificationStats.map((qual) => {
               // ✅ 資格が1つの場合は常に展開、2つ以上の場合はトグル状態を見る
               const isExpanded = qualificationStats.length === 1 || expandedCategories.has(qual.category);
@@ -259,6 +361,7 @@ export default function DashboardScreen() {
           </View>
         )}
       </ScrollView>
+      </Animated.View>
 
       <Modal
         visible={isEditingGoal}
@@ -305,7 +408,6 @@ export default function DashboardScreen() {
   );
 }
 
-// styles は同じなので省略
 
 const styles = StyleSheet.create({
   container: {
@@ -555,6 +657,63 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.base,
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.neutral.white,
+    fontFamily: 'ZenKaku-Bold',
+  },
+  recentStudySection: {
+    marginBottom: theme.spacing.lg,
+  },
+  sectionTitle: {
+    fontSize: theme.typography.fontSizes.lg,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+    marginBottom: theme.spacing.md,
+  },
+  recentCardsVertical: {
+    gap: theme.spacing.sm,
+  },
+  recentCardVertical: {
+    backgroundColor: theme.colors.neutral.white,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    ...theme.shadows.md,
+    borderWidth: 2,
+    borderColor: theme.colors.primary[200],
+    height: 70, // ✅ 固定高さ
+  },
+  recentCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  recentCardPath: {
+    fontSize: theme.typography.fontSizes.sm,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+    flex: 1,
+  },
+  recentCardDate: {
+    fontSize: theme.typography.fontSizes.xs,
+    color: theme.colors.secondary[500],
+    fontFamily: 'ZenKaku-Regular',
+    marginLeft: theme.spacing.sm,
+  },
+  recentCardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  recentCardQuestion: {
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.secondary[700],
+    fontFamily: 'ZenKaku-Bold',
+  },
+  recentCardCategory: {
+    fontSize: theme.typography.fontSizes.xs,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.primary[600],
     fontFamily: 'ZenKaku-Bold',
   },
 });
