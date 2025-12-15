@@ -1,11 +1,11 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
   canActivate(context: ExecutionContext) {
-    const request = context.switchToHttp().getRequest();
     console.log('🛡️ JwtAuthGuard.canActivate called');
+    const request = context.switchToHttp().getRequest();
     console.log('🔑 Authorization header:', request.headers.authorization);
     return super.canActivate(context);
   }
@@ -13,13 +13,12 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   handleRequest(err, user, info) {
     console.log('🔍 JwtAuthGuard.handleRequest');
     console.log('❌ Error:', err);
-    console.log('👤 User:', user ? 'Found' : 'Not found');
+    console.log('👤 User:', user); // ✅ 変更：全体を出力
     console.log('ℹ️ Info:', info);
-
+    
     if (err || !user) {
-      console.log('🚫 Authentication failed');
-      throw err || new Error('Unauthorized');
+      throw err || new UnauthorizedException();
     }
-    return user;
+    return user; // ✅ これが重要
   }
 }
