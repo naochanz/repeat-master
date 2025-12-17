@@ -139,14 +139,43 @@ export default function LibraryScreen() {
     setCategoryModalVisible(true);
   };
 
-  const handleCategorySelect = async (categoryId: string) => {
+  const handleCategorySelect = async (categoryNameOrId: string) => {
     if (isAddingCategory) {
-      await addQuizBook('', categoryId, false);
-      await fetchCategories(); // カテゴリを再取得
-      setCategoryModalVisible(false);
-      setIsAddingCategory(false);
+      // カテゴリ追加モード：カテゴリのみ作成
+      const existingCategory = categories.find(c => c.name === categoryNameOrId);
+
+      if (existingCategory) {
+        // 既存のカテゴリの場合は何もしない
+        setCategoryModalVisible(false);
+        setIsAddingCategory(false);
+        return;
+      }
+
+      // 新しいカテゴリを作成
+      try {
+        await categoryApi.create(categoryNameOrId);
+        await fetchCategories(); // カテゴリを再取得
+        setCategoryModalVisible(false);
+        setIsAddingCategory(false);
+      } catch (error) {
+        console.error('Failed to create category:', error);
+      }
     } else {
-      setSelectedCategoryId(categoryId);
+      // 問題集追加モード：カテゴリを選択してタイトル入力へ
+      const category = categories.find(c => c.name === categoryNameOrId);
+      if (category) {
+        setSelectedCategoryId(category.id);
+      } else {
+        // 新しいカテゴリの場合は作成してからIDを取得
+        try {
+          const response = await categoryApi.create(categoryNameOrId);
+          setSelectedCategoryId(response.data.id);
+          await fetchCategories();
+        } catch (error) {
+          console.error('Failed to create category:', error);
+          return;
+        }
+      }
       setCategoryModalVisible(false);
       setTitleModalVisible(true);
     }
@@ -313,10 +342,8 @@ export default function LibraryScreen() {
         visible={categoryModalVisible}
         categories={categories.map(c => c.name)}
         onSelect={(categoryName) => {
-          const category = categories.find(c => c.name === categoryName);
-          if (category) {
-            handleCategorySelect(category.id);
-          }
+          // カテゴリ名を渡す（既存の場合も新規の場合も）
+          handleCategorySelect(categoryName);
         }}
         mode={isAddingCategory ? 'create' : 'select'}
         registeredCategories={registeredCategories.map(c => c.name)}
