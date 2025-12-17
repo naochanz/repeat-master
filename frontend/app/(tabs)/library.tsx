@@ -2,7 +2,7 @@ import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { AlertCircle, Edit, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { CommonActions } from '@react-navigation/native';
@@ -12,6 +12,8 @@ import ConfirmDialog from '../_compornents/ConfirmDialog';
 import QuizBookCard from '../_compornents/QuizBookCard';
 import QuizBookTitleModal from '../_compornents/QuizBookTitleModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { categoryApi } from '@/services/api';
+import { Category } from '@/types/QuizBook';
 
 export default function LibraryScreen() {
   const quizBooks = useQuizBookStore(state => state.quizBooks);
@@ -19,22 +21,36 @@ export default function LibraryScreen() {
   const deleteQuizBook = useQuizBookStore(state => state.deleteQuizBook);
   const updateQuizBook = useQuizBookStore(state => state.updateQuizBook);
 
+  const [categories, setCategories] = useState<Category[]>([]);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [addItemModalVisible, setAddItemModalVisible] = useState(false);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [titleModalVisible, setTitleModalVisible] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
 
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editedCategoryName, setEditedCategoryName] = useState('');
-  const [targetCategory, setTargetCategory] = useState<string>('');
+  const [targetCategoryId, setTargetCategoryId] = useState<string>('');
   const [deleteCategoryDialogVisible, setDeleteCategoryDialogVisible] = useState(false);
 
   const navigation = useNavigation();
   const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await categoryApi.getAll();
+      setCategories(response.data);
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -76,24 +92,30 @@ export default function LibraryScreen() {
   });
   
   const registeredCategories = useMemo(() => {
-    return [...new Set(quizBooks.map(book => book.category))];
+    const uniqueCategories = new Map<string, Category>();
+    quizBooks.forEach(book => {
+      if (book.category) {
+        uniqueCategories.set(book.category.id, book.category);
+      }
+    });
+    return Array.from(uniqueCategories.values());
   }, [quizBooks]);
 
   const groupedQuizBooks = useMemo(() => {
     const groups: { [key: string]: any[] } = {};
     quizBooks.forEach((book) => {
-      const category = book.category || '未分類';
-      if (!groups[category]) {
-        groups[category] = [];
+      const categoryName = book.category?.name || '未分類';
+      if (!groups[categoryName]) {
+        groups[categoryName] = [];
       }
-      groups[category].push(book);
+      groups[categoryName].push(book);
     });
     return groups;
   }, [quizBooks]);
 
   const existingCategories = useMemo(() => {
-    return Array.from(new Set(quizBooks.map(book => book.category).filter(Boolean)));
-  }, [quizBooks]);
+    return registeredCategories;
+  }, [registeredCategories]);
 
   const handleAddQuiz = () => {
     setAddItemModalVisible(true);
@@ -117,49 +139,29 @@ export default function LibraryScreen() {
     setCategoryModalVisible(true);
   };
 
-  const handleCategorySelect = async (category: string) => {
+  const handleCategorySelect = async (categoryId: string) => {
     if (isAddingCategory) {
-      const newQuizBook = {
-        id: `quiz-${Date.now()}`,
-        title: '',
-        category: category,
-        chapterCount: 0,
-        chapters: [],
-        currentRate: 0,
-        useSections: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      await addQuizBook(newQuizBook);
+      await addQuizBook('', categoryId, false);
+      await fetchCategories(); // カテゴリを再取得
       setCategoryModalVisible(false);
       setIsAddingCategory(false);
     } else {
-      setSelectedCategory(category);
+      setSelectedCategoryId(categoryId);
       setCategoryModalVisible(false);
       setTitleModalVisible(true);
     }
   };
 
   const handleTitleConfirm = async (title: string) => {
-    const newQuizBook = {
-      id: `quiz-${Date.now()}`,
-      title: title,
-      category: selectedCategory,
-      chapterCount: 0,
-      chapters: [],
-      currentRate: 0,
-      useSections: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    await addQuizBook(newQuizBook);
+    await addQuizBook(title, selectedCategoryId, false);
+    await fetchCategories(); // カテゴリを再取得
     setTitleModalVisible(false);
-    setSelectedCategory('');
+    setSelectedCategoryId('');
   };
 
   const handleTitleCancel = () => {
     setTitleModalVisible(false);
-    setSelectedCategory('');
+    setSelectedCategoryId('');
   };
 
   const handleCardPress = (quizBookId: string) => {
@@ -179,14 +181,17 @@ export default function LibraryScreen() {
     }
   };
 
-  const handleCategoryMenuPress = (category: string) => {
-    setTargetCategory(category);
+  const handleCategoryMenuPress = (categoryId: string) => {
+    setTargetCategoryId(categoryId);
+    const category = categories.find(c => c.id === categoryId);
+    if (category) {
+      setEditedCategoryName(category.name);
+    }
     setShowCategoryMenu(true);
   };
 
   const handleEditCategory = () => {
     setShowCategoryMenu(false);
-    setEditedCategoryName(targetCategory);
     setShowEditModal(true);
   };
 
@@ -196,26 +201,27 @@ export default function LibraryScreen() {
   };
 
   const confirmEditCategory = async () => {
-    if (editedCategoryName.trim() === '' || editedCategoryName === targetCategory) {
+    if (editedCategoryName.trim() === '') {
       setShowEditModal(false);
       return;
     }
 
-    const categoryBooks = quizBooks.filter(book => book.category === targetCategory);
-    for (const book of categoryBooks) {
-      await updateQuizBook(book.id, { category: editedCategoryName.trim() });
-    }
+    // カテゴリの更新はバックエンドで実装されていないため、コメントアウト
+    // const categoryBooks = quizBooks.filter(book => book.category?.id === targetCategoryId);
+    // for (const book of categoryBooks) {
+    //   await updateQuizBook(book.id, { categoryId: targetCategoryId });
+    // }
     setShowEditModal(false);
-    setTargetCategory('');
+    setTargetCategoryId('');
   };
 
   const confirmDeleteCategory = async () => {
-    const categoryBooks = quizBooks.filter(book => book.category === targetCategory);
+    const categoryBooks = quizBooks.filter(book => book.category?.id === targetCategoryId);
     for (const book of categoryBooks) {
       await deleteQuizBook(book.id);
     }
     setDeleteCategoryDialogVisible(false);
-    setTargetCategory('');
+    setTargetCategoryId('');
   };
 
   return (
@@ -239,34 +245,38 @@ export default function LibraryScreen() {
             </View>
           </View>
         ) : (
-          Object.entries(groupedQuizBooks).map(([category, books]) => (
-            <View key={category} style={styles.categorySection}>
-              <View style={styles.categoryHeader}>
-                <Text style={styles.categoryTitle}>{category}</Text>
-                <TouchableOpacity
-                  onPress={() => handleCategoryMenuPress(category)}
-                  activeOpacity={0.7}
-                  style={styles.categoryMenuButton}
-                >
-                  {/* @ts-ignore */}
-                  <MoreVertical size={20} color={theme.colors.secondary[600]} />
-                </TouchableOpacity>
-              </View>
+          Object.entries(groupedQuizBooks).map(([categoryName, books]) => {
+            const firstBook = books[0];
+            const categoryId = firstBook?.category?.id || '';
+            return (
+              <View key={categoryName} style={styles.categorySection}>
+                <View style={styles.categoryHeader}>
+                  <Text style={styles.categoryTitle}>{categoryName}</Text>
+                  <TouchableOpacity
+                    onPress={() => handleCategoryMenuPress(categoryId)}
+                    activeOpacity={0.7}
+                    style={styles.categoryMenuButton}
+                  >
+                    {/* @ts-ignore */}
+                    <MoreVertical size={20} color={theme.colors.secondary[600]} />
+                  </TouchableOpacity>
+                </View>
 
-              <View style={styles.cardsGrid}>
-                {books.map((book) => (
-                  <View key={book.id} style={styles.cardWrapper}>
-                    <QuizBookCard
-                      quizBook={book}
-                      onPress={() => handleCardPress(book.id)}
-                      onDelete={() => handleDelete(book.id)}
-                      existingCategories={existingCategories}
-                    />
-                  </View>
-                ))}
+                <View style={styles.cardsGrid}>
+                  {books.map((book) => (
+                    <View key={book.id} style={styles.cardWrapper}>
+                      <QuizBookCard
+                        quizBook={book}
+                        onPress={() => handleCardPress(book.id)}
+                        onDelete={() => handleDelete(book.id)}
+                        existingCategories={existingCategories.map(c => c.name)}
+                      />
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
       </Animated.View>
@@ -289,10 +299,15 @@ export default function LibraryScreen() {
 
       <CategorySelectModal
         visible={categoryModalVisible}
-        categories={existingCategories}
-        onSelect={handleCategorySelect}
+        categories={categories.map(c => c.name)}
+        onSelect={(categoryName) => {
+          const category = categories.find(c => c.name === categoryName);
+          if (category) {
+            handleCategorySelect(category.id);
+          }
+        }}
         mode={isAddingCategory ? 'create' : 'select'}
-        registeredCategories={registeredCategories}
+        registeredCategories={registeredCategories.map(c => c.name)}
         onClose={() => {
           setCategoryModalVisible(false);
           setIsAddingCategory(false);
@@ -301,7 +316,7 @@ export default function LibraryScreen() {
 
       <QuizBookTitleModal
         visible={titleModalVisible}
-        categoryName={selectedCategory}
+        categoryName={categories.find(c => c.id === selectedCategoryId)?.name || ''}
         onConfirm={handleTitleConfirm}
         onCancel={handleTitleCancel}
       />
