@@ -52,11 +52,10 @@ export class QuizBooksController {
     @Body() createChapterDto: CreateChapterDto,
     @Request() req,
   ) {
-    console.log('🎯 Controller - req.user:', req.user); // ✅ デバッグログ追加
     return this.quizBooksService.createChapter(quizBookId, createChapterDto, req.user.id);
   }
 
-  @Patch(':quizBookId/chpaters/:chapterId')
+  @Patch(':quizBookId/chapters/:chapterId')
   updateChapter(
     @Param('quizBookId') quizBookId: string,
     @Param('chapterId') chapterId: string,

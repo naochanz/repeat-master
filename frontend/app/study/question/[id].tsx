@@ -114,6 +114,7 @@ const QuestionList = () => {
 
   const chapterId = chapterData?.chapter.id || sectionData?.chapter.id || '';
   const sectionId = sectionData?.section.id || null;
+  const bookId = chapterData?.book.id || sectionData?.book.id || '';
 
   const displayInfo = chapterData
     ? {
@@ -181,7 +182,7 @@ const QuestionList = () => {
   }
 
   const handleAnswerFromFab = async (questionNumber: number, answer: '○' | '×') => {
-    await saveAnswer(chapterId, sectionId, questionNumber, answer);
+    await saveAnswer(bookId, questionNumber, answer, chapterId, sectionId || undefined);
     setActiveFabQuestion(null);
   };
 

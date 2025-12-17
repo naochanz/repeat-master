@@ -26,7 +26,13 @@ interface QuizBookStore {
   // Answer操作
   saveAnswer: (quizBookId: string, questionNumber: number, result: '○' | '×', chapterId?: string, sectionId?: string) => Promise<void>;
   updateMemo: (quizBookId: string, answerId: string, memo: string) => Promise<void>;
-  
+
+  // 旧メソッド（後方互換性のため）
+  saveMemo: (chapterId: string, sectionId: string | null, questionNumber: number, memo: string) => Promise<void>;
+  getQuestionAnswers: (chapterId: string, sectionId: string | null, questionNumber: number) => QuestionAnswer | undefined;
+  addQuestionToTarget: (chapterId: string, sectionId: string | null) => Promise<void>;
+  deleteQuestionFromTarget: (chapterId: string, sectionId: string | null, questionNumber: number) => Promise<void>;
+
   // 検索系
   getChapterById: (chapterId: string) => { book: QuizBook; chapter: Chapter } | undefined;
   getSectionById: (sectionId: string) => { book: QuizBook; chapter: Chapter; section: Section } | undefined;
@@ -246,6 +252,107 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     return recentItems
       .sort((a, b) => b.lastAnsweredAt.getTime() - a.lastAnsweredAt.getTime())
       .slice(0, 3);
+  },
+
+  // ========== 旧メソッド（後方互換性） ==========
+
+  saveMemo: async (chapterId: string, sectionId: string | null, questionNumber: number, memo: string) => {
+    const { quizBooks } = get();
+
+    // 対象の問題を探す
+    for (const book of quizBooks) {
+      for (const chapter of book.chapters) {
+        if (chapter.id === chapterId) {
+          const questionAnswers = sectionId
+            ? chapter.sections?.find(s => s.id === sectionId)?.questionAnswers
+            : chapter.questionAnswers;
+
+          const qa = questionAnswers?.find(q => q.questionNumber === questionNumber);
+          if (qa) {
+            await get().updateMemo(book.id, qa.id, memo);
+            return;
+          }
+        }
+      }
+    }
+  },
+
+  getQuestionAnswers: (chapterId: string, sectionId: string | null, questionNumber: number) => {
+    const { quizBooks } = get();
+
+    for (const book of quizBooks) {
+      for (const chapter of book.chapters) {
+        if (chapter.id === chapterId) {
+          const questionAnswers = sectionId
+            ? chapter.sections?.find(s => s.id === sectionId)?.questionAnswers
+            : chapter.questionAnswers;
+
+          return questionAnswers?.find(q => q.questionNumber === questionNumber);
+        }
+      }
+    }
+    return undefined;
+  },
+
+  addQuestionToTarget: async (chapterId: string, sectionId: string | null) => {
+    const { quizBooks } = get();
+
+    for (const book of quizBooks) {
+      for (const chapter of book.chapters) {
+        if (chapter.id === chapterId) {
+          if (sectionId) {
+            const section = chapter.sections?.find(s => s.id === sectionId);
+            if (section) {
+              await get().updateSection(book.id, chapterId, sectionId, {
+                questionCount: (section.questionCount || 0) + 1
+              });
+            }
+          } else {
+            await get().updateChapter(book.id, chapterId, {
+              questionCount: (chapter.questionCount || 0) + 1
+            });
+          }
+          return;
+        }
+      }
+    }
+  },
+
+  deleteQuestionFromTarget: async (chapterId: string, sectionId: string | null, questionNumber: number) => {
+    const { quizBooks } = get();
+
+    for (const book of quizBooks) {
+      for (const chapter of book.chapters) {
+        if (chapter.id === chapterId) {
+          // 回答データを削除
+          const questionAnswers = sectionId
+            ? chapter.sections?.find(s => s.id === sectionId)?.questionAnswers
+            : chapter.questionAnswers;
+
+          const qa = questionAnswers?.find(q => q.questionNumber === questionNumber);
+          if (qa) {
+            await answerApi.delete(book.id, qa.id);
+          }
+
+          // questionCountを減らす
+          if (sectionId) {
+            const section = chapter.sections?.find(s => s.id === sectionId);
+            if (section && section.questionCount && section.questionCount > 0) {
+              await get().updateSection(book.id, chapterId, sectionId, {
+                questionCount: section.questionCount - 1
+              });
+            }
+          } else {
+            if (chapter.questionCount && chapter.questionCount > 0) {
+              await get().updateChapter(book.id, chapterId, {
+                questionCount: chapter.questionCount - 1
+              });
+            }
+          }
+          return;
+        }
+      }
+    }
   },
 }));
 
