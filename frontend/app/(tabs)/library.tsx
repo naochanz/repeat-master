@@ -12,16 +12,17 @@ import ConfirmDialog from '../_compornents/ConfirmDialog';
 import QuizBookCard from '../_compornents/QuizBookCard';
 import QuizBookTitleModal from '../_compornents/QuizBookTitleModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { categoryApi } from '@/services/api';
-import { Category } from '@/types/QuizBook';
 
 export default function LibraryScreen() {
   const quizBooks = useQuizBookStore(state => state.quizBooks);
+  const categories = useQuizBookStore(state => state.categories);
+  const fetchCategories = useQuizBookStore(state => state.fetchCategories);
+  const createCategory = useQuizBookStore(state => state.createCategory);
+  const updateCategory = useQuizBookStore(state => state.updateCategory);
+  const deleteCategory = useQuizBookStore(state => state.deleteCategory);
   const addQuizBook = useQuizBookStore(state => state.addQuizBook);
   const deleteQuizBook = useQuizBookStore(state => state.deleteQuizBook);
   const updateQuizBook = useQuizBookStore(state => state.updateQuizBook);
-
-  const [categories, setCategories] = useState<Category[]>([]);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [addItemModalVisible, setAddItemModalVisible] = useState(false);
@@ -42,15 +43,6 @@ export default function LibraryScreen() {
   useEffect(() => {
     fetchCategories();
   }, []);
-
-  const fetchCategories = async () => {
-    try {
-      const response = await categoryApi.getAll();
-      setCategories(response.data);
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
-    }
-  };
 
   useFocusEffect(
     useCallback(() => {
@@ -153,8 +145,7 @@ export default function LibraryScreen() {
 
       // 新しいカテゴリを作成
       try {
-        await categoryApi.create(categoryNameOrId);
-        await fetchCategories(); // カテゴリを再取得
+        await createCategory(categoryNameOrId);
         setCategoryModalVisible(false);
         setIsAddingCategory(false);
       } catch (error) {
@@ -168,9 +159,8 @@ export default function LibraryScreen() {
       } else {
         // 新しいカテゴリの場合は作成してからIDを取得
         try {
-          const response = await categoryApi.create(categoryNameOrId);
-          setSelectedCategoryId(response.data.id);
-          await fetchCategories();
+          const categoryId = await createCategory(categoryNameOrId);
+          setSelectedCategoryId(categoryId);
         } catch (error) {
           console.error('Failed to create category:', error);
           return;
@@ -183,7 +173,6 @@ export default function LibraryScreen() {
 
   const handleTitleConfirm = async (title: string) => {
     await addQuizBook(title, selectedCategoryId, false);
-    await fetchCategories(); // カテゴリを再取得
     setTitleModalVisible(false);
     setSelectedCategoryId('');
   };
@@ -236,8 +225,7 @@ export default function LibraryScreen() {
     }
 
     try {
-      await categoryApi.update(targetCategoryId, { name: editedCategoryName.trim() });
-      await fetchCategories(); // カテゴリを再取得
+      await updateCategory(targetCategoryId, editedCategoryName.trim());
     } catch (error) {
       console.error('Failed to update category:', error);
     }
@@ -248,15 +236,7 @@ export default function LibraryScreen() {
 
   const confirmDeleteCategory = async () => {
     try {
-      // カテゴリに属する全ての問題集を削除
-      const categoryBooks = quizBooks.filter(book => book.category?.id === targetCategoryId);
-      for (const book of categoryBooks) {
-        await deleteQuizBook(book.id);
-      }
-
-      // カテゴリを削除
-      await categoryApi.delete(targetCategoryId);
-      await fetchCategories(); // カテゴリを再取得
+      await deleteCategory(targetCategoryId);
     } catch (error) {
       console.error('Failed to delete category:', error);
     }

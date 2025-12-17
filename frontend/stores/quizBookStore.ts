@@ -1,10 +1,17 @@
 import { create } from 'zustand';
-import { QuizBook, Chapter, Section, QuestionAnswer, RecentStudyItem } from '@/types/QuizBook';
-import { quizBookApi, chapterApi, sectionApi, answerApi } from '@/services/api';
+import { QuizBook, Chapter, Section, QuestionAnswer, RecentStudyItem, Category } from '@/types/QuizBook';
+import { quizBookApi, chapterApi, sectionApi, answerApi, categoryApi } from '@/services/api';
 
 interface QuizBookStore {
   quizBooks: QuizBook[];
+  categories: Category[];
   isLoading: boolean;
+
+  // Category操作
+  fetchCategories: () => Promise<void>;
+  createCategory: (name: string) => Promise<string>;
+  updateCategory: (id: string, name: string) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
 
   // QuizBook操作
   fetchQuizBooks: () => Promise<void>;
@@ -42,10 +49,60 @@ interface QuizBookStore {
 
 export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   quizBooks: [],
+  categories: [],
   isLoading: false,
 
+  // ========== Category CRUD ==========
+
+  fetchCategories: async () => {
+    try {
+      const response = await categoryApi.getAll();
+      set({ categories: response.data });
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+    }
+  },
+
+  createCategory: async (name: string) => {
+    try {
+      const response = await categoryApi.create(name);
+      await get().fetchCategories();
+      return response.data.id;
+    } catch (error) {
+      console.error('Failed to create category:', error);
+      throw error;
+    }
+  },
+
+  updateCategory: async (id: string, name: string) => {
+    try {
+      await categoryApi.update(id, { name });
+      await get().fetchCategories();
+    } catch (error) {
+      console.error('Failed to update category:', error);
+      throw error;
+    }
+  },
+
+  deleteCategory: async (id: string) => {
+    try {
+      // カテゴリに属する全ての問題集を削除
+      const categoryBooks = get().quizBooks.filter(book => book.category?.id === id);
+      for (const book of categoryBooks) {
+        await get().deleteQuizBook(book.id);
+      }
+
+      // カテゴリを削除
+      await categoryApi.delete(id);
+      await get().fetchCategories();
+    } catch (error) {
+      console.error('Failed to delete category:', error);
+      throw error;
+    }
+  },
+
   // ========== QuizBook CRUD ==========
-  
+
   fetchQuizBooks: async () => {
     set({ isLoading: true });
     try {
