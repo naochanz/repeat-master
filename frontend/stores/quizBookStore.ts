@@ -10,6 +10,7 @@ interface QuizBookStore {
   fetchQuizBooks: () => Promise<void>;
   getQuizBookById: (id: string) => QuizBook | undefined;
   createQuizBook: (title: string, categoryId: string, useSections: boolean) => Promise<void>;
+  addQuizBook: (title: string, categoryId: string, useSections: boolean) => Promise<void>; // createQuizBookのエイリアス
   updateQuizBook: (id: string, updates: any) => Promise<void>;
   deleteQuizBook: (id: string) => Promise<void>;
 
@@ -70,6 +71,11 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       set({ isLoading: false });
       throw error;
     }
+  },
+
+  addQuizBook: async (title: string, categoryId: string, useSections: boolean) => {
+    // createQuizBookのエイリアス（後方互換性のため）
+    return get().createQuizBook(title, categoryId, useSections);
   },
 
   updateQuizBook: async (id: string, updates: any) => {
@@ -268,7 +274,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
             : chapter.questionAnswers;
 
           const qa = questionAnswers?.find(q => q.questionNumber === questionNumber);
-          if (qa) {
+          if (qa && qa.id) {
             await get().updateMemo(book.id, qa.id, memo);
             return;
           }
@@ -330,7 +336,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
             : chapter.questionAnswers;
 
           const qa = questionAnswers?.find(q => q.questionNumber === questionNumber);
-          if (qa) {
+          if (qa && qa.id) {
             await answerApi.delete(book.id, qa.id);
           }
 
