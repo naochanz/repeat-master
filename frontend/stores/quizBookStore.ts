@@ -229,7 +229,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
                 sectionId: section.id,
                 sectionNumber: section.sectionNumber,
                 sectionTitle: section.title || '',
-                lastAnsweredAt: new Date(lastAnswer.answeredAt),
+                lastAnsweredAt: lastAnswer.answeredAt,
                 lastQuestionNumber: lastAnswer.questionNumber,
                 lastResult: lastAnswer.result,
               });
@@ -256,7 +256,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     });
 
     return recentItems
-      .sort((a, b) => b.lastAnsweredAt.getTime() - a.lastAnsweredAt.getTime())
+      .sort((a, b) => new Date(b.lastAnsweredAt).getTime() - new Date(a.lastAnsweredAt).getTime())
       .slice(0, 3);
   },
 
@@ -365,20 +365,20 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 // ========== ヘルパー関数 ==========
 function getLastConfirmedAnswer(
   questionAnswers?: QuestionAnswer[]
-): { questionNumber: number; result: '○' | '×'; answeredAt: Date } | null {
+): { questionNumber: number; result: '○' | '×'; answeredAt: string } | null {
   if (!questionAnswers || questionAnswers.length === 0) return null;
 
-  let lastAnswer: { questionNumber: number; result: '○' | '×'; answeredAt: Date } | null = null;
+  let lastAnswer: { questionNumber: number; result: '○' | '×'; answeredAt: string } | null = null;
 
   questionAnswers.forEach(qa => {
     const confirmedAttempts = qa.attempts.filter(a => a.resultConfirmFlg);
     if (confirmedAttempts.length > 0) {
       const latest = confirmedAttempts[confirmedAttempts.length - 1];
-      if (!lastAnswer || new Date(latest.answeredAt).getTime() > lastAnswer.answeredAt.getTime()) {
+      if (!lastAnswer || new Date(latest.answeredAt).getTime() > new Date(lastAnswer.answeredAt).getTime()) {
         lastAnswer = {
           questionNumber: qa.questionNumber,
           result: latest.result,
-          answeredAt: new Date(latest.answeredAt),
+          answeredAt: latest.answeredAt,
         };
       }
     }

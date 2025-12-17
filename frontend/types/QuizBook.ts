@@ -3,8 +3,8 @@ export interface Category {
   id: string;
   name: string;
   description?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface QuizBook {
@@ -15,8 +15,8 @@ export interface QuizBook {
   chapterCount: number;
   chapters: Chapter[];
   currentRate: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string;
+  updatedAt: string;
   useSections: boolean;
   currentRound: number;
 }
@@ -39,16 +39,18 @@ export interface Section {
   questionAnswers?: QuestionAnswer[];
 }
 
+export interface Attempt {
+  round: number;
+  result: '○' | '×';
+  resultConfirmFlg: boolean;
+  answeredAt: string; // JSONから来るのでstringに変更
+}
+
 export interface QuestionAnswer {
   id?: string; // ✅ 追加（バックエンドから返ってくる）
   questionNumber: number;
   memo?: string;
-  attempts: {
-    round: number;
-    result: '○' | '×';
-    resultConfirmFlg: boolean;
-    answeredAt: Date;
-  }[];
+  attempts: Attempt[];
   chapterId?: string; // ✅ 追加
   sectionId?: string; // ✅ 追加
 }
@@ -64,7 +66,7 @@ export interface RecentStudyItem {
   sectionId?: string;
   sectionNumber?: number;
   sectionTitle?: string;
-  lastAnsweredAt: Date;
+  lastAnsweredAt: string;
   lastQuestionNumber: number;
   lastResult: '○' | '×';
 }
