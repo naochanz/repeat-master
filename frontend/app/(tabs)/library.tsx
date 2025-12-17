@@ -82,32 +82,26 @@ export default function LibraryScreen() {
       opacity: opacity.value,
     };
   });
-  
-  const registeredCategories = useMemo(() => {
-    const uniqueCategories = new Map<string, Category>();
-    quizBooks.forEach(book => {
-      if (book.category) {
-        uniqueCategories.set(book.category.id, book.category);
-      }
-    });
-    return Array.from(uniqueCategories.values());
-  }, [quizBooks]);
 
   const groupedQuizBooks = useMemo(() => {
-    const groups: { [key: string]: any[] } = {};
+    const groups: { [key: string]: { categoryId: string; books: any[] } } = {};
+
+    // 全カテゴリをグループに追加（問題集がなくても表示）
+    categories.forEach(category => {
+      groups[category.name] = { categoryId: category.id, books: [] };
+    });
+
+    // 問題集をカテゴリごとにグループ化
     quizBooks.forEach((book) => {
       const categoryName = book.category?.name || '未分類';
       if (!groups[categoryName]) {
-        groups[categoryName] = [];
+        groups[categoryName] = { categoryId: book.category?.id || '', books: [] };
       }
-      groups[categoryName].push(book);
+      groups[categoryName].books.push(book);
     });
-    return groups;
-  }, [quizBooks]);
 
-  const existingCategories = useMemo(() => {
-    return registeredCategories;
-  }, [registeredCategories]);
+    return groups;
+  }, [quizBooks, categories]);
 
   const handleAddQuiz = () => {
     setAddItemModalVisible(true);
@@ -120,7 +114,7 @@ export default function LibraryScreen() {
   };
 
   const handleAddQuizBook = () => {
-    if (existingCategories.length === 0) {
+    if (categories.length === 0) {
       setAddItemModalVisible(false);
       setIsAddingCategory(true);
       setCategoryModalVisible(true);
@@ -257,44 +251,52 @@ export default function LibraryScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-        {quizBooks.length === 0 ? (
+        {categories.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyContent}>
               {/* @ts-ignore */}
               <AlertCircle size={20} color={theme.colors.warning[600]} />
-              <Text style={styles.emptyText}>まだ問題集が登録されていません</Text>
+              <Text style={styles.emptyText}>まだカテゴリが登録されていません</Text>
             </View>
           </View>
         ) : (
-          Object.entries(groupedQuizBooks).map(([categoryName, books]) => {
-            const firstBook = books[0];
-            const categoryId = firstBook?.category?.id || '';
+          Object.entries(groupedQuizBooks).map(([categoryName, group]) => {
+            const categoryId = group.categoryId;
+            const books = group.books;
             return (
               <View key={categoryName} style={styles.categorySection}>
                 <View style={styles.categoryHeader}>
                   <Text style={styles.categoryTitle}>{categoryName}</Text>
-                  <TouchableOpacity
-                    onPress={() => handleCategoryMenuPress(categoryId)}
-                    activeOpacity={0.7}
-                    style={styles.categoryMenuButton}
-                  >
-                    {/* @ts-ignore */}
-                    <MoreVertical size={20} color={theme.colors.secondary[600]} />
-                  </TouchableOpacity>
+                  {categoryId && (
+                    <TouchableOpacity
+                      onPress={() => handleCategoryMenuPress(categoryId)}
+                      activeOpacity={0.7}
+                      style={styles.categoryMenuButton}
+                    >
+                      {/* @ts-ignore */}
+                      <MoreVertical size={20} color={theme.colors.secondary[600]} />
+                    </TouchableOpacity>
+                  )}
                 </View>
 
-                <View style={styles.cardsGrid}>
-                  {books.map((book) => (
-                    <View key={book.id} style={styles.cardWrapper}>
-                      <QuizBookCard
-                        quizBook={book}
-                        onPress={() => handleCardPress(book.id)}
-                        onDelete={() => handleDelete(book.id)}
-                        existingCategories={existingCategories.map(c => c.name)}
-                      />
-                    </View>
-                  ))}
-                </View>
+                {books.length === 0 ? (
+                  <View style={styles.emptyCategory}>
+                    <Text style={styles.emptyCategoryText}>問題集がありません</Text>
+                  </View>
+                ) : (
+                  <View style={styles.cardsGrid}>
+                    {books.map((book) => (
+                      <View key={book.id} style={styles.cardWrapper}>
+                        <QuizBookCard
+                          quizBook={book}
+                          onPress={() => handleCardPress(book.id)}
+                          onDelete={() => handleDelete(book.id)}
+                          existingCategories={categories.map(c => c.name)}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
             );
           })
@@ -326,7 +328,7 @@ export default function LibraryScreen() {
           handleCategorySelect(categoryName);
         }}
         mode={isAddingCategory ? 'create' : 'select'}
-        registeredCategories={registeredCategories.map(c => c.name)}
+        registeredCategories={categories.map(c => c.name)}
         onClose={() => {
           setCategoryModalVisible(false);
           setIsAddingCategory(false);
@@ -487,6 +489,15 @@ const styles = StyleSheet.create({
     marginLeft: theme.spacing.sm,
     fontSize: theme.typography.fontSizes.base,
     color: theme.colors.secondary[600],
+  },
+  emptyCategory: {
+    padding: theme.spacing.md,
+    alignItems: 'center',
+  },
+  emptyCategoryText: {
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.secondary[500],
+    fontStyle: 'italic',
   },
   fab: {
     position: 'absolute',
