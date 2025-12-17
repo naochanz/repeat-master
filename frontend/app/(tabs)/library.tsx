@@ -389,7 +389,7 @@ export default function LibraryScreen() {
       <ConfirmDialog
         visible={deleteCategoryDialogVisible}
         title="資格グループを削除"
-        message={`「${targetCategory}」の資格グループとその中の全ての問題集を削除してもよろしいですか？この操作は取り消せません。`}
+        message={`「${categories.find(c => c.id === targetCategoryId)?.name || ''}」の資格グループとその中の全ての問題集を削除してもよろしいですか？この操作は取り消せません。`}
         onConfirm={confirmDeleteCategory}
         onCancel={() => setDeleteCategoryDialogVisible(false)}
       />
