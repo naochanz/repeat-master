@@ -32,6 +32,9 @@ export const categoryApi = {
   getAll: () => api.get('/categories'),
   create: (name: string, description?: string) =>
     api.post('/categories', { name, description }),
+  update: (id: string, data: { name: string; description?: string }) =>
+    api.patch(`/categories/${id}`, data),
+  delete: (id: string) => api.delete(`/categories/${id}`),
 };
 
 export const quizBookApi = {

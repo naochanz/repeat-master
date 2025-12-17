@@ -206,20 +206,32 @@ export default function LibraryScreen() {
       return;
     }
 
-    // カテゴリの更新はバックエンドで実装されていないため、コメントアウト
-    // const categoryBooks = quizBooks.filter(book => book.category?.id === targetCategoryId);
-    // for (const book of categoryBooks) {
-    //   await updateQuizBook(book.id, { categoryId: targetCategoryId });
-    // }
+    try {
+      await categoryApi.update(targetCategoryId, { name: editedCategoryName.trim() });
+      await fetchCategories(); // カテゴリを再取得
+    } catch (error) {
+      console.error('Failed to update category:', error);
+    }
+
     setShowEditModal(false);
     setTargetCategoryId('');
   };
 
   const confirmDeleteCategory = async () => {
-    const categoryBooks = quizBooks.filter(book => book.category?.id === targetCategoryId);
-    for (const book of categoryBooks) {
-      await deleteQuizBook(book.id);
+    try {
+      // カテゴリに属する全ての問題集を削除
+      const categoryBooks = quizBooks.filter(book => book.category?.id === targetCategoryId);
+      for (const book of categoryBooks) {
+        await deleteQuizBook(book.id);
+      }
+
+      // カテゴリを削除
+      await categoryApi.delete(targetCategoryId);
+      await fetchCategories(); // カテゴリを再取得
+    } catch (error) {
+      console.error('Failed to delete category:', error);
     }
+
     setDeleteCategoryDialogVisible(false);
     setTargetCategoryId('');
   };
