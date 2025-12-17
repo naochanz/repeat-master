@@ -36,38 +36,39 @@ export const categoryApi = {
 
 export const quizBookApi = {
   getAll: () => api.get('/quiz-books'),
-  getOne: (id: string) => api.get('/quiz-books/${id}'),
+  getOne: (id: string) => api.get(`/quiz-books/${id}`),  // ✅ 修正
   create: (title: string, categoryId: string, useSections: boolean) =>
     api.post('/quiz-books', { title, categoryId, useSections }),
-  update: (id: string, data: any) => api.patch('/quiz-books/${id}', data),
-  delete: (id: string) => api.delete('quiz-books/${id}'),
+  update: (id: string, data: any) => api.patch(`/quiz-books/${id}`, data),  // ✅ 修正
+  delete: (id: string) => api.delete(`/quiz-books/${id}`),  // ✅ 修正
 };
+
 // Chapter API
 export const chapterApi = {
   create: (quizBookId: string, chapterNumber: number, title?: string, questionCount?: number) =>
-    api.post('/quiz-books/${quizBookId}/chapters', { chapterNumber, title, questionCount }),
+    api.post(`/quiz-books/${quizBookId}/chapters`, { chapterNumber, title, questionCount }),  // ✅ 修正
   update: (quizBookId: string, chapterId: string, data: any) =>
-    api.patch('/quiz-books/${quizBookId}/chapters/${chapterId}', data),
+    api.patch(`/quiz-books/${quizBookId}/chapters/${chapterId}`, data),  // ✅ 修正
   delete: (quizBookId: string, chapterId: string) =>
-    api.delete('/quiz-books/${quizBookId}/chapters/${chpaterId}'),
+    api.delete(`/quiz-books/${quizBookId}/chapters/${chapterId}`),  // ✅ 修正（chpaterId → chapterId）
 };
 
-//Section API
+// Section API
 export const sectionApi = {
-  create: (quzBookId: string, chpaterId: string, sectionNumber: number, title?: string, questionCount?: number) =>
-    api.post('/quiz-books/${quizBookId}/chapters/${chapterId}/sections', {sectionNumber, title, questionCount }),
+  create: (quizBookId: string, chapterId: string, sectionNumber: number, title?: string, questionCount?: number) =>
+    api.post(`/quiz-books/${quizBookId}/chapters/${chapterId}/sections`, { sectionNumber, title, questionCount }),  // ✅ 修正（quzBookId → quizBookId, chpaterId → chapterId）
   update: (quizBookId: string, chapterId: string, sectionId: string, data: any) => 
-    api.patch('/quiz-books/${quizBookId}/chapters/${chapterId}/sections/${sectionId}, data'),
+    api.patch(`/quiz-books/${quizBookId}/chapters/${chapterId}/sections/${sectionId}`, data),  // ✅ 修正（閉じ括弧追加）
   delete: (quizBookId: string, chapterId: string, sectionId: string) =>
-  api.delete('/quizBooks/${quizBookId}/chapters/${chapterId}/sections/${sectionId}'),
+    api.delete(`/quiz-books/${quizBookId}/chapters/${chapterId}/sections/${sectionId}`),  // ✅ 修正（quizBooks → quiz-books）
 };
 
-//Answer API
+// Answer API
 export const answerApi = {
   create: (quizBookId: string, questionNumber: number, result: '○' | '×', chapterId?: string, sectionId?: string) =>
-  api.post('/quizBooks/${quizBookId}/answers', {questionNumber, result, chapterId }),
+    api.post(`/quiz-books/${quizBookId}/answers`, { questionNumber, result, chapterId, sectionId }),  // ✅ 修正（sectionId追加）
   update: (quizBookId: string, answerId: string, memo: string) =>
-  api.patch('/quiz-books/${quizBookId}/answers/${answerId}', { memo }),
+    api.patch(`/quiz-books/${quizBookId}/answers/${answerId}`, { memo }),  // ✅ 修正
   delete: (quizBookId: string, answerId: string) =>
-  api.delete('/quiz-books/${quizBookId}answers/${answerId}'),
+    api.delete(`/quiz-books/${quizBookId}/answers/${answerId}`),  // ✅ 修正（スラッシュ追加）
 };
