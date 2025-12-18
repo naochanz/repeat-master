@@ -166,9 +166,14 @@ export default function LibraryScreen() {
   };
 
   const handleTitleConfirm = async (title: string) => {
+    try{
     await addQuizBook(title, selectedCategoryId, false);
     setTitleModalVisible(false);
     setSelectedCategoryId('');
+    }catch(error){
+      console.error('Failed to confirm Title:', error);
+          return;
+    }
   };
 
   const handleTitleCancel = () => {
