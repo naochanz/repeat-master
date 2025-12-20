@@ -10,6 +10,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 
 interface QuizBookTitleModalProps {
@@ -52,9 +54,13 @@ const QuizBookTitleModal = ({
       animationType="fade"
       onRequestClose={handleCancel}
     >
-      <SafeAreaView style={styles.modalOverlay}>
-        <Pressable style={styles.modalOverlayPressable} onPress={handleCancel}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <SafeAreaView style={styles.modalOverlay}>
+          <Pressable style={styles.modalOverlayPressable} onPress={handleCancel}>
+            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
               <BookOpen size={32} color={theme.colors.primary[600]} />
               <Text style={styles.modalTitle}>問題集を追加</Text>
@@ -101,6 +107,7 @@ const QuizBookTitleModal = ({
           </Pressable>
         </Pressable>
       </SafeAreaView>
+    </KeyboardAvoidingView>
     </Modal>
   );
 };

@@ -3,7 +3,7 @@ import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { AlertCircle, Edit, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { CommonActions } from '@react-navigation/native';
 import AddItemModal from '../_compornents/AddItemModal';
@@ -37,6 +37,7 @@ export default function LibraryScreen() {
   const [targetCategoryId, setTargetCategoryId] = useState<string>('');
   const [deleteCategoryDialogVisible, setDeleteCategoryDialogVisible] = useState(false);
   const [categoryBooksCount, setCategoryBooksCount] = useState(0);
+  const [isCategoryCreating, setIsCategoryCreating] = useState(false);
 
   const navigation = useNavigation();
   const opacity = useSharedValue(0);
@@ -140,29 +141,36 @@ export default function LibraryScreen() {
 
       // 新しいカテゴリを作成
       try {
+        setIsCategoryCreating(true);
         await createCategory(categoryNameOrId);
         setCategoryModalVisible(false);
         setIsAddingCategory(false);
       } catch (error) {
         console.error('Failed to create category:', error);
+      } finally {
+        setIsCategoryCreating(false);
       }
     } else {
       // 問題集追加モード：カテゴリを選択してタイトル入力へ
       const category = categories.find(c => c.name === categoryNameOrId);
       if (category) {
         setSelectedCategoryId(category.id);
+        setCategoryModalVisible(false);
+        setTitleModalVisible(true);
       } else {
         // 新しいカテゴリの場合は作成してからIDを取得
         try {
+          setIsCategoryCreating(true);
           const categoryId = await createCategory(categoryNameOrId);
           setSelectedCategoryId(categoryId);
+          setCategoryModalVisible(false);
+          setTitleModalVisible(true);
         } catch (error) {
           console.error('Failed to create category:', error);
-          return;
+        } finally {
+          setIsCategoryCreating(false);
         }
       }
-      setCategoryModalVisible(false);
-      setTitleModalVisible(true);
     }
   };
 
@@ -344,6 +352,8 @@ export default function LibraryScreen() {
         }}
         mode={isAddingCategory ? 'create' : 'select'}
         registeredCategories={categories.map(c => c.name)}
+        isLoading={isCategoryCreating}
+        loadingMessage="資格グループを作成中..."
         onClose={() => {
           setCategoryModalVisible(false);
           setIsAddingCategory(false);
@@ -394,32 +404,37 @@ export default function LibraryScreen() {
         animationType="fade"
         onRequestClose={() => setShowEditModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.editModalContent}>
-            <Text style={styles.editModalTitle}>資格名を編集</Text>
-            <TextInput
-              style={styles.editInput}
-              value={editedCategoryName}
-              onChangeText={setEditedCategoryName}
-              placeholder="資格名を入力"
-              placeholderTextColor={theme.colors.secondary[400]}
-            />
-            <View style={styles.editModalActions}>
-              <TouchableOpacity
-                style={[styles.editModalButton, styles.cancelButton]}
-                onPress={() => setShowEditModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>キャンセル</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.editModalButton, styles.confirmButton]}
-                onPress={confirmEditCategory}
-              >
-                <Text style={styles.confirmButtonText}>保存</Text>
-              </TouchableOpacity>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.editModalContent}>
+              <Text style={styles.editModalTitle}>資格名を編集</Text>
+              <TextInput
+                style={styles.editInput}
+                value={editedCategoryName}
+                onChangeText={setEditedCategoryName}
+                placeholder="資格名を入力"
+                placeholderTextColor={theme.colors.secondary[400]}
+              />
+              <View style={styles.editModalActions}>
+                <TouchableOpacity
+                  style={[styles.editModalButton, styles.cancelButton]}
+                  onPress={() => setShowEditModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>キャンセル</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.editModalButton, styles.confirmButton]}
+                  onPress={confirmEditCategory}
+                >
+                  <Text style={styles.confirmButtonText}>保存</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ✅ メッセージを動的に変更 */}
