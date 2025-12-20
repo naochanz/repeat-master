@@ -13,6 +13,7 @@ import { CreateAnswerDto } from './dto/create-answer.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
 import { UpdateSectionDto } from './dto/update-section.dto';
 import { UpdateAnswerDto } from './dto/update-answer.dto';
+import { QuizBookAnalyticsDto } from './dto/quiz-book-analytics';
 
 @Injectable()
 export class QuizBooksService {
@@ -252,5 +253,22 @@ export class QuizBooksService {
         }
 
         await this.questionAnswerRepository.remove(answer);
+    }
+
+    async getAnalytics(quizBookId: string, userId: string): Promise<QuizBookAnalyticsDto> {
+        //問題集の存在確認と権限チェック
+        const quizBook = await this.findOne(quizBookId, userId);
+
+        //全ての回答データを取得
+        const answers = await this.questionAnswerRepository.find({
+            where: [
+                { chapter: { quizBookId } },
+                { section: { chapter: { quizBookId } } }
+            ],
+            relations: ['chapter', 'section']
+        });
+
+        //周回数を集計
+        const totalRounds = this.calculateTotalRounds(answers)
     }
 }
