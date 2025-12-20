@@ -66,7 +66,7 @@ export interface RecentStudyItem {
   sectionId?: string;
   sectionNumber?: number;
   sectionTitle?: string;
-  lastAnsweredAt: string;
+  lastAnsweredAt: string | Date;
   lastQuestionNumber: number;
   lastResult: '○' | '×';
 }

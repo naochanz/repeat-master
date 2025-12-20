@@ -1,15 +1,15 @@
 export class RoundStatsDto {
     round: number;
     correctRate: number;
-    totalQuestion: number;
-    correctAnswer: number;
+    totalQuestions: number;
+    correctAnswers: number;
 }
 
 export class ChapterStatsDto {
     round: number;
     chapterId: string;
     chapterNumber: number;
-    crrectRate: number;
+    correctRate: number;
     totalQuestions: number;
     correctAnswers: number;
 }
@@ -19,9 +19,9 @@ export class SectionStatsDto {
     sectionId: string;
     chapterId: string;
     sectionNumber: number;
-    crrectRate: number;
+    correctRate: number;
     totalQuestions: number;
-    correctAnswer: number;
+    correctAnswers: number;
 }
 
 export class QuizBookAnalyticsDto {
@@ -29,5 +29,5 @@ export class QuizBookAnalyticsDto {
     totalRounds: number;
     roundStats: RoundStatsDto[];
     chapterStats: ChapterStatsDto[];
-    sectionDtats: SectionStatsDto[];
+    sectionStats: SectionStatsDto[];
 }

@@ -13,7 +13,7 @@ import { CreateAnswerDto } from './dto/create-answer.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
 import { UpdateSectionDto } from './dto/update-section.dto';
 import { UpdateAnswerDto } from './dto/update-answer.dto';
-import { QuizBookAnalyticsDto } from './dto/quiz-book-analytics';
+import { SectionStatsDto, ChapterStatsDto, QuizBookAnalyticsDto, RoundStatsDto } from './dto/quiz-book-analytics';
 
 @Injectable()
 export class QuizBooksService {
@@ -269,6 +269,207 @@ export class QuizBooksService {
         });
 
         //周回数を集計
-        const totalRounds = this.calculateTotalRounds(answers)
+        const totalRounds = this.calculateTotalRounds(answers);
+
+        //各種統計の計算
+        const roundStats = this.calculateRoundStats(answers, totalRounds);  //周回ごとの正答率
+        const chapterStats = this.calculateChapterStats(answers, totalRounds); //チャプターごとの正答率
+        const sectionStats = this.calculateSectionStats(answers, totalRounds); //セクションごとの正答率
+
+        return {
+            quizBookId,
+            totalRounds,
+            roundStats,
+            chapterStats,
+            sectionStats,
+        };
+    }
+    /**
+    * 総周回数を計算（確定済み解答の最大round）
+    */
+    private calculateTotalRounds(answers: QuestionAnswer[]): number {
+        let maxRound = 0;
+
+        answers.forEach(answer => {
+            const confirmedAttempts = answer.attempts.filter(a => a.resultConfirmFlg);
+            confirmedAttempts.forEach(attempt => {
+                if (attempt.round > maxRound) {
+                    maxRound = attempt.round;
+                }
+            });
+        });
+
+        return maxRound;
+    }
+
+    /**
+     * 周回ごとの正答率を計算
+     */
+    private calculateRoundStats(
+        answers: QuestionAnswer[],
+        totalRounds: number,
+    ): RoundStatsDto[] {
+        const stats: RoundStatsDto[] = [];
+
+        for (let round = 1; round <= totalRounds; round++) {
+            let totalQuestions = 0;
+            let correctAnswers = 0;
+
+            answers.forEach(answer => {
+                const roundAttempt = answer.attempts.find(
+                    a => a.round === round && a.resultConfirmFlg,
+                );
+
+                //確定済みの問題数と正解した問題数をそれぞれ加算
+                if (roundAttempt) {
+                    totalQuestions++;
+                    if (roundAttempt.result === '○') {
+                        correctAnswers++;
+                    }
+                }
+            });
+
+            //正答率計算
+            const correctRate = totalQuestions > 0
+                ? Math.round((correctAnswers / totalQuestions) * 100 * 10) / 10
+                : 0;
+
+            //オブジェクトを配列に追加（周回の情報をstats配列に追加）
+            stats.push({
+                round,
+                totalQuestions,
+                correctAnswers,
+                correctRate,
+            });
+        }
+
+        return stats;
+    }
+
+    /**
+     * 周回 × Chapter ごとの正答率を計算
+     */
+    private calculateChapterStats(
+        answers: QuestionAnswer[],
+        totalRounds: number,
+    ): ChapterStatsDto[] {
+        const stats: ChapterStatsDto[] = [];
+
+        // Chapter IDごとにグループ化
+        const chapterGroups = new Map<string, QuestionAnswer[]>();
+
+        answers.forEach(answer => {
+            if (answer.chapterId) {
+                if (!chapterGroups.has(answer.chapterId)) {
+                    chapterGroups.set(answer.chapterId, []);
+                }
+                chapterGroups.get(answer.chapterId)!.push(answer);
+            }
+        });
+
+        //各chapter　×　各周回で集計
+        chapterGroups.forEach((chapterAnswers, chapterId) => {
+            const chapterNumber = chapterAnswers[0]?.chapter?.chapterNumber || 0;
+
+            for (let round = 1; round <= totalRounds; round++) {
+                let totalQuestions = 0;
+                let correctAnswers = 0;
+
+                chapterAnswers.forEach(answer => {
+                    const roundAttempt = answer.attempts.find(
+                        a => a.round === round && a.resultConfirmFlg,
+                    );
+
+                    if(roundAttempt){
+                        totalQuestions++;
+                        if(roundAttempt.result === '○'){
+                            correctAnswers++;
+                        }
+                    }
+                });
+
+                if (totalQuestions > 0) {
+                    const correctRate = Math.round((correctAnswers / totalQuestions) * 100 * 10) / 10;
+
+                    stats.push({
+                        round,
+                        chapterId,
+                        chapterNumber,
+                        totalQuestions,
+                        correctAnswers,
+                        correctRate,
+                    });
+                }
+            }
+        });
+
+        return stats.sort((a, b) => {
+            if (a.round !== b.round) return a.round -b.round;
+            return a.chapterNumber - b.chapterNumber;
+        });
+    }
+    /**
+     * 周回 × Section ごとの正答率を計算
+     */
+    private calculateSectionStats(
+        answers: QuestionAnswer[],
+        totalRounds: number,
+    ): SectionStatsDto[] {
+        const stats: SectionStatsDto[] = [];
+
+        // Section IDごとにグループ化
+        const sectionGroups = new Map<string, QuestionAnswer[]>();
+
+        answers.forEach(answer => {
+            if (answer.sectionId) {
+                if (!sectionGroups.has(answer.sectionId)) {
+                    sectionGroups.set(answer.sectionId, []);
+                }
+                sectionGroups.get(answer.sectionId)!.push(answer);
+            }
+        });
+
+        // 各Section × 各周回で集計
+        sectionGroups.forEach((sectionAnswers, sectionId) => {
+            const chapterId = sectionAnswers[0]?.chapterId || '';
+            const sectionNumber = sectionAnswers[0]?.section?.sectionNumber || 0;
+
+            for (let round = 1; round <= totalRounds; round++) {
+                let totalQuestions = 0;
+                let correctAnswers = 0;
+
+                sectionAnswers.forEach(answer => {
+                    const roundAttempt = answer.attempts.find(
+                        a => a.round === round && a.resultConfirmFlg,
+                    );
+
+                    if (roundAttempt) {
+                        totalQuestions++;
+                        if (roundAttempt.result === '○') {
+                            correctAnswers++;
+                        }
+                    }
+                });
+
+                if (totalQuestions > 0) {
+                    const correctRate = Math.round((correctAnswers / totalQuestions) * 100 * 10) / 10;
+
+                    stats.push({
+                        round,
+                        sectionId,
+                        chapterId,
+                        sectionNumber,
+                        totalQuestions,
+                        correctAnswers,
+                        correctRate,
+                    });
+                }
+            }
+        });
+
+        return stats.sort((a, b) => {
+            if (a.round !== b.round) return a.round - b.round;
+            return a.sectionNumber - b.sectionNumber;
+        });
     }
 }
