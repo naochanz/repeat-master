@@ -92,7 +92,8 @@ const CategorySelectModal = ({
                       onChangeText={setNewCategory}
                       placeholder="新しい資格名を入力"
                       placeholderTextColor={theme.colors.secondary[400]}
-                      onSubmitEditing={handleAddNewCategory}
+                      returnKeyType="default"
+                      blurOnSubmit={true}
                       autoFocus
                     />
                     <View style={styles.newCategoryActions}>
@@ -133,7 +134,8 @@ const CategorySelectModal = ({
                         onChangeText={setNewCategory}
                         placeholder="新しい資格名を入力"
                         placeholderTextColor={theme.colors.secondary[400]}
-                        onSubmitEditing={handleAddNewCategory}
+                        returnKeyType="default"
+                        blurOnSubmit={true}
                         autoFocus
                       />
                       <View style={styles.newCategoryActions}>

@@ -80,8 +80,8 @@ const QuizBookTitleModal = ({
                   onChangeText={setTitle}
                   placeholder="例: 過去問題集2024"
                   placeholderTextColor={theme.colors.secondary[400]}
-                  onSubmitEditing={handleConfirm}
-                  returnKeyType="done"
+                  returnKeyType="default"
+                  blurOnSubmit={true}
                 />
               </View>
             </View>
