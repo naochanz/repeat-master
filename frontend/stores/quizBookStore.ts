@@ -87,7 +87,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   deleteCategory: async (id: string) => {
     try {
       // カテゴリに属する全ての問題集を削除
-      const categoryBooks = get().quizBooks.filter(book => book.category?.id === id);
+      const categoryBooks = get().quizBooks.filter(book => book.categoryId === id);
       for (const book of categoryBooks) {
         await get().deleteQuizBook(book.id);
       }

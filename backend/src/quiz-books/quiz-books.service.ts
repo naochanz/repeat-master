@@ -28,28 +28,34 @@ export class QuizBooksService {
         private questionAnswerRepository: Repository<QuestionAnswer>,
     ) { }
 
-    // 全問題集を取得（ユーザーIDでフィルタ）
-    async findAll(userId: string): Promise<QuizBook[]> {
-        return this.quizBookRepository.find({
-            where: { userId },
-            relations: ['chapters', 'chapters.sections', 'chapters.questionAnswers', 'chapters.sections.questionAnswers'],
-            order: {
-                createdAt: 'DESC',
-                chapters: {
-                    chapterNumber: 'ASC',
-                    sections: {
-                        sectionNumber: 'ASC',
-                    },
+// 全問題集を取得（ユーザーIDでフィルタ）
+async findAll(userId: string): Promise<QuizBook[]> {
+    return this.quizBookRepository.find({
+        where: { userId },
+        relations: [
+            'category',  // ✅ 追加
+            'chapters', 
+            'chapters.sections', 
+            'chapters.questionAnswers', 
+            'chapters.sections.questionAnswers'
+        ],
+        order: {
+            createdAt: 'DESC',
+            chapters: {
+                chapterNumber: 'ASC',
+                sections: {
+                    sectionNumber: 'ASC',
                 },
             },
-        });
-    }
+        },
+    });
+}
 
     //問題集を一件取得
     async findOne(id: string, userId: string): Promise<QuizBook> {
         const quizBook = await this.quizBookRepository.findOne({
             where: { id, userId },
-            relations: ['chapters', 'chapters.sections', 'chapters.questionAnswers', 'chapters.sections.questionAnswers'],
+            relations: ['category', 'chapters', 'chapters.sections', 'chapters.questionAnswers', 'chapters.sections.questionAnswers'],
         });
 
         if (!quizBook) {

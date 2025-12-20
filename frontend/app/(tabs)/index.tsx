@@ -112,7 +112,7 @@ export default function DashboardScreen() {
     const statsMap: { [key: string]: QualificationStats } = {};
 
     quizBooks.forEach(book => {
-      const category = book.category || '未分類';
+      const category = book.category?.name || '未分類';
       if (!statsMap[category]) {
         statsMap[category] = {
           category,
