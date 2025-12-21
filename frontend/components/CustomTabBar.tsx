@@ -1,6 +1,6 @@
 import { theme } from '@/constants/theme';
 import { usePathname, useRouter } from 'expo-router';
-import { Home, Library, Settings } from 'lucide-react-native';
+import { Home, Library, Settings, LineChart } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ const CustomTabBar = () => {
 
   const isHomeActive = pathname === '/' || pathname === '/index';
   const isLibraryActive = pathname.includes('/library') || pathname.includes('/study') || pathname.includes('/dashboard');
+  const isAnalyticsActive = pathname.includes('/analytics');
   const isSettingsActive = pathname.includes('/settings');
 
   return (
@@ -52,6 +53,25 @@ const CustomTabBar = () => {
           ]}
         >
           ライブラリ
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.tab}
+        onPress={() => router.push('/analytics')}
+        activeOpacity={0.7}
+      >
+        <LineChart
+          size={24}
+          color={isAnalyticsActive ? theme.colors.primary[600] : theme.colors.secondary[400]}
+        />
+        <Text
+          style={[
+            styles.label,
+            isAnalyticsActive && styles.labelActive
+          ]}
+        >
+          分析
         </Text>
       </TouchableOpacity>
 

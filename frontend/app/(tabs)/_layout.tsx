@@ -1,6 +1,6 @@
 import { theme } from '@/constants/theme';
 import { Tabs } from 'expo-router';
-import { Home, Library, Settings, TrendingUp } from 'lucide-react-native';
+import { Home, Library, Settings, LineChart } from 'lucide-react-native';
 import React from 'react';
 
 export default function TabLayout() {
@@ -38,7 +38,7 @@ export default function TabLayout() {
         name="analytics"
         options={{
           title: '分析',
-          tabBarIcon: ({ color, size }) => <TrendingUp size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <LineChart size={size} color={color} />,
         }}
       />
       <Tabs.Screen
