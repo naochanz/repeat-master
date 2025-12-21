@@ -2,6 +2,60 @@ import { create } from 'zustand';
 import { quizBookRepository } from '@/repositories/QuizBookRepository';
 import { QuizBook, Chapter, Section, QuestionAnswer, RecentStudyItem } from '@/types/QuizBook';
 
+// ========== ヘルパー型・関数（共通パターンの抽出）==========
+
+/**
+ * QuestionAnswer配列を変換する関数の型
+ */
+type AnswerTransformer = (answers: QuestionAnswer[]) => QuestionAnswer[];
+
+/**
+ * クイズブック内の特定チャプター/セクションのquestionAnswersを更新する
+ * 共通パターン: books → chapters → sections の多段マッピングを一元化
+ */
+function updateQuestionAnswersInBooks(
+  quizBooks: QuizBook[],
+  chapterId: string,
+  sectionId: string | null,
+  transformer: AnswerTransformer
+): QuizBook[] {
+  return quizBooks.map(book => ({
+    ...book,
+    chapters: book.chapters.map(chapter => {
+      if (chapter.id !== chapterId) return chapter;
+
+      if (sectionId && chapter.sections) {
+        return {
+          ...chapter,
+          sections: chapter.sections.map(section =>
+            section.id === sectionId
+              ? { ...section, questionAnswers: transformer(section.questionAnswers || []) }
+              : section
+          )
+        };
+      }
+
+      return { ...chapter, questionAnswers: transformer(chapter.questionAnswers || []) };
+    }),
+    updatedAt: new Date()
+  }));
+}
+
+/**
+ * 特定のchapterIdを含むBookを見つけてリポジトリに保存する
+ */
+async function saveBookContainingChapter(
+  quizBooks: QuizBook[],
+  chapterId: string
+): Promise<void> {
+  const targetBook = quizBooks.find(book =>
+    book.chapters.some(ch => ch.id === chapterId)
+  );
+  if (targetBook) {
+    await quizBookRepository.update(targetBook.id, targetBook);
+  }
+}
+
 interface QuizBookStore {
   // 状態
   currentQuizBook: Partial<QuizBook> | null;
@@ -209,154 +263,67 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   // ========== 問題集操作（Repository経由で保存）==========
 
   saveAnswer: async (chapterId, sectionId, questionNumber, result) => {
-    const updatedQuizBooks = get().quizBooks.map(book => {
-      const updatedChapters = book.chapters.map(chapter => {
-        if (chapter.id !== chapterId) return chapter;
-
-        const updateQuestionAnswer = (answers: QuestionAnswer[] = []) => {
-          const existing = answers.find(qa => qa.questionNumber === questionNumber);
-          if (existing) {
-            return answers.map(qa =>
-              qa.questionNumber === questionNumber
-                ? {
-                  ...qa,
-                  attempts: [
-                    ...qa.attempts,
-                    {
-                      round: qa.attempts.length + 1,
-                      result,
-                      resultConfirmFlg: true,
-                      answeredAt: new Date()
-                    }
-                  ]
-                }
-                : qa
-            );
-          } else {
-            return [
-              ...answers,
-              {
-                questionNumber,
-                attempts: [{
-                  round: 1,
-                  result,
-                  resultConfirmFlg: true,
-                  answeredAt: new Date()
-                }]
+    const addAttemptTransformer: AnswerTransformer = (answers) => {
+      const existing = answers.find(qa => qa.questionNumber === questionNumber);
+      if (existing) {
+        return answers.map(qa =>
+          qa.questionNumber === questionNumber
+            ? {
+                ...qa,
+                attempts: [
+                  ...qa.attempts,
+                  { round: qa.attempts.length + 1, result, resultConfirmFlg: true, answeredAt: new Date() }
+                ]
               }
-            ];
-          }
-        };
+            : qa
+        );
+      }
+      return [
+        ...answers,
+        { questionNumber, attempts: [{ round: 1, result, resultConfirmFlg: true, answeredAt: new Date() }] }
+      ];
+    };
 
-        if (sectionId && chapter.sections) {
-          return {
-            ...chapter,
-            sections: chapter.sections.map(section =>
-              section.id === sectionId
-                ? { ...section, questionAnswers: updateQuestionAnswer(section.questionAnswers) }
-                : section
-            )
-          };
-        }
-
-        return { ...chapter, questionAnswers: updateQuestionAnswer(chapter.questionAnswers) };
-      });
-
-      return { ...book, chapters: updatedChapters, updatedAt: new Date() };
-    });
-
-    set({ quizBooks: updatedQuizBooks });
-
-    // Repository経由で保存
-    const targetBook = updatedQuizBooks.find(book =>
-      book.chapters.some(ch => ch.id === chapterId)
+    const updatedQuizBooks = updateQuestionAnswersInBooks(
+      get().quizBooks, chapterId, sectionId, addAttemptTransformer
     );
-    if (targetBook) {
-      await quizBookRepository.update(targetBook.id, targetBook);
-    }
+    set({ quizBooks: updatedQuizBooks });
+    await saveBookContainingChapter(updatedQuizBooks, chapterId);
   },
 
   toggleAnswerLock: async (chapterId, sectionId, questionNumber) => {
-    const updatedQuizBooks = get().quizBooks.map(book => ({
-      ...book,
-      chapters: book.chapters.map(chapter => {
-        if (chapter.id !== chapterId) return chapter;
+    const toggleLockTransformer: AnswerTransformer = (answers) =>
+      answers.map(qa =>
+        qa.questionNumber === questionNumber
+          ? {
+              ...qa,
+              attempts: qa.attempts.map((att, idx) =>
+                idx === qa.attempts.length - 1
+                  ? { ...att, resultConfirmFlg: !att.resultConfirmFlg }
+                  : att
+              )
+            }
+          : qa
+      );
 
-        const toggleLock = (answers: QuestionAnswer[] = []) =>
-          answers.map(qa =>
-            qa.questionNumber === questionNumber
-              ? {
-                ...qa,
-                attempts: qa.attempts.map((att, idx) =>
-                  idx === qa.attempts.length - 1
-                    ? { ...att, resultConfirmFlg: !att.resultConfirmFlg }
-                    : att
-                )
-              }
-              : qa
-          );
-
-        if (sectionId && chapter.sections) {
-          return {
-            ...chapter,
-            sections: chapter.sections.map(section =>
-              section.id === sectionId
-                ? { ...section, questionAnswers: toggleLock(section.questionAnswers) }
-                : section
-            )
-          };
-        }
-
-        return { ...chapter, questionAnswers: toggleLock(chapter.questionAnswers) };
-      }),
-      updatedAt: new Date()
-    }));
-
-    set({ quizBooks: updatedQuizBooks });
-
-    const targetBook = updatedQuizBooks.find(book =>
-      book.chapters.some(ch => ch.id === chapterId)
+    const updatedQuizBooks = updateQuestionAnswersInBooks(
+      get().quizBooks, chapterId, sectionId, toggleLockTransformer
     );
-    if (targetBook) {
-      await quizBookRepository.update(targetBook.id, targetBook);
-    }
+    set({ quizBooks: updatedQuizBooks });
+    await saveBookContainingChapter(updatedQuizBooks, chapterId);
   },
 
   saveMemo: async (chapterId, sectionId, questionNumber, memo) => {
-    const updatedQuizBooks = get().quizBooks.map(book => ({
-      ...book,
-      chapters: book.chapters.map(chapter => {
-        if (chapter.id !== chapterId) return chapter;
+    const updateMemoTransformer: AnswerTransformer = (answers) =>
+      answers.map(qa =>
+        qa.questionNumber === questionNumber ? { ...qa, memo } : qa
+      );
 
-        const updateMemo = (answers: QuestionAnswer[] = []) =>
-          answers.map(qa =>
-            qa.questionNumber === questionNumber ? { ...qa, memo } : qa
-          );
-
-        if (sectionId && chapter.sections) {
-          return {
-            ...chapter,
-            sections: chapter.sections.map(section =>
-              section.id === sectionId
-                ? { ...section, questionAnswers: updateMemo(section.questionAnswers) }
-                : section
-            )
-          };
-        }
-
-        return { ...chapter, questionAnswers: updateMemo(chapter.questionAnswers) };
-      }),
-      updatedAt: new Date()
-    }));
-
-    set({ quizBooks: updatedQuizBooks });
-
-    const targetBook = updatedQuizBooks.find(book =>
-      book.chapters.some(ch => ch.id === chapterId)
+    const updatedQuizBooks = updateQuestionAnswersInBooks(
+      get().quizBooks, chapterId, sectionId, updateMemoTransformer
     );
-    if (targetBook) {
-      await quizBookRepository.update(targetBook.id, targetBook);
-    }
+    set({ quizBooks: updatedQuizBooks });
+    await saveBookContainingChapter(updatedQuizBooks, chapterId);
   },
 
   getQuestionAnswers: (chapterId, sectionId, questionNumber) => {
@@ -374,86 +341,39 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   updateLastAnswer: async (chapterId: string, sectionId: string | null, questionNumber: number, result: '○' | '×') => {
-    const updatedQuizBooks = get().quizBooks.map(book => ({
-      ...book,
-      chapters: book.chapters.map(chapter => {
-        if (chapter.id !== chapterId) return chapter;
+    const updateResultTransformer: AnswerTransformer = (answers) =>
+      answers.map(qa =>
+        qa.questionNumber === questionNumber
+          ? {
+              ...qa,
+              attempts: qa.attempts.map((att, idx) =>
+                idx === qa.attempts.length - 1 ? { ...att, result } : att
+              )
+            }
+          : qa
+      );
 
-        const updateResult = (answers: QuestionAnswer[] = []) =>
-          answers.map(qa =>
-            qa.questionNumber === questionNumber
-              ? {
-                ...qa,
-                attempts: qa.attempts.map((att, idx) =>
-                  idx === qa.attempts.length - 1 ? { ...att, result } : att
-                )
-              }
-              : qa
-          );
-
-        if (sectionId && chapter.sections) {
-          return {
-            ...chapter,
-            sections: chapter.sections.map(section =>
-              section.id === sectionId
-                ? { ...section, questionAnswers: updateResult(section.questionAnswers) }
-                : section
-            )
-          };
-        }
-
-        return { ...chapter, questionAnswers: updateResult(chapter.questionAnswers) };
-      }),
-      updatedAt: new Date()
-    }));
-
-    set({ quizBooks: updatedQuizBooks });
-
-    const targetBook = updatedQuizBooks.find(book =>
-      book.chapters.some(ch => ch.id === chapterId)
+    const updatedQuizBooks = updateQuestionAnswersInBooks(
+      get().quizBooks, chapterId, sectionId, updateResultTransformer
     );
-    if (targetBook) {
-      await quizBookRepository.update(targetBook.id, targetBook);
-    }
+    set({ quizBooks: updatedQuizBooks });
+    await saveBookContainingChapter(updatedQuizBooks, chapterId);
   },
 
   deleteLastAnswer: async (chapterId: string, sectionId: string | null, questionNumber: number) => {
-    const updatedQuizBooks = get().quizBooks.map(book => ({
-      ...book,
-      chapters: book.chapters.map(chapter => {
-        if (chapter.id !== chapterId) return chapter;
+    const deleteLastAttemptTransformer: AnswerTransformer = (answers) =>
+      answers
+        .map(qa => {
+          if (qa.questionNumber !== questionNumber) return qa;
+          return { ...qa, attempts: qa.attempts.slice(0, -1) };
+        })
+        .filter(qa => qa.attempts.length > 0);
 
-        const deleteResult = (answers: QuestionAnswer[] = []) =>
-          answers.map(qa => {
-            if (qa.questionNumber !== questionNumber) return qa;
-            const newAttempts = qa.attempts.slice(0, -1);
-            return { ...qa, attempts: newAttempts };
-          }).filter(qa => qa.attempts.length > 0);
-
-        if (sectionId && chapter.sections) {
-          return {
-            ...chapter,
-            sections: chapter.sections.map(section =>
-              section.id === sectionId
-                ? { ...section, questionAnswers: deleteResult(section.questionAnswers) }
-                : section
-            )
-          };
-        }
-
-        return { ...chapter, questionAnswers: deleteResult(chapter.questionAnswers) };
-      }),
-      updatedAt: new Date()
-    }));
-
-    set({ quizBooks: updatedQuizBooks });
-
-    const targetBook = updatedQuizBooks.find(book =>
-      book.chapters.some(ch => ch.id === chapterId)
+    const updatedQuizBooks = updateQuestionAnswersInBooks(
+      get().quizBooks, chapterId, sectionId, deleteLastAttemptTransformer
     );
-    if (targetBook) {
-      await quizBookRepository.update(targetBook.id, targetBook);
-    }
+    set({ quizBooks: updatedQuizBooks });
+    await saveBookContainingChapter(updatedQuizBooks, chapterId);
   },
 
   // ========== 章の追加・削除・更新（修正版）==========
