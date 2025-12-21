@@ -71,33 +71,35 @@ export default function AnalyticsScreen() {
     setLoading(false);
   };
 
-  // 資格グループごとに問題集をグループ化（問題集がないグループは除外）
+  // 資格グループごとに問題集をグループ化（全カテゴリを表示）
   const groupedQuizBooks = useMemo(() => {
     const groups: { [categoryId: string]: { categoryName: string; books: typeof quizBooks } } = {};
 
+    // まず全カテゴリを追加
+    categories.forEach((category) => {
+      groups[category.id] = { categoryName: category.name, books: [] };
+    });
+
+    // 問題集を各カテゴリに割り当て
     quizBooks.forEach((book) => {
       const categoryId = book.category?.id;
-      const categoryName = book.category?.name || '未分類';
 
-      if (categoryId) {
-        if (!groups[categoryId]) {
-          groups[categoryId] = { categoryName, books: [] };
-        }
+      if (categoryId && groups[categoryId]) {
         groups[categoryId].books.push(book);
       }
     });
 
     return groups;
-  }, [quizBooks]);
+  }, [quizBooks, categories]);
 
   const handleScroll = (categoryId: string, event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / CARD_WIDTH);
+    const index = Math.round(offsetX / (CARD_WIDTH + 40));
     setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
   };
 
   const scrollToIndex = (categoryId: string, index: number) => {
-    scrollRefs.current[categoryId]?.scrollTo({ x: index * CARD_WIDTH, animated: true });
+    scrollRefs.current[categoryId]?.scrollTo({ x: index * (CARD_WIDTH + 40), animated: true });
     setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
   };
 
@@ -175,10 +177,6 @@ export default function AnalyticsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>学習分析</Text>
-      </View>
-
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {Object.entries(groupedQuizBooks).map(([categoryId, group]) => {
           const currentIndex = currentIndexMap[categoryId] || 0;
@@ -196,42 +194,52 @@ export default function AnalyticsScreen() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView
-                ref={(ref) => (scrollRefs.current[categoryId] = ref)}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={(e) => handleScroll(categoryId, e)}
-                scrollEventThrottle={16}
-                snapToInterval={CARD_WIDTH}
-                decelerationRate="fast"
-              >
-                {group.books.map((book) => (
-                  <View key={book.id} style={styles.card}>
-                    <Text style={styles.cardTitle}>{book.title}</Text>
-                    <View style={styles.chartContainer}>
-                      {renderLineChart(book.id)}
+              {group.books.length === 0 ? (
+                <View style={styles.emptyBooksContainer}>
+                  <Text style={styles.emptyBooksText}>問題集の登録がありません</Text>
+                </View>
+              ) : (
+                <ScrollView
+                  ref={(ref) => (scrollRefs.current[categoryId] = ref)}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  onScroll={(e) => handleScroll(categoryId, e)}
+                  scrollEventThrottle={16}
+                  snapToInterval={CARD_WIDTH + 40}
+                  decelerationRate="fast"
+                  contentContainerStyle={{ paddingHorizontal: 20 }}
+                >
+                  {group.books.map((book) => (
+                    <View key={book.id} style={styles.card}>
+                      <TouchableOpacity onPress={() => router.push(`/study/${book.id}` as any)}>
+                        <Text style={styles.cardTitle}>{book.title}</Text>
+                      </TouchableOpacity>
+                      <View style={styles.chartContainer}>
+                        {renderLineChart(book.id)}
+                      </View>
+                      <TouchableOpacity style={styles.weaknessButton}>
+                        <TrendingDown size={20} color={theme.colors.neutral.white} />
+                        <Text style={styles.weaknessButtonText}>弱点分析</Text>
+                      </TouchableOpacity>
                     </View>
-                    <TouchableOpacity style={styles.weaknessButton}>
-                      <TrendingDown size={20} color={theme.colors.neutral.white} />
-                      <Text style={styles.weaknessButtonText}>弱点分析</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </ScrollView>
+                  ))}
+                </ScrollView>
+              )}
 
               {/* ページネーション */}
-              <View style={styles.pagination}>
-                {group.books.map((_, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.paginationDot,
-                      index === currentIndex && styles.paginationDotActive,
-                    ]}
-                  />
-                ))}
-              </View>
+              {group.books.length > 0 && (
+                <View style={styles.pagination}>
+                  {group.books.map((_, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.paginationDot,
+                        index === currentIndex && styles.paginationDotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
             </View>
           );
         })}
@@ -293,18 +301,9 @@ const styles = StyleSheet.create({
     fontFamily: 'ZenKaku-Medium',
     color: theme.colors.secondary[600],
   },
-  header: {
-    padding: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.secondary[200],
-  },
-  headerTitle: {
-    fontSize: theme.typography.fontSizes['2xl'],
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.secondary[900],
-  },
   scrollView: {
     flex: 1,
+    padding: theme.spacing.lg,
   },
   categoryContainer: {
     marginBottom: theme.spacing.xl,
@@ -399,6 +398,19 @@ const styles = StyleSheet.create({
   paginationDotActive: {
     width: 24,
     backgroundColor: theme.colors.primary[600],
+  },
+  emptyBooksContainer: {
+    paddingVertical: theme.spacing['2xl'],
+    paddingHorizontal: theme.spacing.lg,
+    alignItems: 'center',
+    backgroundColor: theme.colors.neutral[50],
+    marginHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
+  },
+  emptyBooksText: {
+    fontSize: theme.typography.fontSizes.base,
+    fontFamily: 'ZenKaku-Medium',
+    color: theme.colors.secondary[500],
   },
   emptyState: {
     flex: 1,
