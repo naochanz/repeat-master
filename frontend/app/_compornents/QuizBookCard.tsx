@@ -4,10 +4,12 @@ import { ChevronDown, MoreVertical, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+import { Category } from '@/types/QuizBook';
+
 interface QuizBook {
   id: string;
   title: string;
-  category: string;
+  category: Category;
   chapterCount: number;
   currentRate: number;
   useSections?: boolean;
@@ -26,7 +28,7 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, existingCategories }: QuizB
   const updateQuizBook = useQuizBookStore(state => state.updateQuizBook);
   const [showMenu, setShowMenu] = useState(false);
   const [editedTitle, setEditedTitle] = useState(quizBook.title);
-  const [editedCategory, setEditedCategory] = useState(quizBook.category);
+  const [editedCategory, setEditedCategory] = useState(quizBook.category?.name || '');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [useSections, setUseSections] = useState(quizBook.useSections ?? undefined);
   const correctRate = quizBook.correctRate || 0;
@@ -34,7 +36,7 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, existingCategories }: QuizB
   const handleMenuPress = (e: any) => {
     e.stopPropagation();
     setEditedTitle(quizBook.title);
-    setEditedCategory(quizBook.category);
+    setEditedCategory(quizBook.category?.name || '');
     setShowMenu(true);
   };
 
@@ -42,13 +44,14 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, existingCategories }: QuizB
     if (editedTitle.trim() === '') {
       return;
     }
-    await updateQuizBook(quizBook.id, { title: editedTitle, category: editedCategory });
+    // カテゴリの更新は現在サポートしていない（categoryIdが必要）
+    await updateQuizBook(quizBook.id, { title: editedTitle });
     setShowMenu(false);
   };
 
   const handleCloseMenu = () => {
     setEditedTitle(quizBook.title);
-    setEditedCategory(quizBook.category);
+    setEditedCategory(quizBook.category?.name || '');
     setShowMenu(false);
   };
 
@@ -118,29 +121,10 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, existingCategories }: QuizB
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
               <View style={styles.inputSection}>
                 <Text style={styles.inputLabel}>資格</Text>
-                <TouchableOpacity
-                  style={styles.categorySelector}
-                  onPress={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                >
+                <View style={[styles.categorySelector, { backgroundColor: theme.colors.secondary[100] }]}>
                   <Text style={styles.categorySelectorText}>{editedCategory}</Text>
-                  <ChevronDown size={20} color={theme.colors.secondary[600]} />
-                </TouchableOpacity>
-                {showCategoryDropdown && (
-                  <ScrollView style={styles.categoryDropdown} nestedScrollEnabled={true}>
-                    {existingCategories.map((cat) => (
-                      <TouchableOpacity
-                        key={cat}
-                        style={styles.categoryOption}
-                        onPress={() => {
-                          setEditedCategory(cat);
-                          setShowCategoryDropdown(false);
-                        }}
-                      >
-                        <Text style={styles.categoryOptionText}>{cat}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                )}
+                </View>
+                <Text style={styles.helpText}>※資格は変更できません</Text>
               </View>
 
               <View style={styles.inputSection}>
@@ -432,6 +416,11 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Bold',
     color: theme.colors.neutral.white,
+  },
+  helpText: {
+    fontSize: theme.typography.fontSizes.xs,
+    color: theme.colors.secondary[500],
+    marginTop: theme.spacing.xs,
   },
 });
 

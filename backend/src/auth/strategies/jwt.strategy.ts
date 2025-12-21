@@ -12,17 +12,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ignoreExpiration: false,
       secretOrKey: JWT_SECRET,
     });
-    console.log('✅ JwtStrategy initialized');
-    console.log('🔐 JWT_SECRET (strategy):', JWT_SECRET);
   }
 
   async validate(payload: any) {
-    console.log('🔍 JWT payload:', payload);
     const user = await this.usersService.findById(payload.sub);
-    console.log('👤 User found:', user ? 'Yes' : 'No');
     if (!user) {
       throw new UnauthorizedException();
     }
-    return user; // ✅ これが req.user になる
+    return user;
   }
 }

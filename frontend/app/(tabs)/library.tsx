@@ -2,8 +2,8 @@ import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { AlertCircle, Edit, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
-import React, { useCallback, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { CommonActions } from '@react-navigation/native';
 import AddItemModal from '../_compornents/AddItemModal';
@@ -15,26 +15,36 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LibraryScreen() {
   const quizBooks = useQuizBookStore(state => state.quizBooks);
+  const categories = useQuizBookStore(state => state.categories);
+  const fetchCategories = useQuizBookStore(state => state.fetchCategories);
+  const createCategory = useQuizBookStore(state => state.createCategory);
+  const updateCategory = useQuizBookStore(state => state.updateCategory);
+  const deleteCategory = useQuizBookStore(state => state.deleteCategory);
   const addQuizBook = useQuizBookStore(state => state.addQuizBook);
   const deleteQuizBook = useQuizBookStore(state => state.deleteQuizBook);
-  const updateQuizBook = useQuizBookStore(state => state.updateQuizBook);
-
+  
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [addItemModalVisible, setAddItemModalVisible] = useState(false);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [titleModalVisible, setTitleModalVisible] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
 
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editedCategoryName, setEditedCategoryName] = useState('');
-  const [targetCategory, setTargetCategory] = useState<string>('');
+  const [targetCategoryId, setTargetCategoryId] = useState<string>('');
   const [deleteCategoryDialogVisible, setDeleteCategoryDialogVisible] = useState(false);
+  const [categoryBooksCount, setCategoryBooksCount] = useState(0);
+  const [isCategoryCreating, setIsCategoryCreating] = useState(false);
 
   const navigation = useNavigation();
   const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -63,7 +73,7 @@ export default function LibraryScreen() {
       // レンダリング完了後にフェードイン開始
       const timer = setTimeout(() => {
         opacity.value = withTiming(1, { duration: 50 });
-      }, 16); // 1フレーム待つ（約16ms）
+      }, 16);
 
       return () => clearTimeout(timer);
     }, [])
@@ -74,26 +84,26 @@ export default function LibraryScreen() {
       opacity: opacity.value,
     };
   });
-  
-  const registeredCategories = useMemo(() => {
-    return [...new Set(quizBooks.map(book => book.category))];
-  }, [quizBooks]);
 
   const groupedQuizBooks = useMemo(() => {
-    const groups: { [key: string]: any[] } = {};
-    quizBooks.forEach((book) => {
-      const category = book.category || '未分類';
-      if (!groups[category]) {
-        groups[category] = [];
-      }
-      groups[category].push(book);
-    });
-    return groups;
-  }, [quizBooks]);
+    const groups: { [key: string]: { categoryId: string; books: any[] } } = {};
 
-  const existingCategories = useMemo(() => {
-    return Array.from(new Set(quizBooks.map(book => book.category).filter(Boolean)));
-  }, [quizBooks]);
+    // 全カテゴリをグループに追加（問題集がなくても表示）
+    categories.forEach(category => {
+      groups[category.name] = { categoryId: category.id, books: [] };
+    });
+
+    // 問題集をカテゴリごとにグループ化
+    quizBooks.forEach((book) => {
+      const categoryName = book.category?.name || '未分類';
+      if (!groups[categoryName]) {
+        groups[categoryName] = { categoryId: book.category?.id || '', books: [] };
+      }
+      groups[categoryName].books.push(book);
+    });
+
+    return groups;
+  }, [quizBooks, categories]);
 
   const handleAddQuiz = () => {
     setAddItemModalVisible(true);
@@ -106,7 +116,7 @@ export default function LibraryScreen() {
   };
 
   const handleAddQuizBook = () => {
-    if (existingCategories.length === 0) {
+    if (categories.length === 0) {
       setAddItemModalVisible(false);
       setIsAddingCategory(true);
       setCategoryModalVisible(true);
@@ -117,49 +127,66 @@ export default function LibraryScreen() {
     setCategoryModalVisible(true);
   };
 
-  const handleCategorySelect = async (category: string) => {
+  const handleCategorySelect = async (categoryNameOrId: string) => {
     if (isAddingCategory) {
-      const newQuizBook = {
-        id: `quiz-${Date.now()}`,
-        title: '',
-        category: category,
-        chapterCount: 0,
-        chapters: [],
-        currentRate: 0,
-        useSections: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      await addQuizBook(newQuizBook);
-      setCategoryModalVisible(false);
-      setIsAddingCategory(false);
+      // カテゴリ追加モード：カテゴリのみ作成
+      const existingCategory = categories.find(c => c.name === categoryNameOrId);
+
+      if (existingCategory) {
+        // 既存のカテゴリの場合は何もしない
+        setCategoryModalVisible(false);
+        setIsAddingCategory(false);
+        return;
+      }
+
+      // 新しいカテゴリを作成
+      try {
+        setIsCategoryCreating(true);
+        await createCategory(categoryNameOrId);
+        setCategoryModalVisible(false);
+        setIsAddingCategory(false);
+      } catch (error) {
+        console.error('Failed to create category:', error);
+      } finally {
+        setIsCategoryCreating(false);
+      }
     } else {
-      setSelectedCategory(category);
-      setCategoryModalVisible(false);
-      setTitleModalVisible(true);
+      // 問題集追加モード：カテゴリを選択してタイトル入力へ
+      const category = categories.find(c => c.name === categoryNameOrId);
+      if (category) {
+        setSelectedCategoryId(category.id);
+        setCategoryModalVisible(false);
+        setTitleModalVisible(true);
+      } else {
+        // 新しいカテゴリの場合は作成してからIDを取得
+        try {
+          setIsCategoryCreating(true);
+          const categoryId = await createCategory(categoryNameOrId);
+          setSelectedCategoryId(categoryId);
+          setCategoryModalVisible(false);
+          setTitleModalVisible(true);
+        } catch (error) {
+          console.error('Failed to create category:', error);
+        } finally {
+          setIsCategoryCreating(false);
+        }
+      }
     }
   };
 
   const handleTitleConfirm = async (title: string) => {
-    const newQuizBook = {
-      id: `quiz-${Date.now()}`,
-      title: title,
-      category: selectedCategory,
-      chapterCount: 0,
-      chapters: [],
-      currentRate: 0,
-      useSections: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    await addQuizBook(newQuizBook);
-    setTitleModalVisible(false);
-    setSelectedCategory('');
+    try {
+      await addQuizBook(title, selectedCategoryId, false);
+      setTitleModalVisible(false);
+      setSelectedCategoryId('');
+    } catch (error) {
+      console.error('Failed to confirm Title:', error);
+    }
   };
 
   const handleTitleCancel = () => {
     setTitleModalVisible(false);
-    setSelectedCategory('');
+    setSelectedCategoryId('');
   };
 
   const handleCardPress = (quizBookId: string) => {
@@ -179,43 +206,61 @@ export default function LibraryScreen() {
     }
   };
 
-  const handleCategoryMenuPress = (category: string) => {
-    setTargetCategory(category);
+  const handleCategoryMenuPress = (categoryId: string) => {
+    setTargetCategoryId(categoryId);
+    const category = categories.find(c => c.id === categoryId);
+    if (category) {
+      setEditedCategoryName(category.name);
+    }
     setShowCategoryMenu(true);
   };
 
   const handleEditCategory = () => {
     setShowCategoryMenu(false);
-    setEditedCategoryName(targetCategory);
     setShowEditModal(true);
   };
 
   const handleDeleteCategory = () => {
     setShowCategoryMenu(false);
+
+    // ✅ カテゴリに紐づく問題集の数をカウント
+    const categoryBooks = quizBooks.filter(book => book.categoryId === targetCategoryId);
+    setCategoryBooksCount(categoryBooks.length);
+
     setDeleteCategoryDialogVisible(true);
   };
 
   const confirmEditCategory = async () => {
-    if (editedCategoryName.trim() === '' || editedCategoryName === targetCategory) {
+    if (editedCategoryName.trim() === '') {
       setShowEditModal(false);
       return;
     }
 
-    const categoryBooks = quizBooks.filter(book => book.category === targetCategory);
-    for (const book of categoryBooks) {
-      await updateQuizBook(book.id, { category: editedCategoryName.trim() });
+    try {
+      await updateCategory(targetCategoryId, editedCategoryName.trim());
+      setShowEditModal(false);
+      setTargetCategoryId('');
+    } catch (error) {
+      console.error('Failed to update category:', error);
+      alert('カテゴリ名の変更に失敗しました');
     }
-    setShowEditModal(false);
-    setTargetCategory('');
   };
 
   const confirmDeleteCategory = async () => {
-    const categoryBooks = quizBooks.filter(book => book.category === targetCategory);
-    for (const book of categoryBooks) {
-      await deleteQuizBook(book.id);
+    try {
+      await deleteCategory(targetCategoryId);
+      setDeleteCategoryDialogVisible(false);
+      setTargetCategoryId('');
+      setCategoryBooksCount(0);
+    } catch (error) {
+      console.error('Failed to delete category:', error);
+      alert('カテゴリの削除に失敗しました');
     }
-    setDeleteCategoryDialogVisible(false);
-    setTargetCategory('');
+  };
+
+  // ✅ カテゴリ名取得用のヘルパー
+  const getCategoryName = (categoryId: string) => {
+    return categories.find(c => c.id === categoryId)?.name || '';
   };
 
   return (
@@ -230,45 +275,57 @@ export default function LibraryScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-        {quizBooks.length === 0 ? (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyContent}>
-              {/* @ts-ignore */}
-              <AlertCircle size={20} color={theme.colors.warning[600]} />
-              <Text style={styles.emptyText}>まだ問題集が登録されていません</Text>
-            </View>
-          </View>
-        ) : (
-          Object.entries(groupedQuizBooks).map(([category, books]) => (
-            <View key={category} style={styles.categorySection}>
-              <View style={styles.categoryHeader}>
-                <Text style={styles.categoryTitle}>{category}</Text>
-                <TouchableOpacity
-                  onPress={() => handleCategoryMenuPress(category)}
-                  activeOpacity={0.7}
-                  style={styles.categoryMenuButton}
-                >
-                  {/* @ts-ignore */}
-                  <MoreVertical size={20} color={theme.colors.secondary[600]} />
-                </TouchableOpacity>
+          {categories.length === 0 ? (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyContent}>
+                {/* @ts-ignore */}
+                <AlertCircle size={20} color={theme.colors.warning[600]} />
+                <Text style={styles.emptyText}>まだカテゴリが登録されていません</Text>
               </View>
-
-              <View style={styles.cardsGrid}>
-                {books.map((book) => (
-                  <View key={book.id} style={styles.cardWrapper}>
-                    <QuizBookCard
-                      quizBook={book}
-                      onPress={() => handleCardPress(book.id)}
-                      onDelete={() => handleDelete(book.id)}
-                      existingCategories={existingCategories}
-                    />
+            </View>
+          ) : (
+            Object.entries(groupedQuizBooks).map(([categoryName, group]) => {
+              const categoryId = group.categoryId;
+              const books = group.books;
+              return (
+                <View key={categoryName} style={styles.categorySection}>
+                  <View style={styles.categoryHeader}>
+                    <Text style={styles.categoryTitle}>{categoryName}</Text>
+                    {categoryId && (
+                      <TouchableOpacity
+                        onPress={() => handleCategoryMenuPress(categoryId)}
+                        activeOpacity={0.7}
+                        style={styles.categoryMenuButton}
+                      >
+                        {/* @ts-ignore */}
+                        <MoreVertical size={20} color={theme.colors.secondary[600]} />
+                      </TouchableOpacity>
+                    )}
                   </View>
-                ))}
-              </View>
-            </View>
-          ))
-        )}
-      </ScrollView>
+
+                  {books.length === 0 ? (
+                    <View style={styles.emptyCategory}>
+                      <Text style={styles.emptyCategoryText}>問題集がありません</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.cardsGrid}>
+                      {books.map((book) => (
+                        <View key={book.id} style={styles.cardWrapper}>
+                          <QuizBookCard
+                            quizBook={book}
+                            onPress={() => handleCardPress(book.id)}
+                            onDelete={() => handleDelete(book.id)}
+                            existingCategories={categories.map(c => c.name)}
+                          />
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })
+          )}
+        </ScrollView>
       </Animated.View>
 
       <TouchableOpacity
@@ -289,10 +346,14 @@ export default function LibraryScreen() {
 
       <CategorySelectModal
         visible={categoryModalVisible}
-        categories={existingCategories}
-        onSelect={handleCategorySelect}
+        categories={categories.map(c => c.name)}
+        onSelect={(categoryName) => {
+          handleCategorySelect(categoryName);
+        }}
         mode={isAddingCategory ? 'create' : 'select'}
-        registeredCategories={registeredCategories}
+        registeredCategories={categories.map(c => c.name)}
+        isLoading={isCategoryCreating}
+        loadingMessage="資格グループを作成中..."
         onClose={() => {
           setCategoryModalVisible(false);
           setIsAddingCategory(false);
@@ -301,7 +362,7 @@ export default function LibraryScreen() {
 
       <QuizBookTitleModal
         visible={titleModalVisible}
-        categoryName={selectedCategory}
+        categoryName={categories.find(c => c.id === selectedCategoryId)?.name || ''}
         onConfirm={handleTitleConfirm}
         onCancel={handleTitleCancel}
       />
@@ -343,40 +404,53 @@ export default function LibraryScreen() {
         animationType="fade"
         onRequestClose={() => setShowEditModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.editModalContent}>
-            <Text style={styles.editModalTitle}>資格名を編集</Text>
-            <TextInput
-              style={styles.editInput}
-              value={editedCategoryName}
-              onChangeText={setEditedCategoryName}
-              placeholder="資格名を入力"
-              placeholderTextColor={theme.colors.secondary[400]}
-            />
-            <View style={styles.editModalActions}>
-              <TouchableOpacity
-                style={[styles.editModalButton, styles.cancelButton]}
-                onPress={() => setShowEditModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>キャンセル</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.editModalButton, styles.confirmButton]}
-                onPress={confirmEditCategory}
-              >
-                <Text style={styles.confirmButtonText}>保存</Text>
-              </TouchableOpacity>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.editModalContent}>
+              <Text style={styles.editModalTitle}>資格名を編集</Text>
+              <TextInput
+                style={styles.editInput}
+                value={editedCategoryName}
+                onChangeText={setEditedCategoryName}
+                placeholder="資格名を入力"
+                placeholderTextColor={theme.colors.secondary[400]}
+              />
+              <View style={styles.editModalActions}>
+                <TouchableOpacity
+                  style={[styles.editModalButton, styles.cancelButton]}
+                  onPress={() => setShowEditModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>キャンセル</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.editModalButton, styles.confirmButton]}
+                  onPress={confirmEditCategory}
+                >
+                  <Text style={styles.confirmButtonText}>保存</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
+      {/* ✅ メッセージを動的に変更 */}
       <ConfirmDialog
         visible={deleteCategoryDialogVisible}
         title="資格グループを削除"
-        message={`「${targetCategory}」の資格グループとその中の全ての問題集を削除してもよろしいですか？この操作は取り消せません。`}
+        message={
+          categoryBooksCount === 0
+            ? `「${getCategoryName(targetCategoryId)}」の資格グループを削除してもよろしいですか？この操作は取り消せません。`
+            : `「${getCategoryName(targetCategoryId)}」の資格グループとその中の全ての問題集（${categoryBooksCount}冊）を削除してもよろしいですか？この操作は取り消せません。`
+        }
         onConfirm={confirmDeleteCategory}
-        onCancel={() => setDeleteCategoryDialogVisible(false)}
+        onCancel={() => {
+          setDeleteCategoryDialogVisible(false);
+          setCategoryBooksCount(0); // ✅ リセット
+        }}
       />
     </SafeAreaView>
   );
@@ -453,6 +527,15 @@ const styles = StyleSheet.create({
     marginLeft: theme.spacing.sm,
     fontSize: theme.typography.fontSizes.base,
     color: theme.colors.secondary[600],
+  },
+  emptyCategory: {
+    padding: theme.spacing.md,
+    alignItems: 'center',
+  },
+  emptyCategoryText: {
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.secondary[500],
+    fontStyle: 'italic',
   },
   fab: {
     position: 'absolute',

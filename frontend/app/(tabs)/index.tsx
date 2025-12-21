@@ -1,6 +1,6 @@
 import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useUserStore } from '@/stores/userStore';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { AlertCircle, BookOpen, ChevronDown, ChevronRight, ChevronUp, Edit3, Target } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -13,7 +13,6 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_WIDTH = SCREEN_WIDTH - (theme.spacing.lg * 4);
 const MAX_BAR_HEIGHT = 120;
 
-
 interface QualificationStats {
   category: string;
   totalBooks: number;
@@ -23,10 +22,16 @@ interface QualificationStats {
 }
 
 export default function DashboardScreen() {
+  // ✅ バックエンドから取得
+  const user = useUserStore(state => state.user);
+  const recentStudyRecords = useUserStore(state => state.recentStudyRecords);
+  const fetchUser = useUserStore(state => state.fetchUser);
+  const fetchRecentStudyRecords = useUserStore(state => state.fetchRecentStudyRecords);
+  const updateUserGoal = useUserStore(state => state.updateUserGoal);
+  
   const quizBooks = useQuizBookStore(state => state.quizBooks);
-  const getRecentStudyItems = useQuizBookStore(state => state.getRecentStudyItems);
-  const recentStudies = getRecentStudyItems();
-  const [goal, setGoal] = useState('');
+  const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
+  
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [tempGoal, setTempGoal] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
@@ -34,10 +39,15 @@ export default function DashboardScreen() {
   const navigation = useNavigation();
   const opacity = useSharedValue(0);
 
+  // ✅ 画面フォーカス時にデータを取得
   useFocusEffect(
     useCallback(() => {
-      // 初期状態は透明
       opacity.value = 0;
+
+      // データ取得
+      fetchUser();
+      fetchRecentStudyRecords();
+      fetchQuizBooks();
 
       // スタディスタックの履歴をリセット
       const rootState = navigation.getState();
@@ -58,13 +68,12 @@ export default function DashboardScreen() {
         }
       }
 
-      // レンダリング完了後にフェードイン開始
       const timer = setTimeout(() => {
         opacity.value = withTiming(1, { duration: 50 });
-      }, 16); // 1フレーム待つ（約16ms）
+      }, 16);
 
       return () => clearTimeout(timer);
-    }, [])
+    }, [fetchUser, fetchRecentStudyRecords, fetchQuizBooks])
   );
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -73,46 +82,26 @@ export default function DashboardScreen() {
     };
   });
 
-
-  useEffect(() => {
-    loadGoal();
-  }, []);
-
-  const loadGoal = async () => {
-    try {
-      const savedGoal = await AsyncStorage.getItem('userGoal');
-      if (savedGoal) {
-        setGoal(savedGoal);
-      }
-    } catch (error) {
-      console.error('Failed to load goal:', error);
-    }
-  };
-
-  const saveGoal = async (newGoal: string) => {
-    try {
-      await AsyncStorage.setItem('userGoal', newGoal);
-      setGoal(newGoal);
-    } catch (error) {
-      console.error('Failed to save goal:', error);
-    }
-  };
-
   const handleEditGoal = () => {
-    setTempGoal(goal);
+    setTempGoal(user?.goal || '');
     setIsEditingGoal(true);
   };
 
-  const handleSaveGoal = () => {
-    saveGoal(tempGoal);
-    setIsEditingGoal(false);
+  const handleSaveGoal = async () => {
+    try {
+      await updateUserGoal(tempGoal);
+      setIsEditingGoal(false);
+    } catch (error) {
+      console.error('Failed to save goal:', error);
+      alert('目標の保存に失敗しました');
+    }
   };
 
   const qualificationStats = useMemo(() => {
     const statsMap: { [key: string]: QualificationStats } = {};
 
     quizBooks.forEach(book => {
-      const category = book.category || '未分類';
+      const category = book.category?.name || '未分類';
       if (!statsMap[category]) {
         statsMap[category] = {
           category,
@@ -139,10 +128,8 @@ export default function DashboardScreen() {
     return Object.values(statsMap).sort((a, b) => b.avgCorrectRate - a.avgCorrectRate);
   }, [quizBooks]);
 
-  // ✅ qualificationStats が変わった時に自動で開く
   useEffect(() => {
     if (qualificationStats.length === 1) {
-      // 資格が1つしかない場合は自動で開く
       setExpandedCategories(new Set([qualificationStats[0].category]));
     }
   }, [qualificationStats]);
@@ -154,18 +141,16 @@ export default function DashboardScreen() {
     });
   };
 
-  const handleRecentStudyPress = (item: RecentStudyItem) => {
-    if (item.type === 'section') {
-      // 節がある場合 → 問題リストへ
-      router.push(`/study/question/${item.sectionId}` as any);
+  // ✅ バックエンドから取得したデータを使用
+  const handleRecentStudyPress = (record: any) => {
+    if (record.sectionId) {
+      router.push(`/study/question/${record.sectionId}` as any);
     } else {
-      // 節がない場合 → 問題リストへ
-      router.push(`/study/question/${item.chapterId}` as any);
+      router.push(`/study/question/${record.chapterId}` as any);
     }
   };
 
   const toggleCategoryExpanded = (category: string) => {
-    // ✅ 資格が2つ以上の場合のみトグル可能
     if (qualificationStats.length > 1) {
       setExpandedCategories(prev => {
         const newSet = new Set(prev);
@@ -235,132 +220,138 @@ export default function DashboardScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-        <TouchableOpacity
-          style={styles.goalCard}
-          onPress={handleEditGoal}
-          activeOpacity={0.7}
-        >
-          <View style={styles.goalHeader}>
-            <View style={styles.goalTitleContainer}>
-              <Target size={20} color={theme.colors.neutral.white} />
-              <Text style={styles.goalTitle}>目標</Text>
+          <TouchableOpacity
+            style={styles.goalCard}
+            onPress={handleEditGoal}
+            activeOpacity={0.7}
+          >
+            <View style={styles.goalHeader}>
+              <View style={styles.goalTitleContainer}>
+                {/* @ts-ignore */}
+                <Target size={20} color={theme.colors.neutral.white} />
+                <Text style={styles.goalTitle}>目標</Text>
+              </View>
+              {/* @ts-ignore */}
+              <Edit3 size={20} color={theme.colors.secondary[100]} />
             </View>
-            <Edit3 size={20} color={theme.colors.secondary[100]} />
-          </View>
-          <Text style={styles.goalText}>
-            {goal || '目標を設定してください'}
-          </Text>
-        </TouchableOpacity>
-
-        {recentStudies.length > 0 && (
-          <View style={styles.recentStudySection}>
-            <Text style={styles.sectionTitle}>最近の学習</Text>
-            <View style={styles.recentCardsVertical}>
-              {recentStudies.map((item, index) => (
-                <TouchableOpacity
-                  key={`${item.chapterId}-${item.sectionId || 'chapter'}-${index}`}
-                  style={styles.recentCardVertical}
-                  onPress={() => handleRecentStudyPress(item)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.recentCardTop}>
-                    <Text style={styles.recentCardPath} numberOfLines={1}>
-                      {item.bookTitle} 第{item.chapterNumber}章
-                      {item.sectionTitle && ` ${item.sectionNumber}節`}
-                    </Text>
-                    <Text style={styles.recentCardQuestion}>
-                      問題{item.lastQuestionNumber} {item.lastResult}
-                    </Text>
-
-                  </View>
-
-
-                  <View style={styles.recentCardBottom}>
-                    <Text style={styles.recentCardDate}>
-                      {new Date(item.lastAnsweredAt).toLocaleDateString('ja-JP', {
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </Text>
-                    <Text style={styles.recentCardCategory}>{item.category}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {qualificationStats.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.sectionTitle}>学習の分析</Text>
-            <AlertCircle size={64} color={theme.colors.primary[300]} />
-            <Text style={styles.emptyTitle}>まだ資格が登録されていません</Text>
-            <Text style={styles.emptyDescription}>
-              ライブラリから資格と問題集を追加して{'\n'}学習を始めましょう
+            <Text style={styles.goalText}>
+              {user?.goal || '目標を設定してください'}
             </Text>
-            <TouchableOpacity
-              style={styles.emptyButton}
-              onPress={handleNavigateToLibrary}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.emptyButtonText}>ライブラリへ移動</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.qualificationList}>
-            <Text style={styles.sectionTitle}>学習の分析</Text>
-            {qualificationStats.map((qual) => {
-              // ✅ 資格が1つの場合は常に展開、2つ以上の場合はトグル状態を見る
-              const isExpanded = qualificationStats.length === 1 || expandedCategories.has(qual.category);
+          </TouchableOpacity>
 
-              return (
-                <View key={qual.category} style={styles.qualificationCard}>
+          {/* ✅ バックエンドから取得したデータを表示 */}
+          {recentStudyRecords.length > 0 && (
+            <View style={styles.recentStudySection}>
+              <Text style={styles.sectionTitle}>最近の学習</Text>
+              <View style={styles.recentCardsVertical}>
+                {recentStudyRecords.map((record) => (
                   <TouchableOpacity
-                    style={styles.cardHeader}
-                    onPress={() => toggleCategoryExpanded(qual.category)}
+                    key={record.id}
+                    style={styles.recentCardVertical}
+                    onPress={() => handleRecentStudyPress(record)}
                     activeOpacity={0.7}
                   >
-                    <View style={styles.cardTitleContainer}>
-                      <Text style={styles.cardTitle}>{qual.category}</Text>
-                      <View style={styles.bookCountBadge}>
-                        <BookOpen size={14} color={theme.colors.primary[700]} />
-                        <Text style={styles.bookCountText}>{qual.totalBooks}</Text>
-                      </View>
+                    <View style={styles.recentCardTop}>
+                      <Text style={styles.recentCardPath} numberOfLines={1}>
+                        {record.quizBook.title} 問題{record.questionNumber}
+                      </Text>
+                      <Text style={styles.recentCardQuestion}>
+                        {record.result}
+                      </Text>
                     </View>
-                    {/* ✅ 資格が2つ以上の場合のみシェブロンアイコン表示 */}
-                    {qualificationStats.length > 1 && (
-                      isExpanded ? (
-                        <ChevronUp size={24} color={theme.colors.secondary[600]} />
-                      ) : (
-                        <ChevronDown size={24} color={theme.colors.secondary[600]} />
-                      )
-                    )}
+
+                    <View style={styles.recentCardBottom}>
+                      <Text style={styles.recentCardDate}>
+                        {new Date(record.answeredAt).toLocaleDateString('ja-JP', {
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </Text>
+                      <Text style={styles.recentCardCategory}>
+                        {record.quizBook.category.name}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
 
-                  {isExpanded && (
-                    <View style={styles.cardBody}>
-                      {renderBarChart(qual.books)}
+          {/* ... 残りのコードは同じ */}
+          {qualificationStats.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.sectionTitle}>学習の分析</Text>
+              {/* @ts-ignore */}
+              <AlertCircle size={64} color={theme.colors.primary[300]} />
+              <Text style={styles.emptyTitle}>まだ資格が登録されていません</Text>
+              <Text style={styles.emptyDescription}>
+                ライブラリから資格と問題集を追加して{'\n'}学習を始めましょう
+              </Text>
+              <TouchableOpacity
+                style={styles.emptyButton}
+                onPress={handleNavigateToLibrary}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.emptyButtonText}>ライブラリへ移動</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.qualificationList}>
+              <Text style={styles.sectionTitle}>学習の分析</Text>
+              {qualificationStats.map((qual) => {
+                const isExpanded = qualificationStats.length === 1 || expandedCategories.has(qual.category);
 
-                      <View style={styles.buttonRow}>
-                        <TouchableOpacity
-                          style={styles.actionButton}
-                          onPress={() => handleQualificationPress(qual.category)}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.actionButtonText}>正答率遷移を確認</Text>
-                          <ChevronRight size={16} color={theme.colors.neutral.white} />
-                        </TouchableOpacity>
+                return (
+                  <View key={qual.category} style={styles.qualificationCard}>
+                    <TouchableOpacity
+                      style={styles.cardHeader}
+                      onPress={() => toggleCategoryExpanded(qual.category)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.cardTitleContainer}>
+                        <Text style={styles.cardTitle}>{qual.category}</Text>
+                        <View style={styles.bookCountBadge}>
+                          {/* @ts-ignore */}
+                          <BookOpen size={14} color={theme.colors.primary[700]} />
+                          <Text style={styles.bookCountText}>{qual.totalBooks}</Text>
+                        </View>
                       </View>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        )}
-      </ScrollView>
+                      {qualificationStats.length > 1 && (
+                        isExpanded ? (
+                          /* @ts-ignore */
+                          <ChevronUp size={24} color={theme.colors.secondary[600]} />
+                        ) : (
+                          /* @ts-ignore */
+                          <ChevronDown size={24} color={theme.colors.secondary[600]} />
+                        )
+                      )}
+                    </TouchableOpacity>
+
+                    {isExpanded && (
+                      <View style={styles.cardBody}>
+                        {renderBarChart(qual.books)}
+
+                        <View style={styles.buttonRow}>
+                          <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => handleQualificationPress(qual.category)}
+                            activeOpacity={0.7}
+                          >
+                            <Text style={styles.actionButtonText}>正答率遷移を確認</Text>
+                            {/* @ts-ignore */}
+                            <ChevronRight size={16} color={theme.colors.neutral.white} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </ScrollView>
       </Animated.View>
 
       <Modal
@@ -372,6 +363,7 @@ export default function DashboardScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
+              {/* @ts-ignore */}
               <Target size={24} color={theme.colors.primary[600]} />
               <Text style={styles.modalTitle}>目標を設定</Text>
             </View>
@@ -407,7 +399,6 @@ export default function DashboardScreen() {
     </SafeAreaView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {

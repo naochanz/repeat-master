@@ -32,11 +32,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const response = await authApi.login(email, password);
       const { access_token, user } = response.data;
-
+  
       // トークンを保存
       await AsyncStorage.setItem('token', access_token);
       setAuthToken(access_token);
-
+  
       set({
         user,
         token: access_token,

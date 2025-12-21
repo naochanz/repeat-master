@@ -13,6 +13,7 @@ import {
   View,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 
 interface CategorySelectModalProps {
@@ -20,6 +21,8 @@ interface CategorySelectModalProps {
   categories: string[];
   mode: 'select' | 'create';
   registeredCategories?: string[];
+  isLoading?: boolean;
+  loadingMessage?: string;
   onSelect: (category: string) => void;
   onClose: () => void;
 }
@@ -29,6 +32,8 @@ const CategorySelectModal = ({
   categories,
   mode,
   registeredCategories = [],
+  isLoading = false,
+  loadingMessage = '処理中...',
   onSelect,
   onClose,
 }: CategorySelectModalProps) => {
@@ -87,7 +92,8 @@ const CategorySelectModal = ({
                       onChangeText={setNewCategory}
                       placeholder="新しい資格名を入力"
                       placeholderTextColor={theme.colors.secondary[400]}
-                      onSubmitEditing={handleAddNewCategory}
+                      returnKeyType="default"
+                      blurOnSubmit={true}
                       autoFocus
                     />
                     <View style={styles.newCategoryActions}>
@@ -109,7 +115,7 @@ const CategorySelectModal = ({
               ) : (
                 <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
                   {/* ✅ mode='select' の時は全ての資格を表示（登録済みも含む） */}
-                  {categories.map((category) => (
+                  {!isAddingNew && categories.map((category) => (
                     <TouchableOpacity
                       key={category}
                       style={styles.categoryItem}
@@ -128,7 +134,8 @@ const CategorySelectModal = ({
                         onChangeText={setNewCategory}
                         placeholder="新しい資格名を入力"
                         placeholderTextColor={theme.colors.secondary[400]}
-                        onSubmitEditing={handleAddNewCategory}
+                        returnKeyType="default"
+                        blurOnSubmit={true}
                         autoFocus
                       />
                       <View style={styles.newCategoryActions}>
@@ -150,17 +157,29 @@ const CategorySelectModal = ({
                       </View>
                     </View>
                   ) : (
-                    <TouchableOpacity
-                      onPress={() => setIsAddingNew(true)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.addNewCategoryLink}>+ 新しい資格を追加</Text>
-                    </TouchableOpacity>
+                    <>
+                      <TouchableOpacity
+                        onPress={() => setIsAddingNew(true)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.addNewCategoryLink}>+ 新しい資格を追加</Text>
+                      </TouchableOpacity>
+                    </>
                   )}
                 </ScrollView>
               )}
             </Pressable>
           </Pressable>
+
+          {/* ローディングオーバーレイ */}
+          {isLoading && (
+            <View style={styles.loadingOverlay}>
+              <View style={styles.loadingContent}>
+                <ActivityIndicator size="large" color={theme.colors.primary[600]} />
+                <Text style={styles.loadingText}>{loadingMessage}</Text>
+              </View>
+            </View>
+          )}
         </SafeAreaView>
       </KeyboardAvoidingView>
     </Modal>
@@ -269,6 +288,29 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
     textAlign: 'center',
     paddingVertical: theme.spacing.md,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContent: {
+    backgroundColor: theme.colors.neutral.white,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    ...theme.shadows.lg,
+  },
+  loadingText: {
+    fontSize: theme.typography.fontSizes.base,
+    fontFamily: 'ZenKaku-Medium',
+    color: theme.colors.secondary[700],
   },
 });
 

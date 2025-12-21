@@ -8,21 +8,17 @@ import { AlertCircle, MoreVertical, Plus, ArrowLeft } from 'lucide-react-native'
 import React, { useCallback, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from 'expo-router';
 
 
 
 const StudyHome = () => {
-    const navigation = useNavigation();
     const { id } = useLocalSearchParams();
-    console.log('Can go back:', navigation.canGoBack());
 
-    // ✅ 修正: quizBooks を直接購読
     const quizBooks = useQuizBookStore(state => state.quizBooks);
     const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
-    const addChapterToQuizBook = useQuizBookStore(state => state.addChapterToQuizBook);
-    const deleteChapterFromQuizBook = useQuizBookStore(state => state.deleteChapterFromQuizBook);
-    const updateChapterInQuizBook = useQuizBookStore(state => state.updateChapterInQuizBook);
+    const addChapterToQuizBook = useQuizBookStore(state => state.addChapter);
+    const deleteChapterFromQuizBook = useQuizBookStore(state => state.deleteChapter);
+    const updateChapterInQuizBook = useQuizBookStore(state => state.updateChapter);
     const updateQuizBook = useQuizBookStore(state => state.updateQuizBook);
 
     const [showAddModal, setShowAddModal] = useState(false);
@@ -82,7 +78,12 @@ const StudyHome = () => {
     };
 
     const handleAddChapter = async () => {
-        await addChapterToQuizBook(quizBook.id, newChapterTitle);
+        const nextChapterNumber = quizBook.chapters.length + 1;
+        await addChapterToQuizBook(
+            quizBook.id,
+            nextChapterNumber,
+            newChapterTitle.trim() || undefined
+        );
         setNewChapterTitle('');
         setShowAddModal(false);
     };

@@ -9,6 +9,7 @@ import { CreateSectionDto } from './dto/create-section.dto';
 import { UpdateSectionDto } from './dto/update-section.dto';
 import { CreateAnswerDto } from './dto/create-answer.dto';
 import { UpdateAnswerDto } from './dto/update-answer.dto';
+import { QuizBookAnalyticsDto } from './dto/quiz-book-analytics';
 
 @Controller('quiz-books')
 @UseGuards(JwtAuthGuard) // ✅ 認証が必要
@@ -52,11 +53,10 @@ export class QuizBooksController {
     @Body() createChapterDto: CreateChapterDto,
     @Request() req,
   ) {
-    console.log('🎯 Controller - req.user:', req.user); // ✅ デバッグログ追加
     return this.quizBooksService.createChapter(quizBookId, createChapterDto, req.user.id);
   }
 
-  @Patch(':quizBookId/chpaters/:chapterId')
+  @Patch(':quizBookId/chapters/:chapterId')
   updateChapter(
     @Param('quizBookId') quizBookId: string,
     @Param('chapterId') chapterId: string,
@@ -135,5 +135,13 @@ export class QuizBooksController {
     @Request() req,
   ) {
     return this.quizBooksService.removeAnswer(quizBookId, answerId, req.user.id);
+  }
+
+  @Get(':id/analytics')
+  async getAnalitics(
+    @Param('id') id: string,
+    @Request() req,
+  ): Promise<QuizBookAnalyticsDto> {
+    return this.quizBooksService.getAnalytics(id, req.user.id);
   }
 }
