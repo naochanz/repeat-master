@@ -14,9 +14,9 @@ const SectionList = () => {
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
   const updateQuizBook = useQuizBookStore(state => state.updateQuizBook);
-  const addSectionToChapter = useQuizBookStore(state => state.addSectionToChapter);
-  const deleteSectionFromChapter = useQuizBookStore(state => state.deleteSectionFromChapter);
-  const updateSectionInChapter = useQuizBookStore(state => state.updateSectionInChapter);
+  const addSectionToChapter = useQuizBookStore(state => state.addSection);
+  const deleteSectionFromChapter = useQuizBookStore(state => state.deleteSection);
+  const updateSectionInChapter = useQuizBookStore(state => state.updateSection);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [newSectionTitle, setNewSectionTitle] = useState('');
@@ -78,7 +78,16 @@ const SectionList = () => {
   };
 
   const handleAddSection = async () => {
-    await addSectionToChapter(book.id, chapter.id, newSectionTitle.trim());
+    const nextSectionNumber = sections.length + 1;
+
+    await addSectionToChapter(
+      book.id,
+      chapter.id,
+      nextSectionNumber,
+      newSectionTitle.trim() || undefined,
+      undefined
+    );
+
     setNewSectionTitle('');
     setShowAddModal(false);
   };
@@ -125,7 +134,9 @@ const SectionList = () => {
                   </Text>
 
                   <Text style={{ fontSize: 14, textAlign: 'center' }}>
-                    {`第${chapter.chapterNumber}章 ${chapter.title}`}
+                    {chapter.title?.trim()
+                      ? `第${chapter.chapterNumber}章 ${chapter.title}`
+                      : `第${chapter.chapterNumber}章`}
                   </Text>
                 </View>
               ),
