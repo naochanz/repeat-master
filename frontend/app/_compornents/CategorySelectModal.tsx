@@ -115,7 +115,7 @@ const CategorySelectModal = ({
               ) : (
                 <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
                   {/* ✅ mode='select' の時は全ての資格を表示（登録済みも含む） */}
-                  {categories.map((category) => (
+                  {!isAddingNew && categories.map((category) => (
                     <TouchableOpacity
                       key={category}
                       style={styles.categoryItem}
@@ -157,12 +157,14 @@ const CategorySelectModal = ({
                       </View>
                     </View>
                   ) : (
-                    <TouchableOpacity
-                      onPress={() => setIsAddingNew(true)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.addNewCategoryLink}>+ 新しい資格を追加</Text>
-                    </TouchableOpacity>
+                    <>
+                      <TouchableOpacity
+                        onPress={() => setIsAddingNew(true)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.addNewCategoryLink}>+ 新しい資格を追加</Text>
+                      </TouchableOpacity>
+                    </>
                   )}
                 </ScrollView>
               )}
