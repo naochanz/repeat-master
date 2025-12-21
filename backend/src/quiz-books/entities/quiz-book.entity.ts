@@ -26,7 +26,7 @@ export class QuizBook {
   @Column({ default: false })
   useSections: boolean;
 
-  @Column({ default: 1 })
+  @Column({ default: 0 })
   currentRound: number;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
