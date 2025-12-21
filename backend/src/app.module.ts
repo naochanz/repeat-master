@@ -13,6 +13,8 @@ import { Section } from './quiz-books/entities/section.entity';
 import { QuestionAnswer } from './quiz-books/entities/question-answer.entity';
 import { CategoriesModule } from './categories/categories.module';
 import { Category } from './categories/entities/category.entity';
+import { StudyRecordsModule } from './study-records/study-records.module'; 
+import { StudyRecord } from './study-records/entities/study-record.entity';
 
 @Module({
   imports: [
@@ -26,11 +28,12 @@ import { Category } from './categories/entities/category.entity';
       username: process.env.DATABASE_USER || 'postgres',
       password: process.env.DATABASE_PASSWORD || 'password',
       database: process.env.DATABASE_NAME || 'repeat_master',
-      entities: [User, Category, QuizBook, Chapter, Section, QuestionAnswer],
+      entities: [User, Category, QuizBook, Chapter, Section, QuestionAnswer, StudyRecord],
       synchronize: true, // 本番環境ではfalseに
     }),
     AuthModule,
     UsersModule,
+    StudyRecordsModule,
     QuizBooksModule,
     CategoriesModule,
   ],

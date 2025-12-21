@@ -7,11 +7,13 @@ import { QuizBook } from './entities/quiz-book.entity';
 import { Chapter } from './entities/chapter.entity';
 import { Section } from './entities/section.entity';
 import { QuestionAnswer } from './entities/question-answer.entity';
+import { StudyRecordsModule } from 'src/study-records/study-records.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([QuizBook, Chapter, Section, QuestionAnswer]),
     AuthModule,
+    StudyRecordsModule,
   ],
   controllers: [QuizBooksController],
   providers: [QuizBooksService],

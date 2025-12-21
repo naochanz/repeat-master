@@ -14,6 +14,7 @@ import { UpdateChapterDto } from './dto/update-chapter.dto';
 import { UpdateSectionDto } from './dto/update-section.dto';
 import { UpdateAnswerDto } from './dto/update-answer.dto';
 import { SectionStatsDto, ChapterStatsDto, QuizBookAnalyticsDto, RoundStatsDto } from './dto/quiz-book-analytics';
+import { StudyRecordsService } from 'src/study-records/study-records.service';
 
 @Injectable()
 export class QuizBooksService {
@@ -26,30 +27,31 @@ export class QuizBooksService {
         private sectionRepository: Repository<Section>,
         @InjectRepository(QuestionAnswer)
         private questionAnswerRepository: Repository<QuestionAnswer>,
+        private studyRecordsService: StudyRecordsService,
     ) { }
 
-// 全問題集を取得（ユーザーIDでフィルタ）
-async findAll(userId: string): Promise<QuizBook[]> {
-    return this.quizBookRepository.find({
-        where: { userId },
-        relations: [
-            'category',  // ✅ 追加
-            'chapters', 
-            'chapters.sections', 
-            'chapters.questionAnswers', 
-            'chapters.sections.questionAnswers'
-        ],
-        order: {
-            createdAt: 'DESC',
-            chapters: {
-                chapterNumber: 'ASC',
-                sections: {
-                    sectionNumber: 'ASC',
+    // 全問題集を取得（ユーザーIDでフィルタ）
+    async findAll(userId: string): Promise<QuizBook[]> {
+        return this.quizBookRepository.find({
+            where: { userId },
+            relations: [
+                'category',  // ✅ 追加
+                'chapters',
+                'chapters.sections',
+                'chapters.questionAnswers',
+                'chapters.sections.questionAnswers'
+            ],
+            order: {
+                createdAt: 'DESC',
+                chapters: {
+                    chapterNumber: 'ASC',
+                    sections: {
+                        sectionNumber: 'ASC',
+                    },
                 },
             },
-        },
-    });
-}
+        });
+    }
 
     //問題集を一件取得
     async findOne(id: string, userId: string): Promise<QuizBook> {
@@ -213,7 +215,21 @@ async findAll(userId: string): Promise<QuizBook[]> {
             };
 
             existingAnswer.attempts.push(newAttempt);
-            return this.questionAnswerRepository.save(existingAnswer);
+            const savedAnswer = await this.questionAnswerRepository.save(existingAnswer);
+
+            if (createAnswerDto.chapterId) {
+                await this.studyRecordsService.addStudyRecord(
+                    userId,
+                    quizBookId,
+                    createAnswerDto.chapterId,  // ✅ ここで string であることが保証される
+                    createAnswerDto.questionNumber,
+                    createAnswerDto.result,
+                    newAttempt.round,
+                    createAnswerDto.sectionId,
+                );
+            }
+
+            return savedAnswer;
         } else {
             // 新規作成
             const answer = this.questionAnswerRepository.create({
@@ -228,7 +244,22 @@ async findAll(userId: string): Promise<QuizBook[]> {
                 }],
             });
 
-            return this.questionAnswerRepository.save(answer);
+            const savedAnswer = await this.questionAnswerRepository.save(answer);
+
+            // ✅ StudyRecord を追加
+            if (createAnswerDto.chapterId) {
+                await this.studyRecordsService.addStudyRecord(
+                    userId,
+                    quizBookId,
+                    createAnswerDto.chapterId,
+                    createAnswerDto.questionNumber,
+                    createAnswerDto.result,
+                    1,
+                    createAnswerDto.sectionId,
+                );
+            }
+
+            return savedAnswer;
         }
     }
     // メモを更新
@@ -386,9 +417,9 @@ async findAll(userId: string): Promise<QuizBook[]> {
                         a => a.round === round && a.resultConfirmFlg,
                     );
 
-                    if(roundAttempt){
+                    if (roundAttempt) {
                         totalQuestions++;
-                        if(roundAttempt.result === '○'){
+                        if (roundAttempt.result === '○') {
                             correctAnswers++;
                         }
                     }
@@ -410,7 +441,7 @@ async findAll(userId: string): Promise<QuizBook[]> {
         });
 
         return stats.sort((a, b) => {
-            if (a.round !== b.round) return a.round -b.round;
+            if (a.round !== b.round) return a.round - b.round;
             return a.chapterNumber - b.chapterNumber;
         });
     }

@@ -61,7 +61,7 @@ export const chapterApi = {
 export const sectionApi = {
   create: (quizBookId: string, chapterId: string, sectionNumber: number, title?: string, questionCount?: number) =>
     api.post(`/quiz-books/${quizBookId}/chapters/${chapterId}/sections`, { sectionNumber, title, questionCount }),
-  update: (quizBookId: string, chapterId: string, sectionId: string, data: any) => 
+  update: (quizBookId: string, chapterId: string, sectionId: string, data: any) =>
     api.patch(`/quiz-books/${quizBookId}/chapters/${chapterId}/sections/${sectionId}`, data),
   delete: (quizBookId: string, chapterId: string, sectionId: string) =>
     api.delete(`/quiz-books/${quizBookId}/chapters/${chapterId}/sections/${sectionId}`),
@@ -76,3 +76,13 @@ export const answerApi = {
   delete: (quizBookId: string, answerId: string) =>
     api.delete(`/quiz-books/${quizBookId}/answers/${answerId}`),
 };
+
+
+export const userApi = {
+  getMe: () => api.get('/users/me'),
+  updateGoal: (goal: string) => api.patch('/users/goal', { goal }),
+};
+
+export const studyRecordApi = {
+  getRecent: () => api.get('/study-records/recent'),
+}
