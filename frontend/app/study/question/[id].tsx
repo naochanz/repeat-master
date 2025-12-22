@@ -5,7 +5,7 @@ import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AnswerFAB from '@/src/components/study/question/AnswerFAB';
 import QuestionCard from '@/src/components/study/question/QuestionCard';
 import MemoModal from '@/src/components/study/question/MemoModal';
@@ -34,6 +34,8 @@ const QuestionList = () => {
   const [activeFabQuestion, setActiveFabQuestion] = useState<number | null>(null);
   const [addMultipleModalVisible, setAddMultipleModalVisible] = useState(false);
   const [selectedCount, setSelectedCount] = useState(5);
+  const [isLoadingAnswer, setIsLoadingAnswer] = useState(false);
+  const [isAddingQuestions, setIsAddingQuestions] = useState(false);
 
   // FABの状態を保持（モード切り替え時に復元するため）
   const savedFabQuestion = useRef<number | null>(null);
@@ -187,8 +189,13 @@ const QuestionList = () => {
   }
 
   const handleAnswerFromFab = async (questionNumber: number, answer: '○' | '×') => {
-    await saveAnswer(bookId, questionNumber, answer, chapterId, sectionId || undefined);
-    setActiveFabQuestion(null);
+    setIsLoadingAnswer(true);
+    try {
+      await saveAnswer(bookId, questionNumber, answer, chapterId, sectionId || undefined);
+      setActiveFabQuestion(null);
+    } finally {
+      setIsLoadingAnswer(false);
+    }
   };
 
 
@@ -197,10 +204,15 @@ const QuestionList = () => {
   };
 
   const handleAddMultipleQuestions = async () => {
-    for (let i = 0; i < selectedCount; i++) {
-      await addQuestionToTarget(chapterId, sectionId);
-    }
     setAddMultipleModalVisible(false);
+    setIsAddingQuestions(true);
+    try {
+      for (let i = 0; i < selectedCount; i++) {
+        await addQuestionToTarget(chapterId, sectionId);
+      }
+    } finally {
+      setIsAddingQuestions(false);
+    }
   };
 
   const handleDeleteQuestion = (questionNumber: number) => {
@@ -522,7 +534,18 @@ const QuestionList = () => {
           <AnswerFAB
             questionNumber={activeFabQuestion}
             onAnswer={handleAnswerFromFab}
+            isLoading={isLoadingAnswer}
           />
+        )}
+
+        {/* 問題追加中のローディングオーバーレイ */}
+        {isAddingQuestions && (
+          <View style={styles.loadingOverlay}>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary[600]} />
+              <Text style={styles.loadingText}>問題を追加中...</Text>
+            </View>
+          </View>
         )}
 
         <CustomTabBar />
@@ -817,6 +840,27 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.base,
     fontWeight: theme.typography.fontWeights.semibold as any,
     color: theme.colors.neutral.white,
+    fontFamily: 'ZenKaku-Medium',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingContainer: {
+    backgroundColor: theme.colors.neutral.white,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    ...theme.shadows.lg,
+  },
+  loadingText: {
+    fontSize: theme.typography.fontSizes.base,
+    fontWeight: theme.typography.fontWeights.semibold as any,
+    color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Medium',
   },
 });
