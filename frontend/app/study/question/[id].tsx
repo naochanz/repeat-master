@@ -719,7 +719,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.error[600],
   },
   deleteOptionText: {
-    fontSize: theme.typography.fontSizes.base,
+    fontSize: theme.typography.fontSizes.sm,
     fontWeight: theme.typography.fontWeights.semibold as any,
     color: theme.colors.primary[600],
     fontFamily: 'ZenKaku-Medium',
