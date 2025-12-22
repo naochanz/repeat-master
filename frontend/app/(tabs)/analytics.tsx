@@ -18,8 +18,9 @@ import { List, TrendingDown, X } from 'lucide-react-native';
 import { quizBookApi } from '@/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const HORIZONTAL_PADDING = 20;
-const CARD_WIDTH = SCREEN_WIDTH - (HORIZONTAL_PADDING * 2);
+const CARD_MARGIN = 20;
+const CARD_WIDTH = SCREEN_WIDTH - (CARD_MARGIN * 2);
+const SNAP_INTERVAL = CARD_WIDTH + (CARD_MARGIN * 2);
 
 interface RoundStats {
   round: number;
@@ -95,12 +96,12 @@ export default function AnalyticsScreen() {
 
   const handleScroll = (categoryId: string, event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / CARD_WIDTH);
+    const index = Math.round(offsetX / SNAP_INTERVAL);
     setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
   };
 
   const scrollToIndex = (categoryId: string, index: number) => {
-    scrollRefs.current[categoryId]?.scrollTo({ x: index * CARD_WIDTH, animated: true });
+    scrollRefs.current[categoryId]?.scrollTo({ x: index * SNAP_INTERVAL, animated: true });
     setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
   };
 
@@ -208,9 +209,8 @@ export default function AnalyticsScreen() {
                   showsHorizontalScrollIndicator={false}
                   onScroll={(e) => handleScroll(categoryId, e)}
                   scrollEventThrottle={16}
-                  snapToInterval={CARD_WIDTH}
+                  snapToInterval={SNAP_INTERVAL}
                   decelerationRate="fast"
-                  contentContainerStyle={{ paddingHorizontal: HORIZONTAL_PADDING }}
                 >
                   {group.books.map((book) => (
                     <View key={book.id} style={styles.card}>
@@ -340,6 +340,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
+    marginHorizontal: CARD_MARGIN,
     backgroundColor: theme.colors.neutral.white,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
