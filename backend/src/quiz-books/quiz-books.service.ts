@@ -277,7 +277,7 @@ export class QuizBooksService {
         Object.assign(answer, updateAnswerDto);
         return this.questionAnswerRepository.save(answer);
     }
-    // 回答を削除
+    // 回答を削除（すべてのattempts）
     async removeAnswer(quizBookId: string, answerId: string, userId: string): Promise<void> {
         await this.findOne(quizBookId, userId); // 権限チェック
 
@@ -290,6 +290,33 @@ export class QuizBooksService {
         }
 
         await this.questionAnswerRepository.remove(answer);
+    }
+
+    // 最新のattemptのみ削除
+    async removeLatestAttempt(quizBookId: string, answerId: string, userId: string): Promise<void> {
+        await this.findOne(quizBookId, userId); // 権限チェック
+
+        const answer = await this.questionAnswerRepository.findOne({
+            where: { id: answerId },
+        });
+
+        if (!answer) {
+            throw new NotFoundException('Answer not found');
+        }
+
+        if (!answer.attempts || answer.attempts.length === 0) {
+            throw new NotFoundException('No attempts found');
+        }
+
+        // attemptsから最後の要素を削除
+        answer.attempts = answer.attempts.slice(0, -1);
+
+        // attemptsが空になった場合は、QuestionAnswer自体を削除
+        if (answer.attempts.length === 0) {
+            await this.questionAnswerRepository.remove(answer);
+        } else {
+            await this.questionAnswerRepository.save(answer);
+        }
     }
 
     async getAnalytics(quizBookId: string, userId: string): Promise<QuizBookAnalyticsDto> {

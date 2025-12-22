@@ -156,7 +156,7 @@ export default function AnalyticsScreen() {
         height={220}
         chartConfig={{
           backgroundColor: theme.colors.neutral.white,
-          backgroundGradientFrom: theme.colors.primary[50],
+          backgroundGradientFrom: theme.colors.neutral.white,
           backgroundGradientTo: theme.colors.neutral.white,
           decimalPlaces: 0,
           color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,

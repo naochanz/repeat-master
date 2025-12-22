@@ -20,6 +20,7 @@ const QuestionList = () => {
   const getQuestionAnswers = useQuizBookStore(state => state.getQuestionAnswers);
   const addQuestionToTarget = useQuizBookStore(state => state.addQuestionToTarget);
   const deleteQuestionFromTarget = useQuizBookStore(state => state.deleteQuestionFromTarget);
+  const deleteLatestAttempt = useQuizBookStore(state => state.deleteLatestAttempt);
 
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [deleteTargetNumber, setDeleteTargetNumber] = useState<number | null>(null);
@@ -209,11 +210,11 @@ const QuestionList = () => {
     setDeleteOptionModalVisible(true);
   };
 
-  const handleDeleteLatestCard = () => {
+  const handleDeleteLatestCard = async () => {
     if (selectedQuestionForDelete !== null) {
-      setDeleteTargetNumber(selectedQuestionForDelete);
+      await deleteLatestAttempt(chapterId, sectionId, selectedQuestionForDelete);
       setDeleteOptionModalVisible(false);
-      setDeleteDialogVisible(true);
+      setSelectedQuestionForDelete(null);
     }
   };
 

@@ -137,6 +137,15 @@ export class QuizBooksController {
     return this.quizBooksService.removeAnswer(quizBookId, answerId, req.user.id);
   }
 
+  @Delete(':quizBookId/answers/:answerId/latest')
+  removeLatestAttempt(
+    @Param('quizBookId') quizBookId: string,
+    @Param('answerId') answerId: string,
+    @Request() req,
+  ) {
+    return this.quizBooksService.removeLatestAttempt(quizBookId, answerId, req.user.id);
+  }
+
   @Get(':id/analytics')
   async getAnalitics(
     @Param('id') id: string,
