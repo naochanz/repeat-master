@@ -18,7 +18,7 @@ import { List, TrendingDown, X } from 'lucide-react-native';
 import { quizBookApi } from '@/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH - 40;
+const CARD_WIDTH = SCREEN_WIDTH - 60;
 
 interface RoundStats {
   round: number;
@@ -209,7 +209,7 @@ export default function AnalyticsScreen() {
                   scrollEventThrottle={16}
                   snapToInterval={CARD_WIDTH}
                   decelerationRate="fast"
-                  style={{ paddingHorizontal: 20 }}
+                  style={{ paddingHorizontal: 10 }}
                 >
                   {group.books.map((book) => (
                     <View key={book.id} style={styles.card}>
@@ -221,7 +221,7 @@ export default function AnalyticsScreen() {
                       </View>
                       <TouchableOpacity style={styles.weaknessButton}>
                         <TrendingDown size={20} color={theme.colors.neutral.white} />
-                        <Text style={styles.weaknessButtonText}>弱点分析</Text>
+                        <Text style={styles.weaknessButtonText}>{book.title}の詳細分析へ</Text>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
   },
   categoryContainer: {
     marginBottom: theme.spacing.xl,
@@ -342,6 +342,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.neutral.white,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
+    marginHorizontal: theme.spacing.sm,
     ...theme.shadows.md,
   },
   cardTitle: {
