@@ -135,7 +135,12 @@ export default function AnalyticsScreen() {
           strokeWidth: 3,
         },
       ],
+      // 最大値を100に固定するためのダミーデータ
+      legend: ['正答率']
     };
+
+    // グラフの最大値を100にするため、100をデータに含める（非表示）
+    const maxValue = Math.max(...data.roundStats.map(stat => stat.correctRate), 100);
 
     return (
       <LineChart
@@ -146,7 +151,7 @@ export default function AnalyticsScreen() {
           backgroundColor: theme.colors.neutral.white,
           backgroundGradientFrom: theme.colors.primary[50],
           backgroundGradientTo: theme.colors.neutral.white,
-          decimalPlaces: 1,
+          decimalPlaces: 0,
           color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
           labelColor: (opacity = 1) => `rgba(75, 85, 99, ${opacity})`,
           style: {
@@ -162,7 +167,10 @@ export default function AnalyticsScreen() {
         style={styles.chart}
         yAxisSuffix="%"
         yAxisInterval={1}
-        fromZero
+        segments={4}
+        fromZero={true}
+        yAxisMax={100}
+        yAxisMin={0}
       />
     );
   };
