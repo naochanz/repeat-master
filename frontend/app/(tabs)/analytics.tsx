@@ -94,12 +94,12 @@ export default function AnalyticsScreen() {
 
   const handleScroll = (categoryId: string, event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / (CARD_WIDTH + 40));
+    const index = Math.round(offsetX / CARD_WIDTH);
     setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
   };
 
   const scrollToIndex = (categoryId: string, index: number) => {
-    scrollRefs.current[categoryId]?.scrollTo({ x: index * (CARD_WIDTH + 40), animated: true });
+    scrollRefs.current[categoryId]?.scrollTo({ x: index * CARD_WIDTH, animated: true });
     setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
   };
 
@@ -207,9 +207,9 @@ export default function AnalyticsScreen() {
                   showsHorizontalScrollIndicator={false}
                   onScroll={(e) => handleScroll(categoryId, e)}
                   scrollEventThrottle={16}
-                  snapToInterval={CARD_WIDTH + 40}
+                  snapToInterval={CARD_WIDTH}
                   decelerationRate="fast"
-                  contentContainerStyle={{ paddingHorizontal: 20 }}
+                  style={{ paddingHorizontal: 20 }}
                 >
                   {group.books.map((book) => (
                     <View key={book.id} style={styles.card}>
@@ -339,7 +339,6 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    marginHorizontal: 20,
     backgroundColor: theme.colors.neutral.white,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
