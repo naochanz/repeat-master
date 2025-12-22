@@ -18,10 +18,8 @@ import { List, TrendingDown, X } from 'lucide-react-native';
 import { quizBookApi } from '@/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const SIDE_PEEK = 30; // 左右に見える前後のカードの幅
-const CARD_GAP = 20; // カード間のギャップ
-const CARD_WIDTH = SCREEN_WIDTH - (SIDE_PEEK * 2);
-const CARD_SPACING = CARD_WIDTH + CARD_GAP;
+const HORIZONTAL_PADDING = 20;
+const CARD_WIDTH = SCREEN_WIDTH - (HORIZONTAL_PADDING * 2);
 
 interface RoundStats {
   round: number;
@@ -97,12 +95,12 @@ export default function AnalyticsScreen() {
 
   const handleScroll = (categoryId: string, event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / CARD_SPACING);
+    const index = Math.round(offsetX / CARD_WIDTH);
     setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
   };
 
   const scrollToIndex = (categoryId: string, index: number) => {
-    scrollRefs.current[categoryId]?.scrollTo({ x: index * CARD_SPACING, animated: true });
+    scrollRefs.current[categoryId]?.scrollTo({ x: index * CARD_WIDTH, animated: true });
     setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
   };
 
@@ -210,9 +208,9 @@ export default function AnalyticsScreen() {
                   showsHorizontalScrollIndicator={false}
                   onScroll={(e) => handleScroll(categoryId, e)}
                   scrollEventThrottle={16}
-                  snapToInterval={CARD_SPACING}
+                  snapToInterval={CARD_WIDTH}
                   decelerationRate="fast"
-                  contentContainerStyle={{ paddingLeft: SIDE_PEEK, paddingRight: SIDE_PEEK }}
+                  contentContainerStyle={{ paddingHorizontal: HORIZONTAL_PADDING }}
                 >
                   {group.books.map((book) => (
                     <View key={book.id} style={styles.card}>
@@ -342,11 +340,9 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    marginRight: CARD_GAP,
     backgroundColor: theme.colors.neutral.white,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
-    marginHorizontal: theme.spacing.sm,
     ...theme.shadows.md,
   },
   cardTitle: {
