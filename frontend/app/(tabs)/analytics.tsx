@@ -161,7 +161,8 @@ export default function AnalyticsScreen() {
           decimalPlaces: 0,
           color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
           labelColor: (opacity = 1) => `rgba(75, 85, 99, ${opacity})`,
-          fillShadowGradientOpacity: 0,
+          fillShadowGradientFromOpacity: 0, // 影の開始色の不透明度を0に
+          fillShadowGradientToOpacity: 0,   // 影の終了色の不透明度を0に
           style: {
             borderRadius: theme.borderRadius.lg,
           },
