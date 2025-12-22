@@ -20,7 +20,7 @@ import { quizBookApi } from '@/services/api';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_MARGIN = 20;
 const CARD_WIDTH = SCREEN_WIDTH - (CARD_MARGIN * 2);
-const SNAP_INTERVAL = CARD_WIDTH + (CARD_MARGIN * 2);
+const SNAP_INTERVAL = CARD_WIDTH + (CARD_MARGIN - 15) + CARD_MARGIN; // marginLeft(5) + marginRight(20)
 
 interface RoundStats {
   round: number;
@@ -341,7 +341,8 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    marginHorizontal: CARD_MARGIN,
+    marginLeft: CARD_MARGIN - 15,
+    marginRight: CARD_MARGIN,
     backgroundColor: theme.colors.neutral.white,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
