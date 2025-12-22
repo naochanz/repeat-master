@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-chart-kit';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { List, TrendingDown, X } from 'lucide-react-native';
 import { quizBookApi } from '@/services/api';
 
@@ -200,7 +200,9 @@ export default function AnalyticsScreen() {
                 </View>
               ) : (
                 <ScrollView
-                  ref={(ref) => (scrollRefs.current[categoryId] = ref)}
+                  ref={(ref) => {
+                    scrollRefs.current[categoryId] = ref;
+                  }}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   onScroll={(e) => handleScroll(categoryId, e)}
