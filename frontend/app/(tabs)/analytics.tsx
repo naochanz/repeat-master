@@ -126,22 +126,25 @@ export default function AnalyticsScreen() {
       );
     }
 
-    // グラフの最大値を100に固定するため、データに0と100を追加
     const chartLabels = data.roundStats.map(stat => `${stat.round}周`);
     const chartValues = data.roundStats.map(stat => stat.correctRate);
 
-    // データに0と100を含めてスケールを固定（透明にして非表示）
-    const allData = [0, ...chartValues, 100];
-    const allLabels = ['', ...chartLabels, ''];
-
     const chartData = {
-      labels: allLabels,
+      labels: chartLabels,
       datasets: [
         {
-          data: allData,
+          // メインのデータセット
+          data: chartValues,
           color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
           strokeWidth: 3,
           withDots: true,
+        },
+        {
+          // Y軸範囲を制御するための透明ダミーデータセット
+          data: [0, 100],
+          color: () => 'transparent',
+          strokeWidth: 0,
+          withDots: false,
         },
       ],
     };
@@ -173,17 +176,7 @@ export default function AnalyticsScreen() {
         yAxisInterval={1}
         segments={4}
         fromZero={true}
-        formatYLabel={(value) => {
-          // 0-100の範囲で表示
-          return value;
-        }}
-        getDotColor={(dataPoint, index) => {
-          // 最初と最後のドット（ダミーデータ）を透明にする
-          if (index === 0 || index === allData.length - 1) {
-            return 'transparent';
-          }
-          return theme.colors.primary[600];
-        }}
+        formatYLabel={(value) => value}
       />
     );
   };
