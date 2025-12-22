@@ -126,21 +126,25 @@ export default function AnalyticsScreen() {
       );
     }
 
+    // グラフの最大値を100に固定するため、データに0と100を追加
+    const chartLabels = data.roundStats.map(stat => `${stat.round}周`);
+    const chartValues = data.roundStats.map(stat => stat.correctRate);
+
+    // データに0と100を含めてスケールを固定（透明にして非表示）
+    const allData = [0, ...chartValues, 100];
+    const allLabels = ['', ...chartLabels, ''];
+
     const chartData = {
-      labels: data.roundStats.map(stat => `${stat.round}周`),
+      labels: allLabels,
       datasets: [
         {
-          data: data.roundStats.map(stat => stat.correctRate),
+          data: allData,
           color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
           strokeWidth: 3,
+          withDots: true,
         },
       ],
-      // 最大値を100に固定するためのダミーデータ
-      legend: ['正答率']
     };
-
-    // グラフの最大値を100にするため、100をデータに含める（非表示）
-    const maxValue = Math.max(...data.roundStats.map(stat => stat.correctRate), 100);
 
     return (
       <LineChart
@@ -169,8 +173,17 @@ export default function AnalyticsScreen() {
         yAxisInterval={1}
         segments={4}
         fromZero={true}
-        yAxisMax={100}
-        yAxisMin={0}
+        formatYLabel={(value) => {
+          // 0-100の範囲で表示
+          return value;
+        }}
+        getDotColor={(dataPoint, index) => {
+          // 最初と最後のドット（ダミーデータ）を透明にする
+          if (index === 0 || index === allData.length - 1) {
+            return 'transparent';
+          }
+          return theme.colors.primary[600];
+        }}
       />
     );
   };
