@@ -211,6 +211,7 @@ export default function AnalyticsScreen() {
                   scrollEventThrottle={16}
                   snapToInterval={SNAP_INTERVAL}
                   decelerationRate="fast"
+                  contentContainerStyle={{ paddingRight: CARD_MARGIN }}
                 >
                   {group.books.map((book) => (
                     <View key={book.id} style={styles.card}>
