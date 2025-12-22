@@ -161,6 +161,7 @@ export default function AnalyticsScreen() {
           decimalPlaces: 0,
           color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
           labelColor: (opacity = 1) => `rgba(75, 85, 99, ${opacity})`,
+          fillShadowGradientOpacity: 0,
           style: {
             borderRadius: theme.borderRadius.lg,
           },
