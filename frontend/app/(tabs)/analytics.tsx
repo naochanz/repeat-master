@@ -18,10 +18,10 @@ import { List, TrendingDown, X } from 'lucide-react-native';
 import { quizBookApi } from '@/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const HORIZONTAL_PADDING = 20;
-const CARD_MARGIN = 20;
-const CARD_WIDTH = SCREEN_WIDTH - (HORIZONTAL_PADDING * 2) - (CARD_MARGIN * 2);
-const CARD_SPACING = CARD_WIDTH + CARD_MARGIN;
+const SIDE_PEEK = 30; // 左右に見える前後のカードの幅
+const CARD_GAP = 20; // カード間のギャップ
+const CARD_WIDTH = SCREEN_WIDTH - (SIDE_PEEK * 2);
+const CARD_SPACING = CARD_WIDTH + CARD_GAP;
 
 interface RoundStats {
   round: number;
@@ -212,7 +212,7 @@ export default function AnalyticsScreen() {
                   scrollEventThrottle={16}
                   snapToInterval={CARD_SPACING}
                   decelerationRate="fast"
-                  contentContainerStyle={{ paddingHorizontal: HORIZONTAL_PADDING }}
+                  contentContainerStyle={{ paddingLeft: SIDE_PEEK, paddingRight: SIDE_PEEK }}
                 >
                   {group.books.map((book) => (
                     <View key={book.id} style={styles.card}>
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    marginRight: CARD_MARGIN,
+    marginRight: CARD_GAP,
     backgroundColor: theme.colors.neutral.white,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
