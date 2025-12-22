@@ -2,7 +2,7 @@ import { theme } from '@/constants/theme';
 import { useUserStore } from '@/stores/userStore';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { Edit3, Target } from 'lucide-react-native';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { CommonActions } from '@react-navigation/native';
@@ -87,26 +87,6 @@ export default function DashboardScreen() {
     }
   };
 
-  // 問題集ごとに最新の履歴を1つずつ取得
-  const recentStudyByQuizBook = useMemo(() => {
-    const groupedByQuizBook = new Map<string, any>();
-
-    // 問題集IDでグループ化し、最新のものだけを保持
-    recentStudyRecords.forEach((record) => {
-      const quizBookId = record.quizBook.id;
-      const existing = groupedByQuizBook.get(quizBookId);
-
-      if (!existing || new Date(record.answeredAt) > new Date(existing.answeredAt)) {
-        groupedByQuizBook.set(quizBookId, record);
-      }
-    });
-
-    // Map を配列に変換し、日時順にソート
-    return Array.from(groupedByQuizBook.values()).sort(
-      (a, b) => new Date(b.answeredAt).getTime() - new Date(a.answeredAt).getTime()
-    );
-  }, [recentStudyRecords]);
-
   return (
     <SafeAreaView style={styles.container}>
       <Animated.View style={[{ flex: 1 }, animatedStyle]}>
@@ -135,11 +115,11 @@ export default function DashboardScreen() {
           </TouchableOpacity>
 
           {/* ✅ バックエンドから取得したデータを表示（問題集ごと） */}
-          {recentStudyByQuizBook.length > 0 && (
+          {recentStudyRecords.length > 0 && (
             <View style={styles.recentStudySection}>
               <Text style={styles.sectionTitle}>最近の学習</Text>
               <View style={styles.recentCardsVertical}>
-                {recentStudyByQuizBook.map((record) => (
+                {recentStudyRecords.map((record) => (
                   <TouchableOpacity
                     key={record.id}
                     style={styles.recentCardVertical}
