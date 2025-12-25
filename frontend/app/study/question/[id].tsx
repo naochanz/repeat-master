@@ -9,6 +9,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, Touc
 import AnswerFAB from '@/src/components/study/question/AnswerFAB';
 import QuestionCard from '@/src/components/study/question/QuestionCard';
 import MemoModal from '@/src/components/study/question/MemoModal';
+import { getQuestionColor, questionColors } from '@/src/utils/questionHelpers';
 
 const QuestionList = () => {
   const { id } = useLocalSearchParams();
@@ -326,6 +327,10 @@ const QuestionList = () => {
             const isExpanded = expandedQuestions.has(num);
             const showFab = mode === 'answer' && activeFabQuestion === num;
 
+            //色判定
+            const color = getQuestionColor(history);
+            const colorStyle = questionColors[color];
+
             return (
               <View
                 key={num}
@@ -336,6 +341,7 @@ const QuestionList = () => {
               >
                 {/* ラベル部分（MEMO、削除ボタン） */}
                 <View style={styles.labelContainer}>
+                  <Text>{colorStyle.icon}</Text>
                   <View style={styles.labelLeft}>
                     <Text style={styles.questionNumberLabel}>問題 {num}</Text>
                     {mode === 'view' && (
@@ -366,7 +372,17 @@ const QuestionList = () => {
                 </View>
 
                 {/* カード表示 */}
-                <View style={showFab && styles.selectedCardContainer}>
+                <View
+                  style={[
+                    showFab && styles.selectedCardContainer,
+                    {
+                      backgroundColor: colorStyle.bg,  // ✅ 背景色
+                      borderColor: colorStyle.border,  // ✅ 枠線色
+                      borderWidth: 2,
+                      borderRadius: 8,
+                    }
+                  ]}
+                >
                   <QuestionCard
                     questionNumber={num}
                     mode={mode}
