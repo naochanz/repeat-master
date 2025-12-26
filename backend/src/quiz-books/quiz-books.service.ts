@@ -32,7 +32,7 @@ export class QuizBooksService {
 
     // 全問題集を取得（ユーザーIDでフィルタ）
     async findAll(userId: string): Promise<QuizBook[]> {
-        return this.quizBookRepository.find({
+        const quizBooks = await this.quizBookRepository.find({
             where: { userId },
             relations: [
                 'category',  // ✅ 追加
@@ -51,6 +51,61 @@ export class QuizBooksService {
                 },
             },
         });
+
+        // 各問題集の章に対して最新周回の正答率を計算
+        quizBooks.forEach(quizBook => {
+            const currentRound = quizBook.currentRound || 1;
+            quizBook.chapters.forEach(chapter => {
+                chapter.chapterRate = this.calculateChapterRateForRound(chapter, currentRound);
+            });
+        });
+
+        return quizBooks;
+    }
+
+    /**
+     * 特定の周回における章の正答率を計算
+     */
+    private calculateChapterRateForRound(chapter: Chapter, round: number): number {
+        let totalQuestions = 0;
+        let correctAnswers = 0;
+
+        // 節がある場合はセクションの回答から集計
+        if (chapter.sections && chapter.sections.length > 0) {
+            chapter.sections.forEach(section => {
+                if (section.questionAnswers && section.questionAnswers.length > 0) {
+                    section.questionAnswers.forEach(qa => {
+                        const roundAttempt = qa.attempts?.find(
+                            a => a.round === round && a.resultConfirmFlg
+                        );
+                        if (roundAttempt) {
+                            totalQuestions++;
+                            if (roundAttempt.result === '○') {
+                                correctAnswers++;
+                            }
+                        }
+                    });
+                }
+            });
+        } else {
+            // 節がない場合は章の回答から集計
+            if (chapter.questionAnswers && chapter.questionAnswers.length > 0) {
+                chapter.questionAnswers.forEach(qa => {
+                    const roundAttempt = qa.attempts?.find(
+                        a => a.round === round && a.resultConfirmFlg
+                    );
+                    if (roundAttempt) {
+                        totalQuestions++;
+                        if (roundAttempt.result === '○') {
+                            correctAnswers++;
+                        }
+                    }
+                });
+            }
+        }
+
+        if (totalQuestions === 0) return 0;
+        return Math.round((correctAnswers / totalQuestions) * 100);
     }
 
     //問題集を一件取得
@@ -63,6 +118,12 @@ export class QuizBooksService {
         if (!quizBook) {
             throw new NotFoundException('QuizBook not found');
         }
+
+        // 各章に対して最新周回の正答率を計算
+        const currentRound = quizBook.currentRound || 1;
+        quizBook.chapters.forEach(chapter => {
+            chapter.chapterRate = this.calculateChapterRateForRound(chapter, currentRound);
+        });
 
         return quizBook;
     };
