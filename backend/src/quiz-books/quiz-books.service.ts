@@ -32,7 +32,7 @@ export class QuizBooksService {
 
     // 全問題集を取得（ユーザーIDでフィルタ）
     async findAll(userId: string): Promise<QuizBook[]> {
-        return this.quizBookRepository.find({
+        const quizBooks = await this.quizBookRepository.find({
             where: { userId },
             relations: [
                 'category',  // ✅ 追加
@@ -51,6 +51,61 @@ export class QuizBooksService {
                 },
             },
         });
+
+        // 各問題集の章に対して最新周回の正答率を計算
+        quizBooks.forEach(quizBook => {
+            const currentRound = quizBook.currentRound || 1;
+            quizBook.chapters.forEach(chapter => {
+                chapter.chapterRate = this.calculateChapterRateForRound(chapter, currentRound);
+            });
+        });
+
+        return quizBooks;
+    }
+
+    /**
+     * 特定の周回における章の正答率を計算
+     */
+    private calculateChapterRateForRound(chapter: Chapter, round: number): number {
+        let totalQuestions = 0;
+        let correctAnswers = 0;
+
+        // 節がある場合はセクションの回答から集計
+        if (chapter.sections && chapter.sections.length > 0) {
+            chapter.sections.forEach(section => {
+                if (section.questionAnswers && section.questionAnswers.length > 0) {
+                    section.questionAnswers.forEach(qa => {
+                        const roundAttempt = qa.attempts?.find(
+                            a => a.round === round && a.resultConfirmFlg
+                        );
+                        if (roundAttempt) {
+                            totalQuestions++;
+                            if (roundAttempt.result === '○') {
+                                correctAnswers++;
+                            }
+                        }
+                    });
+                }
+            });
+        } else {
+            // 節がない場合は章の回答から集計
+            if (chapter.questionAnswers && chapter.questionAnswers.length > 0) {
+                chapter.questionAnswers.forEach(qa => {
+                    const roundAttempt = qa.attempts?.find(
+                        a => a.round === round && a.resultConfirmFlg
+                    );
+                    if (roundAttempt) {
+                        totalQuestions++;
+                        if (roundAttempt.result === '○') {
+                            correctAnswers++;
+                        }
+                    }
+                });
+            }
+        }
+
+        if (totalQuestions === 0) return 0;
+        return Math.round((correctAnswers / totalQuestions) * 100);
     }
 
     //問題集を一件取得
@@ -63,6 +118,12 @@ export class QuizBooksService {
         if (!quizBook) {
             throw new NotFoundException('QuizBook not found');
         }
+
+        // 各章に対して最新周回の正答率を計算
+        const currentRound = quizBook.currentRound || 1;
+        quizBook.chapters.forEach(chapter => {
+            chapter.chapterRate = this.calculateChapterRateForRound(chapter, currentRound);
+        });
 
         return quizBook;
     };
@@ -277,7 +338,7 @@ export class QuizBooksService {
         Object.assign(answer, updateAnswerDto);
         return this.questionAnswerRepository.save(answer);
     }
-    // 回答を削除
+    // 回答を削除（すべてのattempts）
     async removeAnswer(quizBookId: string, answerId: string, userId: string): Promise<void> {
         await this.findOne(quizBookId, userId); // 権限チェック
 
@@ -290,6 +351,33 @@ export class QuizBooksService {
         }
 
         await this.questionAnswerRepository.remove(answer);
+    }
+
+    // 最新のattemptのみ削除
+    async removeLatestAttempt(quizBookId: string, answerId: string, userId: string): Promise<void> {
+        await this.findOne(quizBookId, userId); // 権限チェック
+
+        const answer = await this.questionAnswerRepository.findOne({
+            where: { id: answerId },
+        });
+
+        if (!answer) {
+            throw new NotFoundException('Answer not found');
+        }
+
+        if (!answer.attempts || answer.attempts.length === 0) {
+            throw new NotFoundException('No attempts found');
+        }
+
+        // attemptsから最後の要素を削除
+        answer.attempts = answer.attempts.slice(0, -1);
+
+        // attemptsが空になった場合は、QuestionAnswer自体を削除
+        if (answer.attempts.length === 0) {
+            await this.questionAnswerRepository.remove(answer);
+        } else {
+            await this.questionAnswerRepository.save(answer);
+        }
     }
 
     async getAnalytics(quizBookId: string, userId: string): Promise<QuizBookAnalyticsDto> {

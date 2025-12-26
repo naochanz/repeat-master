@@ -40,6 +40,7 @@ interface QuizBookStore {
   getQuestionAnswers: (chapterId: string, sectionId: string | null, questionNumber: number) => QuestionAnswer | undefined;
   addQuestionToTarget: (chapterId: string, sectionId: string | null) => Promise<void>;
   deleteQuestionFromTarget: (chapterId: string, sectionId: string | null, questionNumber: number) => Promise<void>;
+  deleteLatestAttempt: (chapterId: string, sectionId: string | null, questionNumber: number) => Promise<void>;
 
   // 検索系
   getChapterById: (chapterId: string) => { book: QuizBook; chapter: Chapter } | undefined;
@@ -412,6 +413,31 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
               });
             }
           }
+          return;
+        }
+      }
+    }
+  },
+
+  deleteLatestAttempt: async (chapterId: string, sectionId: string | null, questionNumber: number) => {
+    const { quizBooks } = get();
+
+    for (const book of quizBooks) {
+      for (const chapter of book.chapters) {
+        if (chapter.id === chapterId) {
+          // 回答データを取得
+          const questionAnswers = sectionId
+            ? chapter.sections?.find(s => s.id === sectionId)?.questionAnswers
+            : chapter.questionAnswers;
+
+          const qa = questionAnswers?.find(q => q.questionNumber === questionNumber);
+          if (qa && qa.id) {
+            // 最新のattemptのみ削除
+            await answerApi.deleteLatest(book.id, qa.id);
+          }
+
+          // データを再取得
+          await get().fetchQuizBooks();
           return;
         }
       }

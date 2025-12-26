@@ -1,33 +1,48 @@
 import { theme } from '@/constants/theme';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface AnswerFABProps {
   questionNumber: number;
   onAnswer: (questionNumber: number, answer: '○' | '×') => void;
+  isLoading?: boolean;
 }
 
-const AnswerFAB: React.FC<AnswerFABProps> = ({ questionNumber, onAnswer }) => {
+const AnswerFAB: React.FC<AnswerFABProps> = ({ questionNumber, onAnswer, isLoading = false }) => {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.fabContainer, { bottom: 60 + insets.bottom + 15 }]}>
       <TouchableOpacity
-        style={[styles.fab, styles.fabIncorrect]}
-        onPress={() => onAnswer(questionNumber, '×')}
+        style={[styles.fab, styles.fabIncorrect, isLoading && styles.fabDisabled]}
+        onPress={() => !isLoading && onAnswer(questionNumber, '×')}
         activeOpacity={0.8}
+        disabled={isLoading}
       >
-        <Text style={styles.fabText}>×</Text>
-        <Text style={styles.fabLabel}>不正解</Text>
+        {isLoading ? (
+          <ActivityIndicator size="large" color={theme.colors.neutral.white} />
+        ) : (
+          <>
+            <Text style={styles.fabText}>×</Text>
+            <Text style={styles.fabLabel}>不正解</Text>
+          </>
+        )}
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.fab, styles.fabCorrect]}
-        onPress={() => onAnswer(questionNumber, '○')}
+        style={[styles.fab, styles.fabCorrect, isLoading && styles.fabDisabled]}
+        onPress={() => !isLoading && onAnswer(questionNumber, '○')}
         activeOpacity={0.8}
+        disabled={isLoading}
       >
-        <Text style={styles.fabText}>○</Text>
-        <Text style={styles.fabLabel}>正解</Text>
+        {isLoading ? (
+          <ActivityIndicator size="large" color={theme.colors.neutral.white} />
+        ) : (
+          <>
+            <Text style={styles.fabText}>○</Text>
+            <Text style={styles.fabLabel}>正解</Text>
+          </>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -58,6 +73,9 @@ const styles = StyleSheet.create({
   },
   fabIncorrect: {
     backgroundColor: theme.colors.error[500],
+  },
+  fabDisabled: {
+    opacity: 0.7,
   },
   fabText: {
     fontSize: 32,

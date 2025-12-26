@@ -5,10 +5,11 @@ import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AnswerFAB from '@/src/components/study/question/AnswerFAB';
 import QuestionCard from '@/src/components/study/question/QuestionCard';
 import MemoModal from '@/src/components/study/question/MemoModal';
+import { getQuestionColor, questionColors } from '@/src/utils/questionHelpers';
 
 const QuestionList = () => {
   const { id } = useLocalSearchParams();
@@ -20,15 +21,22 @@ const QuestionList = () => {
   const getQuestionAnswers = useQuizBookStore(state => state.getQuestionAnswers);
   const addQuestionToTarget = useQuizBookStore(state => state.addQuestionToTarget);
   const deleteQuestionFromTarget = useQuizBookStore(state => state.deleteQuestionFromTarget);
+  const deleteLatestAttempt = useQuizBookStore(state => state.deleteLatestAttempt);
 
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [deleteTargetNumber, setDeleteTargetNumber] = useState<number | null>(null);
+  const [deleteOptionModalVisible, setDeleteOptionModalVisible] = useState(false);
+  const [selectedQuestionForDelete, setSelectedQuestionForDelete] = useState<number | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedQuestion, setSelectedQuestion] = useState<number | null>(null);
   const [memoText, setMemoText] = useState('');
   const [mode, setMode] = useState<'view' | 'answer'>('answer');
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set());
   const [activeFabQuestion, setActiveFabQuestion] = useState<number | null>(null);
+  const [addMultipleModalVisible, setAddMultipleModalVisible] = useState(false);
+  const [selectedCount, setSelectedCount] = useState(5);
+  const [isLoadingAnswer, setIsLoadingAnswer] = useState(false);
+  const [isAddingQuestions, setIsAddingQuestions] = useState(false);
 
   // FABの状態を保持（モード切り替え時に復元するため）
   const savedFabQuestion = useRef<number | null>(null);
@@ -182,8 +190,13 @@ const QuestionList = () => {
   }
 
   const handleAnswerFromFab = async (questionNumber: number, answer: '○' | '×') => {
-    await saveAnswer(bookId, questionNumber, answer, chapterId, sectionId || undefined);
-    setActiveFabQuestion(null);
+    setIsLoadingAnswer(true);
+    try {
+      await saveAnswer(bookId, questionNumber, answer, chapterId, sectionId || undefined);
+      setActiveFabQuestion(null);
+    } finally {
+      setIsLoadingAnswer(false);
+    }
   };
 
 
@@ -191,9 +204,40 @@ const QuestionList = () => {
     await addQuestionToTarget(chapterId, sectionId);
   };
 
+  const handleAddMultipleQuestions = async () => {
+    setAddMultipleModalVisible(false);
+    setIsAddingQuestions(true);
+    try {
+      for (let i = 0; i < selectedCount; i++) {
+        await addQuestionToTarget(chapterId, sectionId);
+      }
+    } finally {
+      setIsAddingQuestions(false);
+    }
+  };
+
   const handleDeleteQuestion = (questionNumber: number) => {
-    setDeleteTargetNumber(questionNumber);
-    setDeleteDialogVisible(true);
+    // FABを非表示にする
+    setActiveFabQuestion(null);
+    setSelectedQuestionForDelete(questionNumber);
+    setDeleteOptionModalVisible(true);
+  };
+
+  const handleDeleteLatestCard = async () => {
+    if (selectedQuestionForDelete !== null) {
+      await deleteLatestAttempt(chapterId, sectionId, selectedQuestionForDelete);
+      setDeleteOptionModalVisible(false);
+      setSelectedQuestionForDelete(null);
+    }
+  };
+
+  const handleDeleteAllCards = async () => {
+    if (selectedQuestionForDelete !== null) {
+      // 全てのカードを削除
+      await deleteQuestionFromTarget(chapterId, sectionId, selectedQuestionForDelete);
+      setDeleteOptionModalVisible(false);
+      setSelectedQuestionForDelete(null);
+    }
   };
 
   const confirmDelete = async () => {
@@ -211,6 +255,8 @@ const QuestionList = () => {
   };
 
   const handleOpenMemo = (questionNumber: number) => {
+    // FABを非表示にする
+    setActiveFabQuestion(null);
     setSelectedQuestion(questionNumber);
     const questionData = getQuestionAnswers(chapterId, sectionId, questionNumber);
     const currentMemo = questionData?.memo || '';
@@ -281,6 +327,10 @@ const QuestionList = () => {
             const isExpanded = expandedQuestions.has(num);
             const showFab = mode === 'answer' && activeFabQuestion === num;
 
+            //色判定
+            const color = getQuestionColor(history);
+            const colorStyle = questionColors[color];
+
             return (
               <View
                 key={num}
@@ -291,6 +341,7 @@ const QuestionList = () => {
               >
                 {/* ラベル部分（MEMO、削除ボタン） */}
                 <View style={styles.labelContainer}>
+                  <Text>{colorStyle.icon}</Text>
                   <View style={styles.labelLeft}>
                     <Text style={styles.questionNumberLabel}>問題 {num}</Text>
                     {mode === 'view' && (
@@ -321,7 +372,17 @@ const QuestionList = () => {
                 </View>
 
                 {/* カード表示 */}
-                <View style={showFab && styles.selectedCardContainer}>
+                <View
+                  style={[
+                    showFab && styles.selectedCardContainer,
+                    {
+                      backgroundColor: colorStyle.bg,  // ✅ 背景色
+                      borderColor: colorStyle.border,  // ✅ 枠線色
+                      borderWidth: 2,
+                      borderRadius: 8,
+                    }
+                  ]}
+                >
                   <QuestionCard
                     questionNumber={num}
                     mode={mode}
@@ -337,14 +398,24 @@ const QuestionList = () => {
 
           {/* 問題追加ボタン（回答モードのみ） */}
           {mode === 'answer' && (
-            <TouchableOpacity
-              style={styles.addQuestionButton}
-              onPress={handleAddQuestion}
-              activeOpacity={0.7}
-            >
-              <Plus size={24} color={theme.colors.primary[600]} strokeWidth={2.5} />
-              <Text style={styles.addQuestionButtonText}>問題を追加</Text>
-            </TouchableOpacity>
+            <View style={styles.addButtonContainer}>
+              <TouchableOpacity
+                style={styles.addQuestionButtonHalf}
+                onPress={handleAddQuestion}
+                activeOpacity={0.7}
+              >
+                <Plus size={24} color={theme.colors.primary[600]} strokeWidth={2.5} />
+                <Text style={styles.addQuestionButtonText}>問題を追加</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.addQuestionButtonHalf}
+                onPress={() => setAddMultipleModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Plus size={24} color={theme.colors.primary[600]} strokeWidth={2.5} />
+                <Text style={styles.addQuestionButtonText}>枚数指定</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           <MemoModal
@@ -363,6 +434,115 @@ const QuestionList = () => {
             onConfirm={confirmDelete}
             onCancel={() => setDeleteDialogVisible(false)}
           />
+
+          {/* 削除オプション選択モーダル */}
+          <Modal
+            visible={deleteOptionModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setDeleteOptionModalVisible(false)}
+          >
+            <Pressable
+              style={styles.modalOverlay}
+              onPress={() => setDeleteOptionModalVisible(false)}
+            >
+              <Pressable
+                style={styles.deleteOptionModal}
+                onPress={(e) => e.stopPropagation()}
+              >
+                <Text style={styles.deleteOptionTitle}>削除方法を選択</Text>
+                <TouchableOpacity
+                  style={styles.deleteOptionButton}
+                  onPress={handleDeleteLatestCard}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.deleteOptionText}>最新のカードを削除</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.deleteOptionButton, styles.deleteAllButton]}
+                  onPress={handleDeleteAllCards}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.deleteOptionText, styles.deleteAllText]}>
+                    この問題の全てのカードを削除
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.cancelOptionButton}
+                  onPress={() => setDeleteOptionModalVisible(false)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.cancelOptionText}>キャンセル</Text>
+                </TouchableOpacity>
+              </Pressable>
+            </Pressable>
+          </Modal>
+
+          {/* 枚数指定追加モーダル */}
+          <Modal
+            visible={addMultipleModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setAddMultipleModalVisible(false)}
+          >
+            <Pressable
+              style={styles.modalOverlay}
+              onPress={() => setAddMultipleModalVisible(false)}
+            >
+              <Pressable
+                style={styles.addMultipleModal}
+                onPress={(e) => e.stopPropagation()}
+              >
+                <Text style={styles.addMultipleTitle}>追加する問題数を選択</Text>
+                <View style={styles.pickerContainer}>
+                  <ScrollView
+                    style={styles.pickerScroll}
+                    showsVerticalScrollIndicator={true}
+                    snapToInterval={50}
+                    decelerationRate="fast"
+                  >
+                    {Array.from({ length: 50 }, (_, i) => i + 1).map((num) => (
+                      <TouchableOpacity
+                        key={num}
+                        style={[
+                          styles.pickerItem,
+                          selectedCount === num && styles.pickerItemSelected
+                        ]}
+                        onPress={() => setSelectedCount(num)}
+                      >
+                        <Text
+                          style={[
+                            styles.pickerItemText,
+                            selectedCount === num && styles.pickerItemTextSelected
+                          ]}
+                        >
+                          {num}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+                <View style={styles.addMultipleActions}>
+                  <TouchableOpacity
+                    style={styles.cancelAddButton}
+                    onPress={() => setAddMultipleModalVisible(false)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.cancelAddText}>キャンセル</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.confirmAddButton}
+                    onPress={handleAddMultipleQuestions}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.confirmAddText}>
+                      {selectedCount}問追加
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+            </Pressable>
+          </Modal>
         </ScrollView>
 
         {/* FAB表示（回答モード + アクティブな問題がある場合のみ） */}
@@ -370,7 +550,18 @@ const QuestionList = () => {
           <AnswerFAB
             questionNumber={activeFabQuestion}
             onAnswer={handleAnswerFromFab}
+            isLoading={isLoadingAnswer}
           />
+        )}
+
+        {/* 問題追加中のローディングオーバーレイ */}
+        {isAddingQuestions && (
+          <View style={styles.loadingOverlay}>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary[600]} />
+              <Text style={styles.loadingText}>問題を追加中...</Text>
+            </View>
+          </View>
         )}
 
         <CustomTabBar />
@@ -492,6 +683,12 @@ const styles = StyleSheet.create({
     padding: theme.spacing.xs,
     ...theme.shadows.sm,
   },
+  addButtonContainer: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginHorizontal: theme.spacing.md,
+    marginVertical: theme.spacing.lg,
+  },
   addQuestionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -506,11 +703,181 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     gap: theme.spacing.sm,
   },
+  addQuestionButtonHalf: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.md,
+    backgroundColor: theme.colors.neutral.white,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 2,
+    borderColor: theme.colors.primary[300],
+    borderStyle: 'dashed',
+    gap: theme.spacing.xs,
+  },
   addQuestionButtonText: {
-    fontSize: theme.typography.fontSizes.base,
+    fontSize: theme.typography.fontSizes.sm,
     color: theme.colors.primary[600],
     fontWeight: theme.typography.fontWeights.bold as any,
     fontFamily: 'ZenKaku-Bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteOptionModal: {
+    backgroundColor: theme.colors.neutral.white,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.xl,
+    width: '85%',
+    maxWidth: 400,
+    ...theme.shadows.lg,
+  },
+  deleteOptionTitle: {
+    fontSize: theme.typography.fontSizes.xl,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[900],
+    marginBottom: theme.spacing.lg,
+    textAlign: 'center',
+    fontFamily: 'ZenKaku-Bold',
+  },
+  deleteOptionButton: {
+    backgroundColor: theme.colors.neutral.white,
+    borderWidth: 2,
+    borderColor: theme.colors.primary[600],
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  deleteAllButton: {
+    borderColor: theme.colors.error[600],
+  },
+  deleteOptionText: {
+    fontSize: theme.typography.fontSizes.sm,
+    fontWeight: theme.typography.fontWeights.semibold as any,
+    color: theme.colors.primary[600],
+    fontFamily: 'ZenKaku-Medium',
+  },
+  deleteAllText: {
+    color: theme.colors.error[600],
+  },
+  cancelOptionButton: {
+    backgroundColor: theme.colors.secondary[100],
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.sm,
+    alignItems: 'center',
+  },
+  cancelOptionText: {
+    fontSize: theme.typography.fontSizes.base,
+    fontWeight: theme.typography.fontWeights.semibold as any,
+    color: theme.colors.secondary[700],
+    fontFamily: 'ZenKaku-Medium',
+  },
+  addMultipleModal: {
+    backgroundColor: theme.colors.neutral.white,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.xl,
+    width: '85%',
+    maxWidth: 400,
+    ...theme.shadows.lg,
+  },
+  addMultipleTitle: {
+    fontSize: theme.typography.fontSizes.xl,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[900],
+    marginBottom: theme.spacing.lg,
+    textAlign: 'center',
+    fontFamily: 'ZenKaku-Bold',
+  },
+  pickerContainer: {
+    height: 200,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[300],
+    borderRadius: theme.borderRadius.md,
+    marginBottom: theme.spacing.lg,
+    overflow: 'hidden',
+  },
+  pickerScroll: {
+    flex: 1,
+  },
+  pickerItem: {
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.secondary[200],
+  },
+  pickerItemSelected: {
+    backgroundColor: theme.colors.primary[50],
+  },
+  pickerItemText: {
+    fontSize: theme.typography.fontSizes['2xl'],
+    color: theme.colors.secondary[600],
+    fontFamily: 'ZenKaku-Regular',
+  },
+  pickerItemTextSelected: {
+    color: theme.colors.primary[600],
+    fontWeight: theme.typography.fontWeights.bold as any,
+    fontFamily: 'ZenKaku-Bold',
+  },
+  addMultipleActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+  },
+  cancelAddButton: {
+    flex: 1,
+    backgroundColor: theme.colors.secondary[100],
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+  },
+  confirmAddButton: {
+    flex: 1,
+    backgroundColor: theme.colors.primary[600],
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing.md,
+    alignItems: 'center',
+    ...theme.shadows.sm,
+  },
+  cancelAddText: {
+    fontSize: theme.typography.fontSizes.base,
+    fontWeight: theme.typography.fontWeights.semibold as any,
+    color: theme.colors.secondary[700],
+    fontFamily: 'ZenKaku-Medium',
+  },
+  confirmAddText: {
+    fontSize: theme.typography.fontSizes.base,
+    fontWeight: theme.typography.fontWeights.semibold as any,
+    color: theme.colors.neutral.white,
+    fontFamily: 'ZenKaku-Medium',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingContainer: {
+    backgroundColor: theme.colors.neutral.white,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    ...theme.shadows.lg,
+  },
+  loadingText: {
+    fontSize: theme.typography.fontSizes.base,
+    fontWeight: theme.typography.fontWeights.semibold as any,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Medium',
   },
 });
 

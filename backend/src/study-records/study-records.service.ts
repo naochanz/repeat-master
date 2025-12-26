@@ -11,7 +11,7 @@ export class StudyRecordsService {
     ) { }
 
     /**
-     * 学習記録を追加（3件維持）
+     * 学習記録を追加（問題集ごとに最新10件を維持）
      */
 
     async addStudyRecord(
@@ -35,36 +35,43 @@ export class StudyRecordsService {
             answeredAt: new Date(),
         });
 
-        //2.3件超えたら古いものを削除
-        await this.keepLatestThree(userId);
+        //2.問題集ごとに最新10件のみ保持
+        await this.keepLatestPerQuizBook(userId, quizBookId, 10);
     }
 
     /**
-     * 最新3件のみ保持（古いものを削除）
+     * 問題集ごとに最新N件のみ保持（古いものを削除）
      */
-    private async keepLatestThree(userId: string): Promise<void> {
-        //全レコードを取得してソート
+    private async keepLatestPerQuizBook(userId: string, quizBookId: string, keepCount: number = 10): Promise<void> {
+        //該当する問題集のレコードを取得してソート
         const allRecords = await this.studyRecordRepository.find({
-            where: { userId },
+            where: { userId, quizBookId },
             order: { answeredAt: 'DESC' },
         });
 
-        //4件目以降を削除
-        if (allRecords.length > 3) {
-            const recordsToDelete = allRecords.slice(3);
+        //keepCount件目以降を削除
+        if (allRecords.length > keepCount) {
+            const recordsToDelete = allRecords.slice(keepCount);
             await this.studyRecordRepository.remove(recordsToDelete);
         }
     }
 
     /**
-     * 最新3件を取得
+     * 問題集ごとに最新1件ずつ取得（最大10問題集分）
      */
     async getRecentRecords(userId: string): Promise<StudyRecord[]> {
-        return this.studyRecordRepository.find({
-            where: { userId },
-            relations: ['quizBook', 'quizBook.category'],
-            order: { answeredAt: 'DESC' },
-            take: 3,
-        });
+        // PostgreSQLのDISTINCT ONを使用して、問題集ごとに最新のレコードを取得
+        const records = await this.studyRecordRepository
+            .createQueryBuilder('sr')
+            .leftJoinAndSelect('sr.quizBook', 'quizBook')
+            .leftJoinAndSelect('quizBook.category', 'category')
+            .where('sr.userId = :userId', { userId })
+            .orderBy('sr.quizBookId', 'ASC')
+            .addOrderBy('sr.answeredAt', 'DESC')
+            .distinctOn(['sr.quizBookId'])
+            .getMany();
+
+        // 日時順にソート
+        return records.sort((a, b) => b.answeredAt.getTime() - a.answeredAt.getTime()).slice(0, 10);
     }
 }

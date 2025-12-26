@@ -1,25 +1,11 @@
 import { theme } from '@/constants/theme';
-import { useQuizBookStore } from '@/stores/quizBookStore';
 import { useUserStore } from '@/stores/userStore';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
-import { AlertCircle, BookOpen, ChevronDown, ChevronRight, ChevronUp, Edit3, Target } from 'lucide-react-native';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Dimensions, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { RecentStudyItem } from '@/types/QuizBook';
+import { Edit3, Target } from 'lucide-react-native';
+import React, { useCallback, useState } from 'react';
+import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { CommonActions } from '@react-navigation/native';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const CHART_WIDTH = SCREEN_WIDTH - (theme.spacing.lg * 4);
-const MAX_BAR_HEIGHT = 120;
-
-interface QualificationStats {
-  category: string;
-  totalBooks: number;
-  avgCorrectRate: number;
-  totalRounds: number;
-  books: any[];
-}
 
 export default function DashboardScreen() {
   // ✅ バックエンドから取得
@@ -28,13 +14,9 @@ export default function DashboardScreen() {
   const fetchUser = useUserStore(state => state.fetchUser);
   const fetchRecentStudyRecords = useUserStore(state => state.fetchRecentStudyRecords);
   const updateUserGoal = useUserStore(state => state.updateUserGoal);
-  
-  const quizBooks = useQuizBookStore(state => state.quizBooks);
-  const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
-  
+
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [tempGoal, setTempGoal] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
   const navigation = useNavigation();
   const opacity = useSharedValue(0);
@@ -47,7 +29,6 @@ export default function DashboardScreen() {
       // データ取得
       fetchUser();
       fetchRecentStudyRecords();
-      fetchQuizBooks();
 
       // スタディスタックの履歴をリセット
       const rootState = navigation.getState();
@@ -73,7 +54,7 @@ export default function DashboardScreen() {
       }, 16);
 
       return () => clearTimeout(timer);
-    }, [fetchUser, fetchRecentStudyRecords, fetchQuizBooks])
+    }, [fetchUser, fetchRecentStudyRecords])
   );
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -97,50 +78,6 @@ export default function DashboardScreen() {
     }
   };
 
-  const qualificationStats = useMemo(() => {
-    const statsMap: { [key: string]: QualificationStats } = {};
-
-    quizBooks.forEach(book => {
-      const category = book.category?.name || '未分類';
-      if (!statsMap[category]) {
-        statsMap[category] = {
-          category,
-          totalBooks: 0,
-          avgCorrectRate: 0,
-          totalRounds: 0,
-          books: [],
-        };
-      }
-
-      statsMap[category].totalBooks += 1;
-      statsMap[category].totalRounds += (book.currentRound || 0);
-      statsMap[category].books.push(book);
-    });
-
-    Object.keys(statsMap).forEach(category => {
-      const books = statsMap[category].books;
-      const totalCorrectRate = books.reduce((sum, book) => sum + (book.correctRate || 0), 0);
-      statsMap[category].avgCorrectRate = books.length > 0
-        ? Math.round(totalCorrectRate / books.length)
-        : 0;
-    });
-
-    return Object.values(statsMap).sort((a, b) => b.avgCorrectRate - a.avgCorrectRate);
-  }, [quizBooks]);
-
-  useEffect(() => {
-    if (qualificationStats.length === 1) {
-      setExpandedCategories(new Set([qualificationStats[0].category]));
-    }
-  }, [qualificationStats]);
-
-  const handleQualificationPress = (category: string) => {
-    router.push({
-      pathname: '/dashboard/qualification/[category]' as any,
-      params: { category },
-    });
-  };
-
   // ✅ バックエンドから取得したデータを使用
   const handleRecentStudyPress = (record: any) => {
     if (record.sectionId) {
@@ -148,68 +85,6 @@ export default function DashboardScreen() {
     } else {
       router.push(`/study/question/${record.chapterId}` as any);
     }
-  };
-
-  const toggleCategoryExpanded = (category: string) => {
-    if (qualificationStats.length > 1) {
-      setExpandedCategories(prev => {
-        const newSet = new Set(prev);
-        if (newSet.has(category)) {
-          newSet.delete(category);
-        } else {
-          newSet.add(category);
-        }
-        return newSet;
-      });
-    }
-  };
-
-  const handleNavigateToLibrary = () => {
-    router.push('/(tabs)/library' as any);
-  };
-
-  const getCorrectRateColor = (rate: number) => {
-    if (rate >= 80) return theme.colors.success[600];
-    if (rate >= 60) return theme.colors.warning[600];
-    return theme.colors.error[600];
-  };
-
-  const renderBarChart = (books: any[]) => {
-    if (books.length === 0) return null;
-
-    const maxRate = Math.max(...books.map(b => b.correctRate || 0), 100);
-    const calculatedWidth = (CHART_WIDTH / books.length) - 8;
-    const maxBarWidth = CHART_WIDTH / 3;
-    const barWidth = Math.min(Math.max(calculatedWidth, 30), maxBarWidth);
-
-    return (
-      <View style={styles.chartContainer}>
-        <View style={styles.chartBars}>
-          {books.map((book, index) => {
-            const rate = book.correctRate || 0;
-            const barHeight = (rate / maxRate) * MAX_BAR_HEIGHT;
-
-            return (
-              <View key={book.id} style={[styles.barContainer, { width: barWidth }]}>
-                <Text style={styles.barValue}>{rate}%</Text>
-                <View
-                  style={[
-                    styles.bar,
-                    {
-                      height: Math.max(barHeight, 10),
-                      backgroundColor: getCorrectRateColor(rate),
-                    }
-                  ]}
-                />
-                <Text style={styles.barLabel} numberOfLines={1}>
-                  {book.title?.substring(0, 6) || `問${index + 1}`}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-      </View>
-    );
   };
 
   return (
@@ -239,7 +114,7 @@ export default function DashboardScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* ✅ バックエンドから取得したデータを表示 */}
+          {/* ✅ バックエンドから取得したデータを表示（問題集ごと） */}
           {recentStudyRecords.length > 0 && (
             <View style={styles.recentStudySection}>
               <Text style={styles.sectionTitle}>最近の学習</Text>
@@ -279,78 +154,6 @@ export default function DashboardScreen() {
             </View>
           )}
 
-          {/* ... 残りのコードは同じ */}
-          {qualificationStats.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.sectionTitle}>学習の分析</Text>
-              {/* @ts-ignore */}
-              <AlertCircle size={64} color={theme.colors.primary[300]} />
-              <Text style={styles.emptyTitle}>まだ資格が登録されていません</Text>
-              <Text style={styles.emptyDescription}>
-                ライブラリから資格と問題集を追加して{'\n'}学習を始めましょう
-              </Text>
-              <TouchableOpacity
-                style={styles.emptyButton}
-                onPress={handleNavigateToLibrary}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.emptyButtonText}>ライブラリへ移動</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={styles.qualificationList}>
-              <Text style={styles.sectionTitle}>学習の分析</Text>
-              {qualificationStats.map((qual) => {
-                const isExpanded = qualificationStats.length === 1 || expandedCategories.has(qual.category);
-
-                return (
-                  <View key={qual.category} style={styles.qualificationCard}>
-                    <TouchableOpacity
-                      style={styles.cardHeader}
-                      onPress={() => toggleCategoryExpanded(qual.category)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.cardTitleContainer}>
-                        <Text style={styles.cardTitle}>{qual.category}</Text>
-                        <View style={styles.bookCountBadge}>
-                          {/* @ts-ignore */}
-                          <BookOpen size={14} color={theme.colors.primary[700]} />
-                          <Text style={styles.bookCountText}>{qual.totalBooks}</Text>
-                        </View>
-                      </View>
-                      {qualificationStats.length > 1 && (
-                        isExpanded ? (
-                          /* @ts-ignore */
-                          <ChevronUp size={24} color={theme.colors.secondary[600]} />
-                        ) : (
-                          /* @ts-ignore */
-                          <ChevronDown size={24} color={theme.colors.secondary[600]} />
-                        )
-                      )}
-                    </TouchableOpacity>
-
-                    {isExpanded && (
-                      <View style={styles.cardBody}>
-                        {renderBarChart(qual.books)}
-
-                        <View style={styles.buttonRow}>
-                          <TouchableOpacity
-                            style={styles.actionButton}
-                            onPress={() => handleQualificationPress(qual.category)}
-                            activeOpacity={0.7}
-                          >
-                            <Text style={styles.actionButtonText}>正答率遷移を確認</Text>
-                            {/* @ts-ignore */}
-                            <ChevronRight size={16} color={theme.colors.neutral.white} />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          )}
         </ScrollView>
       </Animated.View>
 
@@ -473,110 +276,6 @@ const styles = StyleSheet.create({
     ...theme.shadows.md,
   },
   emptyButtonText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.neutral.white,
-    fontFamily: 'ZenKaku-Bold',
-  },
-  qualificationList: {
-    gap: theme.spacing.lg,
-  },
-  qualificationCard: {
-    backgroundColor: theme.colors.neutral.white,
-    borderRadius: theme.borderRadius.lg,
-    overflow: 'hidden',
-    ...theme.shadows.md,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.primary[50],
-    borderBottomWidth: 2,
-    borderBottomColor: theme.colors.primary[200],
-  },
-  cardTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: theme.typography.fontSizes.xl,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-  },
-  bookCountBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: theme.colors.neutral.white,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: theme.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.primary[300],
-  },
-  bookCountText: {
-    fontSize: theme.typography.fontSizes.sm,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.primary[700],
-    fontFamily: 'ZenKaku-Bold',
-  },
-  cardBody: {
-    padding: theme.spacing.lg,
-  },
-  chartContainer: {
-    marginBottom: theme.spacing.md,
-  },
-  chartBars: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: theme.spacing.md,
-  },
-  barContainer: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  barValue: {
-    fontSize: theme.typography.fontSizes.xs,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  bar: {
-    width: '100%',
-    borderTopLeftRadius: theme.borderRadius.sm,
-    borderTopRightRadius: theme.borderRadius.sm,
-    minHeight: 10,
-  },
-  barLabel: {
-    fontSize: theme.typography.fontSizes.xs,
-    color: theme.colors.secondary[600],
-    fontFamily: 'ZenKaku-Regular',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  buttonRow: {
-    gap: theme.spacing.sm,
-  },
-  actionButton: {
-    backgroundColor: theme.colors.primary[600],
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.xs,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    ...theme.shadows.sm,
-  },
-  actionButtonText: {
     fontSize: theme.typography.fontSizes.base,
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.neutral.white,

@@ -1,6 +1,6 @@
 import { theme } from '@/constants/theme';
 import { Tabs } from 'expo-router';
-import { Home, Library, Settings } from 'lucide-react-native';
+import { Home, Library, Settings, LineChart } from 'lucide-react-native';
 import React from 'react';
 
 export default function TabLayout() {
@@ -32,6 +32,13 @@ export default function TabLayout() {
         options={{
           title: 'ライブラリ',
           tabBarIcon: ({ color, size }) => <Library size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          title: '分析',
+          tabBarIcon: ({ color, size }) => <LineChart size={size} color={color} />,
         }}
       />
       <Tabs.Screen

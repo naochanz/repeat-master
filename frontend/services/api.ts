@@ -75,6 +75,8 @@ export const answerApi = {
     api.patch(`/quiz-books/${quizBookId}/answers/${answerId}`, { memo }),
   delete: (quizBookId: string, answerId: string) =>
     api.delete(`/quiz-books/${quizBookId}/answers/${answerId}`),
+  deleteLatest: (quizBookId: string, answerId: string) =>
+    api.delete(`/quiz-books/${quizBookId}/answers/${answerId}/latest`),
 };
 
 
