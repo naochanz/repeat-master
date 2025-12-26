@@ -92,7 +92,7 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, existingCategories }: QuizB
 
                 <View style={styles.bookStats}>
                   <View style={styles.bookStatItem}>
-                    <Text style={styles.bookStatLabel}>周回数</Text>
+                    <Text style={styles.bookStatLabel}>現在 {(quizBook.currentRound || 0) + 1}周目</Text>
                     <Text style={[styles.bookStatValue, { color: theme.colors.primary[600] }]}>
                       {quizBook.currentRound || 0}
                     </Text>
