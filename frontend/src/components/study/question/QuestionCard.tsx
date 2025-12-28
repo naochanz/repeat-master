@@ -1,12 +1,10 @@
+// frontend/src/components/study/question/QuestionCard.tsx
+
 import { theme } from '@/constants/theme';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-interface Attempt {
-  result: '○' | '×';
-  answeredAt: string;
-  resultConfirmFlg: boolean;
-}
+import { getCardColors, questionColors } from '@/src/utils/questionHelpers';
+import { Attempt } from '@/types/QuizBook';
 
 interface QuestionCardProps {
   questionNumber: number;
@@ -26,7 +24,17 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   onPress
 }) => {
   const confirmedHistory = history.filter(a => a.resultConfirmFlg === true);
-  const lastConfirmedAttempt = confirmedHistory[confirmedHistory.length - 1];
+
+  // ✅ 各カードの色を取得（ヘルパー関数を呼ぶだけ）
+  const cardColors = getCardColors(confirmedHistory);
+
+  // ✅ 特定のインデックスの色を取得
+  const getColorForIndex = (index: number) => {
+    if (index < 0 || index >= cardColors.length) {
+      return questionColors.gray;
+    }
+    return questionColors[cardColors[index]];
+  };
 
   // 収納アニメーション中かどうか
   const [isCollapsing, setIsCollapsing] = useState(false);
@@ -36,18 +44,15 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   // アニメーション用
   const animatedValues = useRef<Animated.Value[]>([]);
 
-  // Initialize/update animated values when confirmedHistory changes
   useEffect(() => {
     const neededLength = confirmedHistory.length;
     const currentLength = animatedValues.current.length;
 
     if (neededLength > currentLength) {
-      // Add new values
       for (let i = currentLength; i < neededLength; i++) {
         animatedValues.current.push(new Animated.Value(0));
       }
     } else if (neededLength < currentLength) {
-      // Remove excess values
       animatedValues.current = animatedValues.current.slice(0, neededLength);
     }
   }, [confirmedHistory.length]);
@@ -58,21 +63,16 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     prevIsExpandedRef.current = isExpanded;
     prevModeRef.current = mode;
 
-    // answer → view へのモード切り替えで、既に展開状態の場合
     if (prevMode === 'answer' && mode === 'view' && isExpanded) {
-      // アニメーションなしで即座に全て表示
       setIsCollapsing(false);
       animatedValues.current.forEach(anim => anim.setValue(1));
       return;
     }
 
     if (mode === 'view' && isExpanded && !prevIsExpanded) {
-      // 展開開始
       setIsCollapsing(false);
-      // Reset all values to 0 first (except the first one which stays visible)
       animatedValues.current.slice(1).forEach(anim => anim.setValue(0));
 
-      // 展開時: 各カードを順番にスライドイン（一番上は除く）
       const animations = animatedValues.current.slice(1).map((anim, index) => {
         return Animated.timing(anim, {
           toValue: 1,
@@ -81,29 +81,24 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           useNativeDriver: true,
         });
       });
-      // 一番上のカードは即座に表示
       if (animatedValues.current[0]) {
         animatedValues.current[0].setValue(1);
       }
       Animated.parallel(animations).start();
     } else if (mode === 'view' && !isExpanded && prevIsExpanded) {
-      // 収納開始
       setIsCollapsing(true);
-      // 収納時: アニメーション（一番上は除く）
       const animations = animatedValues.current.slice(1).map((anim, index) => {
         return Animated.timing(anim, {
           toValue: 0,
           duration: 30,
-          delay: (animatedValues.current.length - 2 - index) * 30, // 逆順
+          delay: (animatedValues.current.length - 2 - index) * 30,
           useNativeDriver: true,
         });
       });
       Animated.parallel(animations).start(() => {
-        // アニメーション完了後に収納状態を解除
         setIsCollapsing(false);
       });
     } else if (mode === 'answer') {
-      // Reset all values when in answer mode
       setIsCollapsing(false);
       animatedValues.current.forEach(anim => anim.setValue(0));
     }
@@ -117,30 +112,33 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   }
 
   if (mode === 'view' && (isExpanded || isCollapsing)) {
-    // 閲覧モード: 展開状態（履歴一覧）最新から降順で表示
     return (
       <View style={styles.expandedHistory}>
         {confirmedHistory.length > 0 ? (
           confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
             const originalIndex = confirmedHistory.length - 1 - reverseIndex;
+            const colorStyle = getColorForIndex(originalIndex);
             const animValue = animatedValues.current[reverseIndex] || new Animated.Value(1);
             const isFirstCard = reverseIndex === 0;
 
-            // 一番上のカードはアニメーションなし
             if (isFirstCard) {
               return (
                 <View key={`${questionNumber}-${originalIndex}`}>
                   <TouchableOpacity
                     style={[
                       styles.historyCard,
-                      attempt.result === '○' ? styles.correctCard : styles.incorrectCard
+                      {
+                        backgroundColor: colorStyle.bg,
+                        borderColor: colorStyle.border,
+                        borderWidth: 2,
+                      }
                     ]}
                     onPress={() => onPress(questionNumber)}
                   >
-                    <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
-                    <Text style={styles.answerMark}>
-                      {attempt.result === '○' ? '✅' : '❌'}
-                    </Text>
+                    <View style={styles.historyCardContent}>
+                      <Text style={styles.historyIcon}>{colorStyle.icon}</Text>
+                      <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
+                    </View>
                     <Text style={styles.historyDate}>
                       {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
                         month: '2-digit',
@@ -154,7 +152,6 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               );
             }
 
-            // 2番目以降のカードはアニメーション
             return (
               <Animated.View
                 key={`${questionNumber}-${originalIndex}`}
@@ -173,14 +170,18 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                 <TouchableOpacity
                   style={[
                     styles.historyCard,
-                    attempt.result === '○' ? styles.correctCard : styles.incorrectCard
+                    {
+                      backgroundColor: colorStyle.bg,
+                      borderColor: colorStyle.border,
+                      borderWidth: 2,
+                    }
                   ]}
                   onPress={() => onPress(questionNumber)}
                 >
-                  <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
-                  <Text style={styles.answerMark}>
-                    {attempt.result === '○' ? '✅' : '❌'}
-                  </Text>
+                  <View style={styles.historyCardContent}>
+                    <Text style={styles.historyIcon}>{colorStyle.icon}</Text>
+                    <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
+                  </View>
                   <Text style={styles.historyDate}>
                     {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
                       month: '2-digit',
@@ -195,9 +196,17 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           })
         ) : (
           <TouchableOpacity
-            style={styles.historyCard}
+            style={[
+              styles.historyCard,
+              {
+                backgroundColor: questionColors.gray.bg,
+                borderColor: questionColors.gray.border,
+                borderWidth: 2,
+              }
+            ]}
             onPress={() => onPress(questionNumber)}
           >
+            <Text style={styles.historyIcon}>{questionColors.gray.icon}</Text>
             <Text style={{ color: theme.colors.secondary[500] }}>
               まだ履歴がありません
             </Text>
@@ -217,10 +226,10 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       activeOpacity={0.7}
     >
       {showFab ? (
-        // FAB表示中: 確定済み履歴を全て背景に + 最前面に未回答カード
         <>
           {confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
             const index = confirmedHistory.length - 1 - reverseIndex;
+            const colorStyle = getColorForIndex(index);
             const stackIndex = confirmedHistory.length - 1 - index;
             const offset = (stackIndex + 1) * 9;
 
@@ -236,33 +245,38 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                     right: 0,
                     zIndex: confirmedHistory.length - stackIndex,
                     opacity: Math.max(1 - (stackIndex * 0.1), 0.3),
+                    backgroundColor: colorStyle.bg,
+                    borderColor: colorStyle.border,
+                    borderWidth: 2,
                   },
-                  attempt.result === '○' ? styles.correctCard : styles.incorrectCard,
                 ]}
               />
             );
           })}
 
-          {/* 最前面: 未回答カード */}
           <View
             style={[
               styles.questionCard,
               styles.topCard,
-              styles.unattemptedCard,
+              {
+                backgroundColor: questionColors.gray.bg,
+                borderColor: questionColors.gray.border,
+                borderWidth: 2,
+                borderStyle: 'dashed',
+              }
             ]}
           >
-            <Text style={styles.attemptNumber}>
-              {displayRound}周目
-            </Text>
+            <Text style={styles.historyIcon}>{questionColors.gray.icon}</Text>
+            <Text style={styles.attemptNumber}>{displayRound}周目</Text>
             <Text style={styles.questionNumber}>{questionNumber}</Text>
           </View>
         </>
       ) : (
-        // FAB非表示: 確定済み履歴のスタック表示のみ
         <>
           {confirmedHistory.length > 0 ? (
             confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
               const index = confirmedHistory.length - 1 - reverseIndex;
+              const colorStyle = getColorForIndex(index);
               const stackIndex = confirmedHistory.length - 1 - index;
               const offset = stackIndex * 9;
               const isTopCard = stackIndex === 0;
@@ -279,17 +293,17 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                       right: 0,
                       zIndex: confirmedHistory.length - stackIndex,
                       opacity: Math.max(1 - (stackIndex * 0.1), 0.3),
+                      backgroundColor: colorStyle.bg,
+                      borderColor: colorStyle.border,
+                      borderWidth: 2,
                     },
-                    attempt.result === '○' ? styles.correctCard : styles.incorrectCard,
                   ]}
                 >
                   {isTopCard && (
                     <>
+                      <Text style={styles.historyIcon}>{colorStyle.icon}</Text>
                       <Text style={styles.attemptNumber}>
                         {confirmedHistory.length}周目
-                      </Text>
-                      <Text style={styles.answerMark}>
-                        {attempt.result === '○' ? '✅' : '❌'}
                       </Text>
                       <Text style={styles.cardDate}>
                         {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
@@ -305,14 +319,18 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               );
             })
           ) : (
-            // 確定済み履歴がない場合: 初回カード（未回答）
             <View
               style={[
                 styles.questionCard,
                 styles.topCard,
-                styles.unattemptedCard,
+                {
+                  backgroundColor: questionColors.gray.bg,
+                  borderColor: questionColors.gray.border,
+                  borderWidth: 2,
+                },
               ]}
             >
+              <Text style={styles.historyIcon}>{questionColors.gray.icon}</Text>
               <Text style={styles.questionNumber}>{questionNumber}</Text>
             </View>
           )}
@@ -335,27 +353,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
-    backgroundColor: theme.colors.neutral.white,
-  },
-  historyCount: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    fontSize: theme.typography.fontSizes.xs,
-    color: theme.colors.secondary[500],
-    fontWeight: theme.typography.fontWeights.medium,
-    zIndex: 1001,
   },
   questionCard: {
-    backgroundColor: theme.colors.neutral.white,
     padding: theme.spacing.lg,
     borderRadius: theme.borderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadows.md,
     height: 75,
-    borderWidth: 2,
-    borderColor: theme.colors.neutral[200],
   },
   expandedHistory: {
     paddingHorizontal: theme.spacing.md,
@@ -363,35 +368,25 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   historyCard: {
-    backgroundColor: theme.colors.neutral.white,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
-    borderWidth: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     ...theme.shadows.sm,
     height: 75,
   },
+  historyCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  historyIcon: {
+    fontSize: 24,
+  },
   historyDate: {
     fontSize: theme.typography.fontSizes.xs,
     color: theme.colors.secondary[500],
-  },
-  correctCard: {
-    backgroundColor: theme.colors.success[50],
-    borderColor: theme.colors.success[500],
-    borderWidth: 2,
-  },
-  incorrectCard: {
-    backgroundColor: theme.colors.error[50],
-    borderColor: theme.colors.error[500],
-    borderWidth: 2,
-  },
-  unattemptedCard: {
-    backgroundColor: theme.colors.warning[50],
-    borderWidth: 2,
-    borderColor: theme.colors.warning[300],
-    borderStyle: 'dashed',
   },
   questionNumber: {
     fontSize: theme.typography.fontSizes.xl,
@@ -400,16 +395,10 @@ const styles = StyleSheet.create({
     fontFamily: 'ZenKaku-Bold',
   },
   answerMark: {
-    position: 'absolute',
-    top: theme.spacing.sm,
-    right: theme.spacing.sm,
     fontSize: theme.typography.fontSizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
   },
   attemptNumber: {
-    position: 'absolute',
-    top: theme.spacing.sm,
-    left: theme.spacing.sm,
     fontSize: theme.typography.fontSizes.xs,
     fontWeight: theme.typography.fontWeights.semibold,
     color: theme.colors.secondary[600],
