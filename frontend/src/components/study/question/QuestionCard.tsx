@@ -3,8 +3,48 @@
 import { theme } from '@/constants/theme';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { getCardColors, questionColors } from '@/src/utils/questionHelpers';
+import { LinearGradient } from 'expo-linear-gradient';
+import { getCardColors, questionColors, QuestionColor } from '@/src/utils/questionHelpers';
 import { Attempt } from '@/types/QuizBook';
+
+// 光沢グラデーションの色定義
+const metallicGradients = {
+  gold: {
+    colors: ['#FFD700', '#FFF8DC', '#FFD700', '#B8860B', '#FFD700'] as const,
+    locations: [0, 0.3, 0.5, 0.7, 1] as const,
+  },
+  silver: {
+    colors: ['#C0C0C0', '#F5F5F5', '#C0C0C0', '#A9A9A9', '#C0C0C0'] as const,
+    locations: [0, 0.3, 0.5, 0.7, 1] as const,
+  },
+};
+
+// 光沢カードかどうかを判定
+const isMetallicColor = (color: QuestionColor): color is 'gold' | 'silver' => {
+  return color === 'gold' || color === 'silver';
+};
+
+// 光沢カードのラッパーコンポーネント
+interface MetallicCardWrapperProps {
+  color: 'gold' | 'silver';
+  style?: any;
+  children: React.ReactNode;
+}
+
+const MetallicCardWrapper: React.FC<MetallicCardWrapperProps> = ({ color, style, children }) => {
+  const gradient = metallicGradients[color];
+  return (
+    <LinearGradient
+      colors={[...gradient.colors]}
+      locations={[...gradient.locations]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[style, { overflow: 'hidden' }]}
+    >
+      {children}
+    </LinearGradient>
+  );
+};
 
 interface QuestionCardProps {
   questionNumber: number;
@@ -28,12 +68,17 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   // ✅ 各カードの色を取得（ヘルパー関数を呼ぶだけ）
   const cardColors = getCardColors(confirmedHistory);
 
-  // ✅ 特定のインデックスの色を取得
-  const getColorForIndex = (index: number) => {
+  // ✅ 特定のインデックスの色名を取得
+  const getColorNameForIndex = (index: number): QuestionColor => {
     if (index < 0 || index >= cardColors.length) {
-      return questionColors.gray;
+      return 'gray';
     }
-    return questionColors[cardColors[index]];
+    return cardColors[index];
+  };
+
+  // ✅ 特定のインデックスの色スタイルを取得
+  const getColorForIndex = (index: number) => {
+    return questionColors[getColorNameForIndex(index)];
   };
 
   // 収納アニメーション中かどうか
@@ -117,37 +162,66 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         {confirmedHistory.length > 0 ? (
           confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
             const originalIndex = confirmedHistory.length - 1 - reverseIndex;
+            const colorName = getColorNameForIndex(originalIndex);
             const colorStyle = getColorForIndex(originalIndex);
             const animValue = animatedValues.current[reverseIndex] || new Animated.Value(1);
             const isFirstCard = reverseIndex === 0;
+            const isMetallic = isMetallicColor(colorName);
+
+            // カードの中身
+            const cardContent = (
+              <>
+                <View style={styles.historyCardContent}>
+                  <Text style={styles.historyIcon}>{colorStyle.icon}</Text>
+                  <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
+                </View>
+                <Text style={styles.historyDate}>
+                  {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </Text>
+              </>
+            );
+
+            // カードのスタイル（非光沢用）
+            const nonMetallicStyle = [
+              styles.historyCard,
+              {
+                backgroundColor: colorStyle.bg,
+                borderColor: colorStyle.border,
+                borderWidth: 2,
+              }
+            ];
+
+            // 光沢カードのスタイル
+            const metallicCardStyle = [
+              styles.historyCard,
+              {
+                borderColor: colorStyle.border,
+                borderWidth: 2,
+              }
+            ];
 
             if (isFirstCard) {
               return (
                 <View key={`${questionNumber}-${originalIndex}`}>
-                  <TouchableOpacity
-                    style={[
-                      styles.historyCard,
-                      {
-                        backgroundColor: colorStyle.bg,
-                        borderColor: colorStyle.border,
-                        borderWidth: 2,
-                      }
-                    ]}
-                    onPress={() => onPress(questionNumber)}
-                  >
-                    <View style={styles.historyCardContent}>
-                      <Text style={styles.historyIcon}>{colorStyle.icon}</Text>
-                      <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
-                    </View>
-                    <Text style={styles.historyDate}>
-                      {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </Text>
-                  </TouchableOpacity>
+                  {isMetallic ? (
+                    <TouchableOpacity onPress={() => onPress(questionNumber)} activeOpacity={0.7}>
+                      <MetallicCardWrapper color={colorName} style={metallicCardStyle}>
+                        {cardContent}
+                      </MetallicCardWrapper>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={nonMetallicStyle}
+                      onPress={() => onPress(questionNumber)}
+                    >
+                      {cardContent}
+                    </TouchableOpacity>
+                  )}
                 </View>
               );
             }
@@ -167,30 +241,20 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                   opacity: animValue,
                 }}
               >
-                <TouchableOpacity
-                  style={[
-                    styles.historyCard,
-                    {
-                      backgroundColor: colorStyle.bg,
-                      borderColor: colorStyle.border,
-                      borderWidth: 2,
-                    }
-                  ]}
-                  onPress={() => onPress(questionNumber)}
-                >
-                  <View style={styles.historyCardContent}>
-                    <Text style={styles.historyIcon}>{colorStyle.icon}</Text>
-                    <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
-                  </View>
-                  <Text style={styles.historyDate}>
-                    {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </Text>
-                </TouchableOpacity>
+                {isMetallic ? (
+                  <TouchableOpacity onPress={() => onPress(questionNumber)} activeOpacity={0.7}>
+                    <MetallicCardWrapper color={colorName} style={metallicCardStyle}>
+                      {cardContent}
+                    </MetallicCardWrapper>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={nonMetallicStyle}
+                    onPress={() => onPress(questionNumber)}
+                  >
+                    {cardContent}
+                  </TouchableOpacity>
+                )}
               </Animated.View>
             );
           })
@@ -229,31 +293,48 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
         <>
           {confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
             const index = confirmedHistory.length - 1 - reverseIndex;
+            const colorName = getColorNameForIndex(index);
             const colorStyle = getColorForIndex(index);
             const stackIndex = confirmedHistory.length - 1 - index;
             const offset = (stackIndex + 1) * 9;
+            const isMetallic = isMetallicColor(colorName);
+
+            const stackCardStyle = {
+              position: 'absolute' as const,
+              top: offset,
+              left: 0,
+              right: 0,
+              zIndex: confirmedHistory.length - stackIndex,
+              opacity: Math.max(1 - (stackIndex * 0.1), 0.3),
+              borderColor: colorStyle.border,
+              borderWidth: 2,
+            };
+
+            if (isMetallic) {
+              return (
+                <MetallicCardWrapper
+                  key={`stack-${questionNumber}-${index}`}
+                  color={colorName}
+                  style={[styles.questionCard, stackCardStyle]}
+                >
+                  <View />
+                </MetallicCardWrapper>
+              );
+            }
 
             return (
               <View
                 key={`stack-${questionNumber}-${index}`}
                 style={[
                   styles.questionCard,
-                  {
-                    position: 'absolute',
-                    top: offset,
-                    left: 0,
-                    right: 0,
-                    zIndex: confirmedHistory.length - stackIndex,
-                    opacity: Math.max(1 - (stackIndex * 0.1), 0.3),
-                    backgroundColor: colorStyle.bg,
-                    borderColor: colorStyle.border,
-                    borderWidth: 2,
-                  },
+                  stackCardStyle,
+                  { backgroundColor: colorStyle.bg },
                 ]}
               />
             );
           })}
 
+          {/* FAB表示中の最前面: 未回答カード（gray - 問題番号非表示） */}
           <View
             style={[
               styles.questionCard,
@@ -268,7 +349,6 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           >
             <Text style={styles.historyIcon}>{questionColors.gray.icon}</Text>
             <Text style={styles.attemptNumber}>{displayRound}周目</Text>
-            <Text style={styles.questionNumber}>{questionNumber}</Text>
           </View>
         </>
       ) : (
@@ -276,49 +356,68 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           {confirmedHistory.length > 0 ? (
             confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
               const index = confirmedHistory.length - 1 - reverseIndex;
+              const colorName = getColorNameForIndex(index);
               const colorStyle = getColorForIndex(index);
               const stackIndex = confirmedHistory.length - 1 - index;
               const offset = stackIndex * 9;
               const isTopCard = stackIndex === 0;
+              const isMetallic = isMetallicColor(colorName);
+
+              const stackCardStyle = {
+                position: 'absolute' as const,
+                top: offset,
+                left: 0,
+                right: 0,
+                zIndex: confirmedHistory.length - stackIndex,
+                opacity: Math.max(1 - (stackIndex * 0.1), 0.3),
+                borderColor: colorStyle.border,
+                borderWidth: 2,
+              };
+
+              const cardContent = isTopCard ? (
+                <>
+                  <Text style={styles.historyIcon}>{colorStyle.icon}</Text>
+                  <Text style={styles.attemptNumber}>
+                    {confirmedHistory.length}周目
+                  </Text>
+                  <Text style={styles.cardDate}>
+                    {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </Text>
+                </>
+              ) : null;
+
+              if (isMetallic) {
+                return (
+                  <MetallicCardWrapper
+                    key={`stack-${questionNumber}-${index}`}
+                    color={colorName}
+                    style={[styles.questionCard, stackCardStyle]}
+                  >
+                    {cardContent}
+                  </MetallicCardWrapper>
+                );
+              }
 
               return (
                 <View
                   key={`stack-${questionNumber}-${index}`}
                   style={[
                     styles.questionCard,
-                    {
-                      position: 'absolute',
-                      top: offset,
-                      left: 0,
-                      right: 0,
-                      zIndex: confirmedHistory.length - stackIndex,
-                      opacity: Math.max(1 - (stackIndex * 0.1), 0.3),
-                      backgroundColor: colorStyle.bg,
-                      borderColor: colorStyle.border,
-                      borderWidth: 2,
-                    },
+                    stackCardStyle,
+                    { backgroundColor: colorStyle.bg },
                   ]}
                 >
-                  {isTopCard && (
-                    <>
-                      <Text style={styles.historyIcon}>{colorStyle.icon}</Text>
-                      <Text style={styles.attemptNumber}>
-                        {confirmedHistory.length}周目
-                      </Text>
-                      <Text style={styles.cardDate}>
-                        {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </Text>
-                    </>
-                  )}
+                  {cardContent}
                 </View>
               );
             })
           ) : (
+            // 履歴がない場合（gray - 問題番号非表示）
             <View
               style={[
                 styles.questionCard,
@@ -331,7 +430,6 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               ]}
             >
               <Text style={styles.historyIcon}>{questionColors.gray.icon}</Text>
-              <Text style={styles.questionNumber}>{questionNumber}</Text>
             </View>
           )}
         </>
