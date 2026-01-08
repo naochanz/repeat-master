@@ -81,6 +81,24 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     return questionColors[getColorNameForIndex(index)];
   };
 
+  // ✅ 特定のインデックスの連続数を取得
+  const getConsecutiveCountForIndex = (index: number): number => {
+    if (index < 0 || index >= confirmedHistory.length) {
+      return 0;
+    }
+
+    // そのカードまでの履歴を逆順に見て、連続○をカウント
+    let count = 0;
+    for (let i = index; i >= 0; i--) {
+      if (confirmedHistory[i].result === '○') {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count;
+  };
+
   // 収納アニメーション中かどうか
   const [isCollapsing, setIsCollapsing] = useState(false);
   const prevIsExpandedRef = useRef(isExpanded);
@@ -167,6 +185,10 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
             const animValue = animatedValues.current[reverseIndex] || new Animated.Value(1);
             const isFirstCard = reverseIndex === 0;
             const isMetallic = isMetallicColor(colorName);
+            
+            // ✅ 連続数を取得
+            const consecutiveCount = getConsecutiveCountForIndex(originalIndex);
+            const showConsecutiveCount = colorName === 'gold' && consecutiveCount >= 4;
 
             // カードの中身
             const cardContent = (
@@ -175,6 +197,14 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                   <Text style={styles.historyIcon}>{colorStyle.icon}</Text>
                   <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
                 </View>
+                
+                {/* ✅ 4連続以上の場合、中央に表示 */}
+                {showConsecutiveCount && (
+                  <View style={styles.consecutiveBadge}>
+                    <Text style={styles.consecutiveText}>{consecutiveCount}連続!</Text>
+                  </View>
+                )}
+                
                 <Text style={styles.historyDate}>
                   {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
                     month: '2-digit',
@@ -362,6 +392,10 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
               const offset = stackIndex * 9;
               const isTopCard = stackIndex === 0;
               const isMetallic = isMetallicColor(colorName);
+              
+              // ✅ 連続数を取得
+              const consecutiveCount = getConsecutiveCountForIndex(index);
+              const showConsecutiveCount = colorName === 'gold' && consecutiveCount >= 4;
 
               const stackCardStyle = {
                 position: 'absolute' as const,
@@ -380,6 +414,14 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                   <Text style={styles.attemptNumber}>
                     {confirmedHistory.length}周目
                   </Text>
+                  
+                  {/* ✅ 4連続以上の場合、中央に表示 */}
+                  {showConsecutiveCount && (
+                    <View style={styles.consecutiveBadgeStack}>
+                      <Text style={styles.consecutiveTextStack}>{consecutiveCount}連続!</Text>
+                    </View>
+                  )}
+                  
                   <Text style={styles.cardDate}>
                     {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
                       month: '2-digit',
@@ -510,6 +552,40 @@ const styles = StyleSheet.create({
     color: theme.colors.secondary[500],
     fontFamily: 'ZenKaku-Regular',
   },
+ // ✅ 連続バッジスタイル（展開時）
+ consecutiveBadge: {
+  position: 'absolute',
+  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+  paddingHorizontal: theme.spacing.xs,
+  paddingVertical: 2,
+  borderRadius: theme.borderRadius.xs,
+  marginLeft: theme.spacing.xs,
+  borderWidth: 1.5,
+  borderColor: theme.colors.secondary[400],  // ← グレー系の枠
+  ...theme.shadows.sm,
+},
+consecutiveText: {
+  fontSize: theme.typography.fontSizes.xs,
+  fontWeight: theme.typography.fontWeights.bold as any,
+  color: theme.colors.secondary[900],  // ← ダークグレー文字
+  fontFamily: 'ZenKaku-Bold',
+},
+
+// ✅ 連続バッジスタイル（スタック時）
+consecutiveBadgeStack: {
+  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+  paddingHorizontal: theme.spacing.xs,
+  paddingVertical: 1,
+  borderRadius: theme.borderRadius.xs,
+  borderWidth: 1.5,
+  borderColor: theme.colors.secondary[400],  // ← グレー系の枠
+},
+consecutiveTextStack: {
+  fontSize: 10,
+  fontWeight: theme.typography.fontWeights.bold as any,
+  color: theme.colors.secondary[900],  // ← ダークグレー文字
+  fontFamily: 'ZenKaku-Bold',
+},
 });
 
 export default QuestionCard;

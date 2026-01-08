@@ -3,13 +3,13 @@ import CustomTabBar from '@/components/CustomTabBar';
 import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, Plus, Trash2, Bookmark } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AnswerFAB from '@/src/components/study/question/AnswerFAB';
 import QuestionCard from '@/src/components/study/question/QuestionCard';
 import MemoModal from '@/src/components/study/question/MemoModal';
-import { getQuestionColor, questionColors } from '@/src/utils/questionHelpers';
+
 
 const QuestionList = () => {
   const { id } = useLocalSearchParams();
@@ -22,6 +22,8 @@ const QuestionList = () => {
   const addQuestionToTarget = useQuizBookStore(state => state.addQuestionToTarget);
   const deleteQuestionFromTarget = useQuizBookStore(state => state.deleteQuestionFromTarget);
   const deleteLatestAttempt = useQuizBookStore(state => state.deleteLatestAttempt);
+  const toggleBookmark = useQuizBookStore(state => state.toggleBookmark);
+  const isBookmarked = useQuizBookStore(state => state.isBookmarked);
 
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [deleteTargetNumber, setDeleteTargetNumber] = useState<number | null>(null);
@@ -68,38 +70,34 @@ const QuestionList = () => {
     }, [fetchQuizBooks])
   );
 
-  // モード切り替え時の処理
-  useEffect(() => {
-    if (mode === 'view') {
-      // 閲覧モードに切り替え
-      // FABが表示されている場合、その問題番号を保存して展開
-      if (activeFabQuestion !== null) {
-        savedFabQuestion.current = activeFabQuestion;
-        setExpandedQuestions(prev => {
-          const newSet = new Set(prev);
-          newSet.add(activeFabQuestion);
-          return newSet;
-        });
-        setActiveFabQuestion(null);
-        // スクロール
-        setTimeout(() => {
-          scrollToQuestion(activeFabQuestion);
-        }, 150);
-      }
-    } else if (mode === 'answer') {
-      // 回答モードに切り替え
-      // 保存されたFAB状態を復元
-      if (savedFabQuestion.current !== null) {
-        setActiveFabQuestion(savedFabQuestion.current);
-        // スクロール
-        setTimeout(() => {
-          scrollToQuestion(savedFabQuestion.current!);
-        }, 100);
-        savedFabQuestion.current = null;
-      }
+// モード切り替え時の処理
+useEffect(() => {
+  if (mode === 'view') {
+    if (activeFabQuestion !== null) {
+      savedFabQuestion.current = activeFabQuestion;
+      setExpandedQuestions(prev => {
+        const newSet = new Set(prev);
+        newSet.add(activeFabQuestion);
+        return newSet;
+      });
+      setActiveFabQuestion(null);
+      setTimeout(() => {
+        scrollToQuestion(activeFabQuestion);
+      }, 150);
+    } else {
+      // ✅ 追加: FABがない場合でも強制的に状態を更新
+      setExpandedQuestions(prev => new Set(prev));
     }
-  }, [mode]);
-
+  } else if (mode === 'answer') {
+    if (savedFabQuestion.current !== null) {
+      setActiveFabQuestion(savedFabQuestion.current);
+      setTimeout(() => {
+        scrollToQuestion(savedFabQuestion.current!);
+      }, 100);
+      savedFabQuestion.current = null;
+    }
+  }
+}, [mode, scrollToQuestion]);
   let chapterData = null;
   let sectionData = null;
 
@@ -264,6 +262,10 @@ const QuestionList = () => {
     setModalVisible(true);
   };
 
+  const handleToggleBookmark = async (questionNumber: number) => {
+    await toggleBookmark(chapterId, sectionId, questionNumber);
+  };
+
   return (
     <>
       <View style={[styles.safeArea, mode === 'view' && styles.viewModeBackground]}>
@@ -339,18 +341,27 @@ const QuestionList = () => {
                 <View style={styles.labelContainer}>
                   <View style={styles.labelLeft}>
                     <Text style={styles.questionNumberLabel}>問題 {num}</Text>
-                    {mode === 'view' && (
-                      <TouchableOpacity
-                        style={styles.expansionToggleButton}
-                        onPress={() => handleCardPress(num)}
-                      >
-                        <Text style={styles.expansionToggleText}>
-                          {isExpanded ? '▼' : '▶'}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
                   </View>
                   <View style={styles.buttonGroup}>
+                    {/* ✅ 付箋ボタン */}
+                    <TouchableOpacity
+                      style={styles.bookmarkButton}
+                      onPress={() => handleToggleBookmark(num)}
+                    >
+                      <Bookmark
+                        size={22}
+                        color={
+                          isBookmarked(chapterId, sectionId, num)
+                            ? theme.colors.error[600]      // ✅ trueの時: 赤色
+                            : theme.colors.secondary[400]   // ✅ falseの時: グレー
+                        }
+                        fill={
+                          isBookmarked(chapterId, sectionId, num)
+                            ? theme.colors.error[600]      // ✅ trueの時: 赤色（塗りつぶし）
+                            : 'none'                        // ✅ falseの時: 塗りつぶしなし
+                        }
+                      />
+                    </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.memoButton}
                       onPress={() => handleOpenMemo(num)}
@@ -867,6 +878,12 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeights.semibold as any,
     color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Medium',
+  },
+  bookmarkButton: {
+    // backgroundColor: theme.colors.neutral.white,
+    // borderColor: theme.colors.secondary[300],  // ✅ グレーの枠線
+    // borderWidth: 1.5,
+    // borderRadius: theme.borderRadius.sm,
   },
 });
 

@@ -71,8 +71,10 @@ export const sectionApi = {
 export const answerApi = {
   create: (quizBookId: string, questionNumber: number, result: '○' | '×', chapterId?: string, sectionId?: string) =>
     api.post(`/quiz-books/${quizBookId}/answers`, { questionNumber, result, chapterId, sectionId }),
-  update: (quizBookId: string, answerId: string, memo: string) =>
+  updateMemo: (quizBookId: string, answerId: string, memo: string) =>
     api.patch(`/quiz-books/${quizBookId}/answers/${answerId}`, { memo }),
+  updateBookmark: async (quizBookId: string, answerId: string, isBookmarked: boolean) =>
+    api.patch(`/quiz-books/${quizBookId}/answers/${answerId}`, {isBookmarked}),
   delete: (quizBookId: string, answerId: string) =>
     api.delete(`/quiz-books/${quizBookId}/answers/${answerId}`),
   deleteLatest: (quizBookId: string, answerId: string) =>

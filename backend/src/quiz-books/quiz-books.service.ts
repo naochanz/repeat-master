@@ -323,7 +323,7 @@ export class QuizBooksService {
             return savedAnswer;
         }
     }
-    // メモを更新
+    // メモと付箋を更新
     async updateAnswer(quizBookId: string, answerId: string, updateAnswerDto: UpdateAnswerDto, userId: string): Promise<QuestionAnswer> {
         await this.findOne(quizBookId, userId); // 権限チェック
 
@@ -334,7 +334,7 @@ export class QuizBooksService {
         if (!answer) {
             throw new NotFoundException('Answer not found');
         }
-
+        
         Object.assign(answer, updateAnswerDto);
         return this.questionAnswerRepository.save(answer);
     }

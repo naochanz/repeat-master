@@ -38,11 +38,12 @@ export const getQuestionColor = (attempts?: Attempt[]): QuestionColor => {
 };
 
 /**
- * 各カードの色を計算する（グループ単位）
- * 3連続○のグループ → 全部金
- * 2連続○のグループ → 全部銀
- * 単独○ → 緑
- * × → 赤
+ * 各カードの色を計算する（連続グループ内でも個別に判定）
+ * 連続○グループの中で:
+ * - 1回目 → 緑
+ * - 2回目 → 銀
+ * - 3回目以降 → 金
+ * × → 赤（連続リセット）
  * 
  * @param attempts 確定済み回答履歴
  * @returns 各カードの色の配列
@@ -53,42 +54,28 @@ export const getCardColors = (attempts: Attempt[]): QuestionColor[] => {
   }
 
   const colors: QuestionColor[] = new Array(attempts.length).fill('gray');
-  let i = 0;
+  let consecutiveCorrectCount = 0;  // 現在の連続○カウント
 
-  while (i < attempts.length) {
+  for (let i = 0; i < attempts.length; i++) {
     const current = attempts[i];
 
     if (current.result === '×') {
-      // × は常に赤
+      // × は赤、連続カウントをリセット
       colors[i] = 'red';
-      i++;
-      continue;
-    }
-
-    // ○ の連続をカウント
-    let consecutiveCount = 1;
-    let j = i + 1;
-    while (j < attempts.length && attempts[j].result === '○') {
-      consecutiveCount++;
-      j++;
-    }
-
-    // 連続数に応じて色を決定
-    let groupColor: QuestionColor;
-    if (consecutiveCount >= 3) {
-      groupColor = 'gold';
-    } else if (consecutiveCount === 2) {
-      groupColor = 'silver';
+      consecutiveCorrectCount = 0;
     } else {
-      groupColor = 'green';
-    }
+      // ○ の場合、連続カウントを増やす
+      consecutiveCorrectCount++;
 
-    // グループ全体に同じ色を適用
-    for (let k = i; k < i + consecutiveCount; k++) {
-      colors[k] = groupColor;
+      // 連続回数に応じて色を決定
+      if (consecutiveCorrectCount === 1) {
+        colors[i] = 'green';   // 1回目 → 緑
+      } else if (consecutiveCorrectCount === 2) {
+        colors[i] = 'silver';  // 2回目 → 銀
+      } else {
+        colors[i] = 'gold';    // 3回目以降 → 金
+      }
     }
-
-    i += consecutiveCount;
   }
 
   return colors;
@@ -105,7 +92,7 @@ export const questionColors = {
     icon: '👑',
   },
   silver: {
-    bg: '#999B9B',
+    bg: '#F3F4F6',
     border: '#C0C0C0',
     text: '#4B5563',
     icon: '⭐',

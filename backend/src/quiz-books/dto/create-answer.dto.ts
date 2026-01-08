@@ -3,4 +3,5 @@ export class CreateAnswerDto {
     result: '○' | '×';
     chapterId?: string;
     sectionId?: string;
+    isBookmarked?: boolean;
 }

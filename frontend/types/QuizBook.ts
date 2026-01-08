@@ -10,8 +10,8 @@ export interface Category {
 export interface QuizBook {
   id: string;
   title: string;
-  category: Category; // ✅ string から Category に変更
-  categoryId: string; // ✅ 追加
+  category: Category;
+  categoryId: string; 
   chapterCount: number;
   chapters: Chapter[];
   currentRate: number;
@@ -23,7 +23,7 @@ export interface QuizBook {
 
 export interface Chapter {
   id: string;
-  title: string; // ✅ nullable に変更
+  title: string;
   chapterNumber: number;
   chapterRate: number;
   sections?: Section[];
@@ -33,7 +33,7 @@ export interface Chapter {
 
 export interface Section {
   id: string;
-  title: string; // ✅ nullable に変更
+  title: string;
   sectionNumber: number;
   questionCount: number;
   questionAnswers?: QuestionAnswer[];
@@ -43,16 +43,17 @@ export interface Attempt {
   round: number;
   result: '○' | '×';
   resultConfirmFlg: boolean;
-  answeredAt: string; // JSONから来るのでstringに変更
+  answeredAt: string;
 }
 
 export interface QuestionAnswer {
-  id?: string; // ✅ 追加（バックエンドから返ってくる）
+  id?: string; 
   questionNumber: number;
   memo?: string;
+  isBookmarked?: boolean;
   attempts: Attempt[];
-  chapterId?: string; // ✅ 追加
-  sectionId?: string; // ✅ 追加
+  chapterId?: string;
+  sectionId?: string;
 }
 
 export interface RecentStudyItem {
@@ -60,7 +61,7 @@ export interface RecentStudyItem {
   bookId: string;
   bookTitle: string;
   category: string;
-  chapterId: string; // ✅ String → string
+  chapterId: string; 
   chapterNumber: number;
   chapterTitle: string;
   sectionId?: string;
