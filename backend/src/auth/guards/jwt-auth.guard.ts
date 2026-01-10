@@ -1,6 +1,28 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { createClient } from '@supabase/supabase-js';
 
+interface CachedUser {
+  id: string;
+  email: string;
+  name?: string;
+  goal?: string;
+  expiresAt: number;
+}
+
+// トークンキャッシュ（5分間有効）
+const tokenCache = new Map<string, CachedUser>();
+const CACHE_TTL = 5 * 60 * 1000; // 5分
+
+// 定期的に期限切れキャッシュを削除
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, cached] of tokenCache.entries()) {
+    if (cached.expiresAt < now) {
+      tokenCache.delete(token);
+    }
+  }
+}, 60 * 1000); // 1分ごとにクリーンアップ
+
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -8,19 +30,29 @@ export class JwtAuthGuard implements CanActivate {
     const authHeader = request.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('No token provided');
       throw new UnauthorizedException('No token provided');
     }
 
     const token = authHeader.replace('Bearer ', '');
 
-    // Supabaseクライアントを作成（anon keyを使用）
+    // キャッシュをチェック
+    const cached = tokenCache.get(token);
+    if (cached && cached.expiresAt > Date.now()) {
+      request.user = {
+        id: cached.id,
+        email: cached.email,
+        name: cached.name,
+        goal: cached.goal,
+      };
+      return true;
+    }
+
+    // キャッシュになければSupabaseで検証
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_ANON_KEY!,
     );
 
-    // トークンでユーザーを取得（これがトークン検証も兼ねる）
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
@@ -28,9 +60,7 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Invalid token');
     }
 
-    console.log('User verified:', user.id, user.email);
-
-    // service_role keyでプロファイルを取得（RLSをバイパス）
+    // プロファイルを取得
     const adminSupabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -42,14 +72,20 @@ export class JwtAuthGuard implements CanActivate {
       .eq('id', user.id)
       .single();
 
-    // リクエストにユーザー情報を追加
-    request.user = {
+    const userInfo = {
       id: user.id,
-      email: user.email,
+      email: user.email || '',
       name: profile?.name,
       goal: profile?.goal,
     };
 
+    // キャッシュに保存
+    tokenCache.set(token, {
+      ...userInfo,
+      expiresAt: Date.now() + CACHE_TTL,
+    });
+
+    request.user = userInfo;
     return true;
   }
 }
