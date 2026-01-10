@@ -14,15 +14,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    // Supabase JWTのpayload構造:
-    // {
-    //   sub: "user-uuid",
-    //   email: "user@example.com",
-    //   role: "authenticated",
-    //   ...
-    // }
+    console.log('JWT validate called with payload:', JSON.stringify(payload, null, 2));
 
     if (!payload.sub) {
+      console.log('Invalid token: no sub');
       throw new UnauthorizedException('Invalid token');
     }
 
@@ -34,7 +29,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       .eq('id', payload.sub)
       .single();
 
+    console.log('Profile fetch result:', { profile, error });
+
     if (error || !profile) {
+      console.log('User not found in profiles table');
       throw new UnauthorizedException('User not found');
     }
 

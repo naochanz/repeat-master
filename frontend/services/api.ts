@@ -13,11 +13,24 @@ export const api = axios.create({
 // リクエストインターセプター: Supabaseトークンを自動的に付与
 api.interceptors.request.use(async (config) => {
   const { data: { session } } = await supabase.auth.getSession();
+  console.log('API Request:', config.url, 'Session:', !!session);
   if (session?.access_token) {
     config.headers.Authorization = `Bearer ${session.access_token}`;
+    console.log('Token added to request');
+  } else {
+    console.log('No session/token available');
   }
   return config;
 });
+
+// レスポンスインターセプター: エラーログ
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.log('API Error:', error.config?.url, error.response?.status, error.response?.data);
+    return Promise.reject(error);
+  }
+);
 
 // 後方互換性のため（不要だが残す）
 export const setAuthToken = (token: string) => {
