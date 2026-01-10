@@ -33,7 +33,7 @@ const signupSchema = z.object({
 
 type SignupFormData = z.infer<typeof signupSchema>;
 
-const signup = () => {
+const Signup = () => {
     const register = useAuthStore(state => state.register);
     const isLoading = useAuthStore(state => state.isLoading);
 
@@ -295,4 +295,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default signup;
+export default Signup;

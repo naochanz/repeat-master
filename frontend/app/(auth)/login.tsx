@@ -23,7 +23,7 @@ const loginSchema = z.object({
 
 type loginFormData = z.infer<typeof loginSchema>;
 
-const login = () => {
+const Login = () => {
     const loginAction = useAuthStore(state => state.login);
     const isLoading = useAuthStore(state => state.isLoading);
 
@@ -221,4 +221,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default login;
+export default Login;
