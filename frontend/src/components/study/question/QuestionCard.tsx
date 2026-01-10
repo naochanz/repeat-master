@@ -1,12 +1,50 @@
+// frontend/src/components/study/question/QuestionCard.tsx
+
 import { theme } from '@/constants/theme';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { getCardColors, questionColors, QuestionColor } from '@/src/utils/questionHelpers';
+import { Attempt } from '@/types/QuizBook';
 
-interface Attempt {
-  result: '○' | '×';
-  answeredAt: string;
-  resultConfirmFlg: boolean;
+// 光沢グラデーションの色定義
+const metallicGradients = {
+  gold: {
+    colors: ['#FFD700', '#FFF8DC', '#FFD700', '#B8860B', '#FFD700'] as const,
+    locations: [0, 0.3, 0.5, 0.7, 1] as const,
+  },
+  silver: {
+    colors: ['#C0C0C0', '#F5F5F5', '#C0C0C0', '#A9A9A9', '#C0C0C0'] as const,
+    locations: [0, 0.3, 0.5, 0.7, 1] as const,
+  },
+};
+
+// 光沢カードかどうかを判定
+const isMetallicColor = (color: QuestionColor): color is 'gold' | 'silver' => {
+  return color === 'gold' || color === 'silver';
+};
+
+// 光沢カードのラッパーコンポーネント
+interface MetallicCardWrapperProps {
+  color: 'gold' | 'silver';
+  style?: any;
+  children: React.ReactNode;
 }
+
+const MetallicCardWrapper: React.FC<MetallicCardWrapperProps> = ({ color, style, children }) => {
+  const gradient = metallicGradients[color];
+  return (
+    <LinearGradient
+      colors={[...gradient.colors]}
+      locations={[...gradient.locations]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[style, { overflow: 'hidden' }]}
+    >
+      {children}
+    </LinearGradient>
+  );
+};
 
 interface QuestionCardProps {
   questionNumber: number;
@@ -26,7 +64,40 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   onPress
 }) => {
   const confirmedHistory = history.filter(a => a.resultConfirmFlg === true);
-  const lastConfirmedAttempt = confirmedHistory[confirmedHistory.length - 1];
+
+  // ✅ 各カードの色を取得（ヘルパー関数を呼ぶだけ）
+  const cardColors = getCardColors(confirmedHistory);
+
+  // ✅ 特定のインデックスの色名を取得
+  const getColorNameForIndex = (index: number): QuestionColor => {
+    if (index < 0 || index >= cardColors.length) {
+      return 'gray';
+    }
+    return cardColors[index];
+  };
+
+  // ✅ 特定のインデックスの色スタイルを取得
+  const getColorForIndex = (index: number) => {
+    return questionColors[getColorNameForIndex(index)];
+  };
+
+  // ✅ 特定のインデックスの連続数を取得
+  const getConsecutiveCountForIndex = (index: number): number => {
+    if (index < 0 || index >= confirmedHistory.length) {
+      return 0;
+    }
+
+    // そのカードまでの履歴を逆順に見て、連続○をカウント
+    let count = 0;
+    for (let i = index; i >= 0; i--) {
+      if (confirmedHistory[i].result === '○') {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count;
+  };
 
   // 収納アニメーション中かどうか
   const [isCollapsing, setIsCollapsing] = useState(false);
@@ -36,18 +107,15 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   // アニメーション用
   const animatedValues = useRef<Animated.Value[]>([]);
 
-  // Initialize/update animated values when confirmedHistory changes
   useEffect(() => {
     const neededLength = confirmedHistory.length;
     const currentLength = animatedValues.current.length;
 
     if (neededLength > currentLength) {
-      // Add new values
       for (let i = currentLength; i < neededLength; i++) {
         animatedValues.current.push(new Animated.Value(0));
       }
     } else if (neededLength < currentLength) {
-      // Remove excess values
       animatedValues.current = animatedValues.current.slice(0, neededLength);
     }
   }, [confirmedHistory.length]);
@@ -58,21 +126,16 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
     prevIsExpandedRef.current = isExpanded;
     prevModeRef.current = mode;
 
-    // answer → view へのモード切り替えで、既に展開状態の場合
     if (prevMode === 'answer' && mode === 'view' && isExpanded) {
-      // アニメーションなしで即座に全て表示
       setIsCollapsing(false);
       animatedValues.current.forEach(anim => anim.setValue(1));
       return;
     }
 
     if (mode === 'view' && isExpanded && !prevIsExpanded) {
-      // 展開開始
       setIsCollapsing(false);
-      // Reset all values to 0 first (except the first one which stays visible)
       animatedValues.current.slice(1).forEach(anim => anim.setValue(0));
 
-      // 展開時: 各カードを順番にスライドイン（一番上は除く）
       const animations = animatedValues.current.slice(1).map((anim, index) => {
         return Animated.timing(anim, {
           toValue: 1,
@@ -81,29 +144,24 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
           useNativeDriver: true,
         });
       });
-      // 一番上のカードは即座に表示
       if (animatedValues.current[0]) {
         animatedValues.current[0].setValue(1);
       }
       Animated.parallel(animations).start();
     } else if (mode === 'view' && !isExpanded && prevIsExpanded) {
-      // 収納開始
       setIsCollapsing(true);
-      // 収納時: アニメーション（一番上は除く）
       const animations = animatedValues.current.slice(1).map((anim, index) => {
         return Animated.timing(anim, {
           toValue: 0,
           duration: 30,
-          delay: (animatedValues.current.length - 2 - index) * 30, // 逆順
+          delay: (animatedValues.current.length - 2 - index) * 30,
           useNativeDriver: true,
         });
       });
       Animated.parallel(animations).start(() => {
-        // アニメーション完了後に収納状態を解除
         setIsCollapsing(false);
       });
     } else if (mode === 'answer') {
-      // Reset all values when in answer mode
       setIsCollapsing(false);
       animatedValues.current.forEach(anim => anim.setValue(0));
     }
@@ -117,44 +175,87 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   }
 
   if (mode === 'view' && (isExpanded || isCollapsing)) {
-    // 閲覧モード: 展開状態（履歴一覧）最新から降順で表示
     return (
       <View style={styles.expandedHistory}>
         {confirmedHistory.length > 0 ? (
           confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
             const originalIndex = confirmedHistory.length - 1 - reverseIndex;
+            const colorName = getColorNameForIndex(originalIndex);
+            const colorStyle = getColorForIndex(originalIndex);
             const animValue = animatedValues.current[reverseIndex] || new Animated.Value(1);
             const isFirstCard = reverseIndex === 0;
+            const isMetallic = isMetallicColor(colorName);
+            
+            // ✅ 連続数を取得
+            const consecutiveCount = getConsecutiveCountForIndex(originalIndex);
+            const showConsecutiveCount = colorName === 'gold' && consecutiveCount >= 4;
 
-            // 一番上のカードはアニメーションなし
+            // カードの中身
+            const cardContent = (
+              <>
+                <View style={styles.historyCardContent}>
+                  <Text style={styles.historyIcon}>{colorStyle.icon}</Text>
+                  <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
+                </View>
+                
+                {/* ✅ 4連続以上の場合、中央に表示 */}
+                {showConsecutiveCount && (
+                  <View style={styles.consecutiveBadge}>
+                    <Text style={styles.consecutiveText}>{consecutiveCount}連続!</Text>
+                  </View>
+                )}
+                
+                <Text style={styles.historyDate}>
+                  {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </Text>
+              </>
+            );
+
+            // カードのスタイル（非光沢用）
+            const nonMetallicStyle = [
+              styles.historyCard,
+              {
+                backgroundColor: colorStyle.bg,
+                borderColor: colorStyle.border,
+                borderWidth: 2,
+              }
+            ];
+
+            // 光沢カードのスタイル
+            const metallicCardStyle = [
+              styles.historyCard,
+              {
+                borderColor: colorStyle.border,
+                borderWidth: 2,
+              }
+            ];
+
             if (isFirstCard) {
               return (
                 <View key={`${questionNumber}-${originalIndex}`}>
-                  <TouchableOpacity
-                    style={[
-                      styles.historyCard,
-                      attempt.result === '○' ? styles.correctCard : styles.incorrectCard
-                    ]}
-                    onPress={() => onPress(questionNumber)}
-                  >
-                    <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
-                    <Text style={styles.answerMark}>
-                      {attempt.result === '○' ? '✅' : '❌'}
-                    </Text>
-                    <Text style={styles.historyDate}>
-                      {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </Text>
-                  </TouchableOpacity>
+                  {isMetallic ? (
+                    <TouchableOpacity onPress={() => onPress(questionNumber)} activeOpacity={0.7}>
+                      <MetallicCardWrapper color={colorName} style={metallicCardStyle}>
+                        {cardContent}
+                      </MetallicCardWrapper>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={nonMetallicStyle}
+                      onPress={() => onPress(questionNumber)}
+                    >
+                      {cardContent}
+                    </TouchableOpacity>
+                  )}
                 </View>
               );
             }
 
-            // 2番目以降のカードはアニメーション
             return (
               <Animated.View
                 key={`${questionNumber}-${originalIndex}`}
@@ -170,34 +271,36 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
                   opacity: animValue,
                 }}
               >
-                <TouchableOpacity
-                  style={[
-                    styles.historyCard,
-                    attempt.result === '○' ? styles.correctCard : styles.incorrectCard
-                  ]}
-                  onPress={() => onPress(questionNumber)}
-                >
-                  <Text style={styles.attemptNumber}>{originalIndex + 1}周目</Text>
-                  <Text style={styles.answerMark}>
-                    {attempt.result === '○' ? '✅' : '❌'}
-                  </Text>
-                  <Text style={styles.historyDate}>
-                    {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </Text>
-                </TouchableOpacity>
+                {isMetallic ? (
+                  <TouchableOpacity onPress={() => onPress(questionNumber)} activeOpacity={0.7}>
+                    <MetallicCardWrapper color={colorName} style={metallicCardStyle}>
+                      {cardContent}
+                    </MetallicCardWrapper>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={nonMetallicStyle}
+                    onPress={() => onPress(questionNumber)}
+                  >
+                    {cardContent}
+                  </TouchableOpacity>
+                )}
               </Animated.View>
             );
           })
         ) : (
           <TouchableOpacity
-            style={styles.historyCard}
+            style={[
+              styles.historyCard,
+              {
+                backgroundColor: questionColors.gray.bg,
+                borderColor: questionColors.gray.border,
+                borderWidth: 2,
+              }
+            ]}
             onPress={() => onPress(questionNumber)}
           >
+            <Text style={styles.historyIcon}>{questionColors.gray.icon}</Text>
             <Text style={{ color: theme.colors.secondary[500] }}>
               まだ履歴がありません
             </Text>
@@ -217,103 +320,158 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
       activeOpacity={0.7}
     >
       {showFab ? (
-        // FAB表示中: 確定済み履歴を全て背景に + 最前面に未回答カード
         <>
           {confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
             const index = confirmedHistory.length - 1 - reverseIndex;
+            const colorName = getColorNameForIndex(index);
+            const colorStyle = getColorForIndex(index);
             const stackIndex = confirmedHistory.length - 1 - index;
             const offset = (stackIndex + 1) * 9;
+            const isMetallic = isMetallicColor(colorName);
+
+            const stackCardStyle = {
+              position: 'absolute' as const,
+              top: offset,
+              left: 0,
+              right: 0,
+              zIndex: confirmedHistory.length - stackIndex,
+              opacity: Math.max(1 - (stackIndex * 0.1), 0.3),
+              borderColor: colorStyle.border,
+              borderWidth: 2,
+            };
+
+            if (isMetallic) {
+              return (
+                <MetallicCardWrapper
+                  key={`stack-${questionNumber}-${index}`}
+                  color={colorName}
+                  style={[styles.questionCard, stackCardStyle]}
+                >
+                  <View />
+                </MetallicCardWrapper>
+              );
+            }
 
             return (
               <View
                 key={`stack-${questionNumber}-${index}`}
                 style={[
                   styles.questionCard,
-                  {
-                    position: 'absolute',
-                    top: offset,
-                    left: 0,
-                    right: 0,
-                    zIndex: confirmedHistory.length - stackIndex,
-                    opacity: Math.max(1 - (stackIndex * 0.1), 0.3),
-                  },
-                  attempt.result === '○' ? styles.correctCard : styles.incorrectCard,
+                  stackCardStyle,
+                  { backgroundColor: colorStyle.bg },
                 ]}
               />
             );
           })}
 
-          {/* 最前面: 未回答カード */}
+          {/* FAB表示中の最前面: 未回答カード（gray - 問題番号非表示） */}
           <View
             style={[
               styles.questionCard,
               styles.topCard,
-              styles.unattemptedCard,
+              {
+                backgroundColor: questionColors.gray.bg,
+                borderColor: questionColors.gray.border,
+                borderWidth: 2,
+                borderStyle: 'dashed',
+              }
             ]}
           >
-            <Text style={styles.attemptNumber}>
-              {displayRound}周目
-            </Text>
-            <Text style={styles.questionNumber}>{questionNumber}</Text>
+            <Text style={styles.historyIcon}>{questionColors.gray.icon}</Text>
+            <Text style={styles.attemptNumber}>{displayRound}周目</Text>
           </View>
         </>
       ) : (
-        // FAB非表示: 確定済み履歴のスタック表示のみ
         <>
           {confirmedHistory.length > 0 ? (
             confirmedHistory.slice().reverse().map((attempt, reverseIndex) => {
               const index = confirmedHistory.length - 1 - reverseIndex;
+              const colorName = getColorNameForIndex(index);
+              const colorStyle = getColorForIndex(index);
               const stackIndex = confirmedHistory.length - 1 - index;
               const offset = stackIndex * 9;
               const isTopCard = stackIndex === 0;
+              const isMetallic = isMetallicColor(colorName);
+              
+              // ✅ 連続数を取得
+              const consecutiveCount = getConsecutiveCountForIndex(index);
+              const showConsecutiveCount = colorName === 'gold' && consecutiveCount >= 4;
+
+              const stackCardStyle = {
+                position: 'absolute' as const,
+                top: offset,
+                left: 0,
+                right: 0,
+                zIndex: confirmedHistory.length - stackIndex,
+                opacity: Math.max(1 - (stackIndex * 0.1), 0.3),
+                borderColor: colorStyle.border,
+                borderWidth: 2,
+              };
+
+              const cardContent = isTopCard ? (
+                <>
+                  <Text style={styles.historyIcon}>{colorStyle.icon}</Text>
+                  <Text style={styles.attemptNumber}>
+                    {confirmedHistory.length}周目
+                  </Text>
+                  
+                  {/* ✅ 4連続以上の場合、中央に表示 */}
+                  {showConsecutiveCount && (
+                    <View style={styles.consecutiveBadgeStack}>
+                      <Text style={styles.consecutiveTextStack}>{consecutiveCount}連続!</Text>
+                    </View>
+                  )}
+                  
+                  <Text style={styles.cardDate}>
+                    {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </Text>
+                </>
+              ) : null;
+
+              if (isMetallic) {
+                return (
+                  <MetallicCardWrapper
+                    key={`stack-${questionNumber}-${index}`}
+                    color={colorName}
+                    style={[styles.questionCard, stackCardStyle]}
+                  >
+                    {cardContent}
+                  </MetallicCardWrapper>
+                );
+              }
 
               return (
                 <View
                   key={`stack-${questionNumber}-${index}`}
                   style={[
                     styles.questionCard,
-                    {
-                      position: 'absolute',
-                      top: offset,
-                      left: 0,
-                      right: 0,
-                      zIndex: confirmedHistory.length - stackIndex,
-                      opacity: Math.max(1 - (stackIndex * 0.1), 0.3),
-                    },
-                    attempt.result === '○' ? styles.correctCard : styles.incorrectCard,
+                    stackCardStyle,
+                    { backgroundColor: colorStyle.bg },
                   ]}
                 >
-                  {isTopCard && (
-                    <>
-                      <Text style={styles.attemptNumber}>
-                        {confirmedHistory.length}周目
-                      </Text>
-                      <Text style={styles.answerMark}>
-                        {attempt.result === '○' ? '✅' : '❌'}
-                      </Text>
-                      <Text style={styles.cardDate}>
-                        {new Date(attempt.answeredAt).toLocaleDateString('ja-JP', {
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </Text>
-                    </>
-                  )}
+                  {cardContent}
                 </View>
               );
             })
           ) : (
-            // 確定済み履歴がない場合: 初回カード（未回答）
+            // 履歴がない場合（gray - 問題番号非表示）
             <View
               style={[
                 styles.questionCard,
                 styles.topCard,
-                styles.unattemptedCard,
+                {
+                  backgroundColor: questionColors.gray.bg,
+                  borderColor: questionColors.gray.border,
+                  borderWidth: 2,
+                },
               ]}
             >
-              <Text style={styles.questionNumber}>{questionNumber}</Text>
+              <Text style={styles.historyIcon}>{questionColors.gray.icon}</Text>
             </View>
           )}
         </>
@@ -335,27 +493,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
-    backgroundColor: theme.colors.neutral.white,
-  },
-  historyCount: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    fontSize: theme.typography.fontSizes.xs,
-    color: theme.colors.secondary[500],
-    fontWeight: theme.typography.fontWeights.medium,
-    zIndex: 1001,
   },
   questionCard: {
-    backgroundColor: theme.colors.neutral.white,
     padding: theme.spacing.lg,
     borderRadius: theme.borderRadius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     ...theme.shadows.md,
     height: 75,
-    borderWidth: 2,
-    borderColor: theme.colors.neutral[200],
   },
   expandedHistory: {
     paddingHorizontal: theme.spacing.md,
@@ -363,35 +508,25 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   historyCard: {
-    backgroundColor: theme.colors.neutral.white,
     padding: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
-    borderWidth: 2,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     ...theme.shadows.sm,
     height: 75,
   },
+  historyCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  historyIcon: {
+    fontSize: 24,
+  },
   historyDate: {
     fontSize: theme.typography.fontSizes.xs,
     color: theme.colors.secondary[500],
-  },
-  correctCard: {
-    backgroundColor: theme.colors.success[50],
-    borderColor: theme.colors.success[500],
-    borderWidth: 2,
-  },
-  incorrectCard: {
-    backgroundColor: theme.colors.error[50],
-    borderColor: theme.colors.error[500],
-    borderWidth: 2,
-  },
-  unattemptedCard: {
-    backgroundColor: theme.colors.warning[50],
-    borderWidth: 2,
-    borderColor: theme.colors.warning[300],
-    borderStyle: 'dashed',
   },
   questionNumber: {
     fontSize: theme.typography.fontSizes.xl,
@@ -400,16 +535,10 @@ const styles = StyleSheet.create({
     fontFamily: 'ZenKaku-Bold',
   },
   answerMark: {
-    position: 'absolute',
-    top: theme.spacing.sm,
-    right: theme.spacing.sm,
     fontSize: theme.typography.fontSizes.lg,
     fontWeight: theme.typography.fontWeights.bold,
   },
   attemptNumber: {
-    position: 'absolute',
-    top: theme.spacing.sm,
-    left: theme.spacing.sm,
     fontSize: theme.typography.fontSizes.xs,
     fontWeight: theme.typography.fontWeights.semibold,
     color: theme.colors.secondary[600],
@@ -423,6 +552,40 @@ const styles = StyleSheet.create({
     color: theme.colors.secondary[500],
     fontFamily: 'ZenKaku-Regular',
   },
+ // ✅ 連続バッジスタイル（展開時）
+ consecutiveBadge: {
+  position: 'absolute',
+  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+  paddingHorizontal: theme.spacing.xs,
+  paddingVertical: 2,
+  borderRadius: theme.borderRadius.xs,
+  marginLeft: theme.spacing.xs,
+  borderWidth: 1.5,
+  borderColor: theme.colors.secondary[400],  // ← グレー系の枠
+  ...theme.shadows.sm,
+},
+consecutiveText: {
+  fontSize: theme.typography.fontSizes.xs,
+  fontWeight: theme.typography.fontWeights.bold as any,
+  color: theme.colors.secondary[900],  // ← ダークグレー文字
+  fontFamily: 'ZenKaku-Bold',
+},
+
+// ✅ 連続バッジスタイル（スタック時）
+consecutiveBadgeStack: {
+  backgroundColor: 'rgba(255, 255, 255, 0.95)',
+  paddingHorizontal: theme.spacing.xs,
+  paddingVertical: 1,
+  borderRadius: theme.borderRadius.xs,
+  borderWidth: 1.5,
+  borderColor: theme.colors.secondary[400],  // ← グレー系の枠
+},
+consecutiveTextStack: {
+  fontSize: 10,
+  fontWeight: theme.typography.fontWeights.bold as any,
+  color: theme.colors.secondary[900],  // ← ダークグレー文字
+  fontFamily: 'ZenKaku-Bold',
+},
 });
 
 export default QuestionCard;

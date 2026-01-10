@@ -1,3 +1,11 @@
+import { IsString, IsBoolean, IsOptional } from 'class-validator';
+
 export class UpdateAnswerDto {
-    memo?: string;
-  }
+  @IsString()
+  @IsOptional()
+  memo?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  isBookmarked?: boolean;
+}

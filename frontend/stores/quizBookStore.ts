@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { QuizBook, Chapter, Section, QuestionAnswer, RecentStudyItem, Category } from '@/types/QuizBook';
 import { quizBookApi, chapterApi, sectionApi, answerApi, categoryApi } from '@/services/api';
+import { $ZodNullParams } from 'zod/v4/core';
 
 interface QuizBookStore {
   quizBooks: QuizBook[];
@@ -34,6 +35,8 @@ interface QuizBookStore {
   // Answer操作
   saveAnswer: (quizBookId: string, questionNumber: number, result: '○' | '×', chapterId?: string, sectionId?: string) => Promise<void>;
   updateMemo: (quizBookId: string, answerId: string, memo: string) => Promise<void>;
+  toggleBookmark: (chapterId: string, sectionId: string | null, questionNumber: number) => Promise<void>;
+  isBookmarked: (chapterId: string, sectionId: string | null, questionNumber: number) => boolean;
 
   // 旧メソッド（後方互換性のため）
   saveMemo: (chapterId: string, sectionId: string | null, questionNumber: number, memo: string) => Promise<void>;
@@ -234,14 +237,71 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 
   updateMemo: async (quizBookId: string, answerId: string, memo: string) => {
     try {
-      await answerApi.update(quizBookId, answerId, memo);
+      await answerApi.updateMemo(quizBookId, answerId, memo);
       await get().fetchQuizBooks();
     } catch (error) {
       console.error('Failed to update memo:', error);
       throw error;
     }
   },
-
+  toggleBookmark: async (chapterId: string, sectionId: string | null, questionNumber: number) => {
+    const { quizBooks } = get();
+  
+    // 対象の問題を探す
+    for (const book of quizBooks) {
+      for (const chapter of book.chapters) {
+        if (chapter.id === chapterId) {
+          // 問題リストを取得
+          const questionAnswers = sectionId
+            ? chapter.sections?.find(s => s.id === sectionId)?.questionAnswers
+            : chapter.questionAnswers;
+  
+          // 対象の問題を見つける
+          const qa = questionAnswers?.find(q => q.questionNumber === questionNumber);
+          
+          if (qa && qa.id) {
+            // 現在の状態をトグル
+            const newBookmarkStatus = !qa.isBookmarked;
+            
+            try {
+              await answerApi.updateBookmark(book.id, qa.id, newBookmarkStatus);
+              await get().fetchQuizBooks();
+            } catch (error) {
+              console.error('Failed to toggle bookmark:', error);
+              throw error;
+            }
+            return;
+          }
+        }
+      }
+    }
+    
+    console.error('Question not found for bookmark toggle');
+  },
+  
+  // ✅ 追加: 付箋の状態を確認
+  isBookmarked: (chapterId: string, sectionId: string | null, questionNumber: number) => {
+    const { quizBooks } = get();
+  
+    for (const book of quizBooks) {
+      for (const chapter of book.chapters) {
+        if (chapter.id === chapterId) {
+          // 問題リストを取得
+          const questionAnswers = sectionId
+            ? chapter.sections?.find(s => s.id === sectionId)?.questionAnswers
+            : chapter.questionAnswers;
+  
+          // 対象の問題を見つける
+          const qa = questionAnswers?.find(q => q.questionNumber === questionNumber);
+          
+          // 付箋の状態を返す（デフォルトはfalse）
+          return qa?.isBookmarked || false;
+        }
+      }
+    }
+    
+    return false;
+  },
   // ========== 検索系 ==========
 
   getChapterById: (chapterId: string) => {

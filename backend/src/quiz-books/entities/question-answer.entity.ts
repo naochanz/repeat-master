@@ -21,6 +21,9 @@ export class QuestionAnswer {
     answeredAt: Date;
   }[];
 
+  @Column({ name: 'is_bookmarked', default: false })
+  isBookmarked: boolean;
+
   @ManyToOne(() => Chapter, chapter => chapter.questionAnswers, { onDelete: 'CASCADE', nullable: true })
   chapter?: Chapter;
 

@@ -1,7 +1,6 @@
 import { theme } from '@/constants/theme';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface AnswerFABProps {
   questionNumber: number;
@@ -10,10 +9,12 @@ interface AnswerFABProps {
 }
 
 const AnswerFAB: React.FC<AnswerFABProps> = ({ questionNumber, onAnswer, isLoading = false }) => {
-  const insets = useSafeAreaInsets();
+  // CustomTabBarの高さ(60) + パディング(5)
+  const CUSTOM_TAB_BAR_HEIGHT = 15;
+  const PADDING_ABOVE_TAB = 5;
 
   return (
-    <View style={[styles.fabContainer, { bottom: 60 + insets.bottom + 15 }]}>
+    <View style={[styles.fabContainer, { bottom: CUSTOM_TAB_BAR_HEIGHT + PADDING_ABOVE_TAB }]}>
       <TouchableOpacity
         style={[styles.fab, styles.fabIncorrect, isLoading && styles.fabDisabled]}
         onPress={() => !isLoading && onAnswer(questionNumber, '×')}
