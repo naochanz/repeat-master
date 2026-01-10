@@ -89,7 +89,7 @@ export class QuizBooksService {
 
     if (error) throw error;
 
-    const quizBooks = (data || []).map(this.mapToQuizBook.bind(this));
+    const quizBooks: QuizBook[] = (data || []).map((item: any) => this.mapToQuizBook(item));
 
     // 各章の正答率を計算
     quizBooks.forEach((quizBook) => {
