@@ -1,10 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { QuizBook } from './entities/quiz-book.entity';
-import { Chapter } from './entities/chapter.entity';
-import { Section } from './entities/section.entity';
-import { QuestionAnswer } from './entities/question-answer.entity';
+import { SupabaseService } from '../supabase/supabase.service';
+import { StudyRecordsService } from '../study-records/study-records.service';
 import { CreateQuizBookDto } from './dto/create-quiz-book.dto';
 import { UpdateQuizBookDto } from './dto/update-quiz-book.dto';
 import { CreateChapterDto } from './dto/create-chapter.dto';
@@ -14,587 +10,703 @@ import { UpdateChapterDto } from './dto/update-chapter.dto';
 import { UpdateSectionDto } from './dto/update-section.dto';
 import { UpdateAnswerDto } from './dto/update-answer.dto';
 import { SectionStatsDto, ChapterStatsDto, QuizBookAnalyticsDto, RoundStatsDto } from './dto/quiz-book-analytics';
-import { StudyRecordsService } from 'src/study-records/study-records.service';
+
+interface Attempt {
+  round: number;
+  result: '○' | '×';
+  resultConfirmFlg: boolean;
+  answeredAt: string;
+}
+
+interface QuestionAnswer {
+  id: string;
+  questionNumber: number;
+  chapterId: string | null;
+  sectionId: string | null;
+  memo: string | null;
+  isBookmarked: boolean;
+  attempts: Attempt[];
+}
+
+interface Section {
+  id: string;
+  chapterId: string;
+  sectionNumber: number;
+  title: string | null;
+  questionCount: number;
+  questionAnswers?: QuestionAnswer[];
+}
+
+interface Chapter {
+  id: string;
+  quizBookId: string;
+  chapterNumber: number;
+  title: string | null;
+  chapterRate: number;
+  questionCount: number | null;
+  sections?: Section[];
+  questionAnswers?: QuestionAnswer[];
+}
+
+interface QuizBook {
+  id: string;
+  userId: string;
+  categoryId: string | null;
+  title: string;
+  chapterCount: number;
+  currentRate: number;
+  useSections: boolean;
+  currentRound: number;
+  createdAt: string;
+  updatedAt: string;
+  category?: { id: string; name: string };
+  chapters: Chapter[];
+}
 
 @Injectable()
 export class QuizBooksService {
-    constructor(
-        @InjectRepository(QuizBook)
-        private quizBookRepository: Repository<QuizBook>,
-        @InjectRepository(Chapter)
-        private chapterRepository: Repository<Chapter>,
-        @InjectRepository(Section)
-        private sectionRepository: Repository<Section>,
-        @InjectRepository(QuestionAnswer)
-        private questionAnswerRepository: Repository<QuestionAnswer>,
-        private studyRecordsService: StudyRecordsService,
-    ) { }
+  constructor(
+    private supabaseService: SupabaseService,
+    private studyRecordsService: StudyRecordsService,
+  ) {}
 
-    // 全問題集を取得（ユーザーIDでフィルタ）
-    async findAll(userId: string): Promise<QuizBook[]> {
-        const quizBooks = await this.quizBookRepository.find({
-            where: { userId },
-            relations: [
-                'category',  // ✅ 追加
-                'chapters',
-                'chapters.sections',
-                'chapters.questionAnswers',
-                'chapters.sections.questionAnswers'
-            ],
-            order: {
-                createdAt: 'DESC',
-                chapters: {
-                    chapterNumber: 'ASC',
-                    sections: {
-                        sectionNumber: 'ASC',
-                    },
-                },
-            },
-        });
+  async findAll(userId: string): Promise<QuizBook[]> {
+    const supabase = this.supabaseService.getClient();
 
-        // 各問題集の章に対して最新周回の正答率を計算
-        quizBooks.forEach(quizBook => {
-            const currentRound = quizBook.currentRound || 1;
-            quizBook.chapters.forEach(chapter => {
-                chapter.chapterRate = this.calculateChapterRateForRound(chapter, currentRound);
-            });
-        });
+    const { data, error } = await supabase
+      .from('quiz_books')
+      .select(`
+        *,
+        category:categories(*),
+        chapters(
+          *,
+          sections(*, question_answers:question_answers(*)),
+          question_answers:question_answers(*)
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
 
-        return quizBooks;
+    if (error) throw error;
+
+    const quizBooks = (data || []).map(this.mapToQuizBook.bind(this));
+
+    // 各章の正答率を計算
+    quizBooks.forEach((quizBook) => {
+      const currentRound = quizBook.currentRound || 1;
+      quizBook.chapters.forEach((chapter) => {
+        chapter.chapterRate = this.calculateChapterRateForRound(chapter, currentRound);
+      });
+    });
+
+    return quizBooks;
+  }
+
+  async findOne(id: string, userId: string): Promise<QuizBook> {
+    const supabase = this.supabaseService.getClient();
+
+    const { data, error } = await supabase
+      .from('quiz_books')
+      .select(`
+        *,
+        category:categories(*),
+        chapters(
+          *,
+          sections(*, question_answers:question_answers(*)),
+          question_answers:question_answers(*)
+        )
+      `)
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !data) {
+      throw new NotFoundException('QuizBook not found');
     }
 
-    /**
-     * 特定の周回における章の正答率を計算
-     */
-    private calculateChapterRateForRound(chapter: Chapter, round: number): number {
+    const quizBook = this.mapToQuizBook(data);
+
+    // 各章の正答率を計算
+    const currentRound = quizBook.currentRound || 1;
+    quizBook.chapters.forEach((chapter) => {
+      chapter.chapterRate = this.calculateChapterRateForRound(chapter, currentRound);
+    });
+
+    return quizBook;
+  }
+
+  async create(createQuizBookDto: CreateQuizBookDto, userId: string): Promise<QuizBook> {
+    const supabase = this.supabaseService.getClient();
+
+    const { data, error } = await supabase
+      .from('quiz_books')
+      .insert({
+        title: createQuizBookDto.title,
+        category_id: createQuizBookDto.categoryId,
+        use_sections: createQuizBookDto.useSections,
+        user_id: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { ...this.mapToQuizBook(data), chapters: [] };
+  }
+
+  async update(id: string, updateQuizBookDto: UpdateQuizBookDto, userId: string): Promise<QuizBook> {
+    await this.findOne(id, userId); // 権限チェック
+
+    const supabase = this.supabaseService.getClient();
+    const updateData: any = {};
+
+    if (updateQuizBookDto.title !== undefined) updateData.title = updateQuizBookDto.title;
+    if (updateQuizBookDto.categoryId !== undefined) updateData.category_id = updateQuizBookDto.categoryId;
+    if (updateQuizBookDto.useSections !== undefined) updateData.use_sections = updateQuizBookDto.useSections;
+    if (updateQuizBookDto.currentRound !== undefined) updateData.current_round = updateQuizBookDto.currentRound;
+
+    const { data, error } = await supabase
+      .from('quiz_books')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return this.findOne(id, userId);
+  }
+
+  async remove(id: string, userId: string): Promise<void> {
+    await this.findOne(id, userId); // 権限チェック
+
+    const supabase = this.supabaseService.getClient();
+    const { error } = await supabase.from('quiz_books').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  // ========== Chapter CRUD ==========
+
+  async createChapter(quizBookId: string, createChapterDto: CreateChapterDto, userId: string): Promise<Chapter> {
+    await this.findOne(quizBookId, userId); // 権限チェック
+
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase
+      .from('chapters')
+      .insert({
+        quiz_book_id: quizBookId,
+        chapter_number: createChapterDto.chapterNumber,
+        title: createChapterDto.title,
+        question_count: createChapterDto.questionCount,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return this.mapToChapter(data);
+  }
+
+  async updateChapter(quizBookId: string, chapterId: string, updateChapterDto: UpdateChapterDto, userId: string): Promise<Chapter> {
+    await this.findOne(quizBookId, userId); // 権限チェック
+
+    const supabase = this.supabaseService.getClient();
+    const updateData: any = {};
+
+    if (updateChapterDto.chapterNumber !== undefined) updateData.chapter_number = updateChapterDto.chapterNumber;
+    if (updateChapterDto.title !== undefined) updateData.title = updateChapterDto.title;
+    if (updateChapterDto.questionCount !== undefined) updateData.question_count = updateChapterDto.questionCount;
+
+    const { data, error } = await supabase
+      .from('chapters')
+      .update(updateData)
+      .eq('id', chapterId)
+      .eq('quiz_book_id', quizBookId)
+      .select()
+      .single();
+
+    if (error || !data) {
+      throw new NotFoundException('Chapter not found');
+    }
+    return this.mapToChapter(data);
+  }
+
+  async removeChapter(quizBookId: string, chapterId: string, userId: string): Promise<void> {
+    await this.findOne(quizBookId, userId); // 権限チェック
+
+    const supabase = this.supabaseService.getClient();
+    const { error } = await supabase
+      .from('chapters')
+      .delete()
+      .eq('id', chapterId)
+      .eq('quiz_book_id', quizBookId);
+
+    if (error) throw error;
+  }
+
+  // ========== Section CRUD ==========
+
+  async createSection(quizBookId: string, chapterId: string, createSectionDto: CreateSectionDto, userId: string): Promise<Section> {
+    await this.findOne(quizBookId, userId); // 権限チェック
+
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase
+      .from('sections')
+      .insert({
+        chapter_id: chapterId,
+        section_number: createSectionDto.sectionNumber,
+        title: createSectionDto.title,
+        question_count: createSectionDto.questionCount || 0,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return this.mapToSection(data);
+  }
+
+  async updateSection(quizBookId: string, chapterId: string, sectionId: string, updateSectionDto: UpdateSectionDto, userId: string): Promise<Section> {
+    await this.findOne(quizBookId, userId); // 権限チェック
+
+    const supabase = this.supabaseService.getClient();
+    const updateData: any = {};
+
+    if (updateSectionDto.sectionNumber !== undefined) updateData.section_number = updateSectionDto.sectionNumber;
+    if (updateSectionDto.title !== undefined) updateData.title = updateSectionDto.title;
+    if (updateSectionDto.questionCount !== undefined) updateData.question_count = updateSectionDto.questionCount;
+
+    const { data, error } = await supabase
+      .from('sections')
+      .update(updateData)
+      .eq('id', sectionId)
+      .eq('chapter_id', chapterId)
+      .select()
+      .single();
+
+    if (error || !data) {
+      throw new NotFoundException('Section not found');
+    }
+    return this.mapToSection(data);
+  }
+
+  async removeSection(quizBookId: string, chapterId: string, sectionId: string, userId: string): Promise<void> {
+    await this.findOne(quizBookId, userId); // 権限チェック
+
+    const supabase = this.supabaseService.getClient();
+    const { error } = await supabase
+      .from('sections')
+      .delete()
+      .eq('id', sectionId)
+      .eq('chapter_id', chapterId);
+
+    if (error) throw error;
+  }
+
+  // ========== QuestionAnswer CRUD ==========
+
+  async createAnswer(quizBookId: string, createAnswerDto: CreateAnswerDto, userId: string): Promise<QuestionAnswer> {
+    await this.findOne(quizBookId, userId); // 権限チェック
+
+    const supabase = this.supabaseService.getClient();
+
+    // 既存の回答を取得
+    let query = supabase
+      .from('question_answers')
+      .select('*')
+      .eq('question_number', createAnswerDto.questionNumber);
+
+    if (createAnswerDto.sectionId) {
+      query = query.eq('section_id', createAnswerDto.sectionId);
+    } else if (createAnswerDto.chapterId) {
+      query = query.eq('chapter_id', createAnswerDto.chapterId);
+    }
+
+    const { data: existing } = await query.maybeSingle();
+
+    if (existing) {
+      const attempts = existing.attempts as Attempt[];
+      const newAttempt: Attempt = {
+        round: attempts.length + 1,
+        result: createAnswerDto.result,
+        resultConfirmFlg: true,
+        answeredAt: new Date().toISOString(),
+      };
+
+      attempts.push(newAttempt);
+
+      const { data, error } = await supabase
+        .from('question_answers')
+        .update({ attempts })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // StudyRecord追加
+      if (createAnswerDto.chapterId) {
+        await this.studyRecordsService.addStudyRecord(
+          userId,
+          quizBookId,
+          createAnswerDto.chapterId,
+          createAnswerDto.questionNumber,
+          createAnswerDto.result,
+          newAttempt.round,
+          createAnswerDto.sectionId,
+        );
+      }
+
+      return this.mapToQuestionAnswer(data);
+    } else {
+      const newAttempt: Attempt = {
+        round: 1,
+        result: createAnswerDto.result,
+        resultConfirmFlg: true,
+        answeredAt: new Date().toISOString(),
+      };
+
+      const { data, error } = await supabase
+        .from('question_answers')
+        .insert({
+          question_number: createAnswerDto.questionNumber,
+          chapter_id: createAnswerDto.chapterId,
+          section_id: createAnswerDto.sectionId,
+          attempts: [newAttempt],
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // StudyRecord追加
+      if (createAnswerDto.chapterId) {
+        await this.studyRecordsService.addStudyRecord(
+          userId,
+          quizBookId,
+          createAnswerDto.chapterId,
+          createAnswerDto.questionNumber,
+          createAnswerDto.result,
+          1,
+          createAnswerDto.sectionId,
+        );
+      }
+
+      return this.mapToQuestionAnswer(data);
+    }
+  }
+
+  async updateAnswer(quizBookId: string, answerId: string, updateAnswerDto: UpdateAnswerDto, userId: string): Promise<QuestionAnswer> {
+    await this.findOne(quizBookId, userId); // 権限チェック
+
+    const supabase = this.supabaseService.getClient();
+    const updateData: any = {};
+
+    if (updateAnswerDto.memo !== undefined) updateData.memo = updateAnswerDto.memo;
+    if (updateAnswerDto.isBookmarked !== undefined) updateData.is_bookmarked = updateAnswerDto.isBookmarked;
+
+    const { data, error } = await supabase
+      .from('question_answers')
+      .update(updateData)
+      .eq('id', answerId)
+      .select()
+      .single();
+
+    if (error || !data) {
+      throw new NotFoundException('Answer not found');
+    }
+    return this.mapToQuestionAnswer(data);
+  }
+
+  async removeAnswer(quizBookId: string, answerId: string, userId: string): Promise<void> {
+    await this.findOne(quizBookId, userId); // 権限チェック
+
+    const supabase = this.supabaseService.getClient();
+    const { error } = await supabase
+      .from('question_answers')
+      .delete()
+      .eq('id', answerId);
+
+    if (error) throw error;
+  }
+
+  async removeLatestAttempt(quizBookId: string, answerId: string, userId: string): Promise<void> {
+    await this.findOne(quizBookId, userId); // 権限チェック
+
+    const supabase = this.supabaseService.getClient();
+
+    const { data: answer } = await supabase
+      .from('question_answers')
+      .select('*')
+      .eq('id', answerId)
+      .single();
+
+    if (!answer) {
+      throw new NotFoundException('Answer not found');
+    }
+
+    const attempts = answer.attempts as Attempt[];
+    if (attempts.length === 0) {
+      throw new NotFoundException('No attempts found');
+    }
+
+    attempts.pop();
+
+    if (attempts.length === 0) {
+      await supabase.from('question_answers').delete().eq('id', answerId);
+    } else {
+      await supabase
+        .from('question_answers')
+        .update({ attempts })
+        .eq('id', answerId);
+    }
+  }
+
+  // ========== Analytics ==========
+
+  async getAnalytics(quizBookId: string, userId: string): Promise<QuizBookAnalyticsDto> {
+    const quizBook = await this.findOne(quizBookId, userId);
+
+    // 全回答データを収集
+    const answers: QuestionAnswer[] = [];
+    quizBook.chapters.forEach((chapter) => {
+      if (chapter.questionAnswers) {
+        answers.push(...chapter.questionAnswers);
+      }
+      if (chapter.sections) {
+        chapter.sections.forEach((section) => {
+          if (section.questionAnswers) {
+            answers.push(...section.questionAnswers);
+          }
+        });
+      }
+    });
+
+    const totalRounds = this.calculateTotalRounds(answers);
+    const roundStats = this.calculateRoundStats(answers, totalRounds);
+    const chapterStats = this.calculateChapterStats(answers, totalRounds, quizBook.chapters);
+    const sectionStats = this.calculateSectionStats(answers, totalRounds, quizBook.chapters);
+
+    return {
+      quizBookId,
+      totalRounds,
+      roundStats,
+      chapterStats,
+      sectionStats,
+    };
+  }
+
+  // ========== Private Helper Methods ==========
+
+  private calculateChapterRateForRound(chapter: Chapter, round: number): number {
+    let totalQuestions = 0;
+    let correctAnswers = 0;
+
+    const processAnswers = (answers: QuestionAnswer[]) => {
+      answers.forEach((qa) => {
+        const roundAttempt = qa.attempts?.find((a) => a.round === round && a.resultConfirmFlg);
+        if (roundAttempt) {
+          totalQuestions++;
+          if (roundAttempt.result === '○') {
+            correctAnswers++;
+          }
+        }
+      });
+    };
+
+    if (chapter.sections && chapter.sections.length > 0) {
+      chapter.sections.forEach((section) => {
+        if (section.questionAnswers) {
+          processAnswers(section.questionAnswers);
+        }
+      });
+    } else if (chapter.questionAnswers) {
+      processAnswers(chapter.questionAnswers);
+    }
+
+    if (totalQuestions === 0) return 0;
+    return Math.round((correctAnswers / totalQuestions) * 100);
+  }
+
+  private calculateTotalRounds(answers: QuestionAnswer[]): number {
+    let maxRound = 0;
+    answers.forEach((answer) => {
+      const confirmedAttempts = answer.attempts.filter((a) => a.resultConfirmFlg);
+      confirmedAttempts.forEach((attempt) => {
+        if (attempt.round > maxRound) {
+          maxRound = attempt.round;
+        }
+      });
+    });
+    return maxRound;
+  }
+
+  private calculateRoundStats(answers: QuestionAnswer[], totalRounds: number): RoundStatsDto[] {
+    const stats: RoundStatsDto[] = [];
+
+    for (let round = 1; round <= totalRounds; round++) {
+      let totalQuestions = 0;
+      let correctAnswers = 0;
+
+      answers.forEach((answer) => {
+        const roundAttempt = answer.attempts.find((a) => a.round === round && a.resultConfirmFlg);
+        if (roundAttempt) {
+          totalQuestions++;
+          if (roundAttempt.result === '○') {
+            correctAnswers++;
+          }
+        }
+      });
+
+      const correctRate = totalQuestions > 0
+        ? Math.round((correctAnswers / totalQuestions) * 100 * 10) / 10
+        : 0;
+
+      stats.push({ round, totalQuestions, correctAnswers, correctRate });
+    }
+
+    return stats;
+  }
+
+  private calculateChapterStats(answers: QuestionAnswer[], totalRounds: number, chapters: Chapter[]): ChapterStatsDto[] {
+    const stats: ChapterStatsDto[] = [];
+    const chapterMap = new Map(chapters.map((c) => [c.id, c]));
+
+    const chapterGroups = new Map<string, QuestionAnswer[]>();
+    answers.forEach((answer) => {
+      if (answer.chapterId) {
+        if (!chapterGroups.has(answer.chapterId)) {
+          chapterGroups.set(answer.chapterId, []);
+        }
+        chapterGroups.get(answer.chapterId)!.push(answer);
+      }
+    });
+
+    chapterGroups.forEach((chapterAnswers, chapterId) => {
+      const chapter = chapterMap.get(chapterId);
+      const chapterNumber = chapter?.chapterNumber || 0;
+
+      for (let round = 1; round <= totalRounds; round++) {
         let totalQuestions = 0;
         let correctAnswers = 0;
 
-        // 節がある場合はセクションの回答から集計
-        if (chapter.sections && chapter.sections.length > 0) {
-            chapter.sections.forEach(section => {
-                if (section.questionAnswers && section.questionAnswers.length > 0) {
-                    section.questionAnswers.forEach(qa => {
-                        const roundAttempt = qa.attempts?.find(
-                            a => a.round === round && a.resultConfirmFlg
-                        );
-                        if (roundAttempt) {
-                            totalQuestions++;
-                            if (roundAttempt.result === '○') {
-                                correctAnswers++;
-                            }
-                        }
-                    });
-                }
-            });
-        } else {
-            // 節がない場合は章の回答から集計
-            if (chapter.questionAnswers && chapter.questionAnswers.length > 0) {
-                chapter.questionAnswers.forEach(qa => {
-                    const roundAttempt = qa.attempts?.find(
-                        a => a.round === round && a.resultConfirmFlg
-                    );
-                    if (roundAttempt) {
-                        totalQuestions++;
-                        if (roundAttempt.result === '○') {
-                            correctAnswers++;
-                        }
-                    }
-                });
+        chapterAnswers.forEach((answer) => {
+          const roundAttempt = answer.attempts.find((a) => a.round === round && a.resultConfirmFlg);
+          if (roundAttempt) {
+            totalQuestions++;
+            if (roundAttempt.result === '○') {
+              correctAnswers++;
             }
-        }
-
-        if (totalQuestions === 0) return 0;
-        return Math.round((correctAnswers / totalQuestions) * 100);
-    }
-
-    //問題集を一件取得
-    async findOne(id: string, userId: string): Promise<QuizBook> {
-        const quizBook = await this.quizBookRepository.findOne({
-            where: { id, userId },
-            relations: ['category', 'chapters', 'chapters.sections', 'chapters.questionAnswers', 'chapters.sections.questionAnswers'],
+          }
         });
 
-        if (!quizBook) {
-            throw new NotFoundException('QuizBook not found');
+        if (totalQuestions > 0) {
+          const correctRate = Math.round((correctAnswers / totalQuestions) * 100 * 10) / 10;
+          stats.push({ round, chapterId, chapterNumber, totalQuestions, correctAnswers, correctRate });
         }
+      }
+    });
 
-        // 各章に対して最新周回の正答率を計算
-        const currentRound = quizBook.currentRound || 1;
-        quizBook.chapters.forEach(chapter => {
-            chapter.chapterRate = this.calculateChapterRateForRound(chapter, currentRound);
+    return stats.sort((a, b) => (a.round !== b.round ? a.round - b.round : a.chapterNumber - b.chapterNumber));
+  }
+
+  private calculateSectionStats(answers: QuestionAnswer[], totalRounds: number, chapters: Chapter[]): SectionStatsDto[] {
+    const stats: SectionStatsDto[] = [];
+    const sectionMap = new Map<string, Section>();
+
+    chapters.forEach((chapter) => {
+      chapter.sections?.forEach((section) => {
+        sectionMap.set(section.id, section);
+      });
+    });
+
+    const sectionGroups = new Map<string, QuestionAnswer[]>();
+    answers.forEach((answer) => {
+      if (answer.sectionId) {
+        if (!sectionGroups.has(answer.sectionId)) {
+          sectionGroups.set(answer.sectionId, []);
+        }
+        sectionGroups.get(answer.sectionId)!.push(answer);
+      }
+    });
+
+    sectionGroups.forEach((sectionAnswers, sectionId) => {
+      const section = sectionMap.get(sectionId);
+      const chapterId = section?.chapterId || '';
+      const sectionNumber = section?.sectionNumber || 0;
+
+      for (let round = 1; round <= totalRounds; round++) {
+        let totalQuestions = 0;
+        let correctAnswers = 0;
+
+        sectionAnswers.forEach((answer) => {
+          const roundAttempt = answer.attempts.find((a) => a.round === round && a.resultConfirmFlg);
+          if (roundAttempt) {
+            totalQuestions++;
+            if (roundAttempt.result === '○') {
+              correctAnswers++;
+            }
+          }
         });
 
-        return quizBook;
+        if (totalQuestions > 0) {
+          const correctRate = Math.round((correctAnswers / totalQuestions) * 100 * 10) / 10;
+          stats.push({ round, sectionId, chapterId, sectionNumber, totalQuestions, correctAnswers, correctRate });
+        }
+      }
+    });
+
+    return stats.sort((a, b) => (a.round !== b.round ? a.round - b.round : a.sectionNumber - b.sectionNumber));
+  }
+
+  // ========== Mappers ==========
+
+  private mapToQuizBook(data: any): QuizBook {
+    return {
+      id: data.id,
+      userId: data.user_id,
+      categoryId: data.category_id,
+      title: data.title,
+      chapterCount: data.chapter_count,
+      currentRate: data.current_rate,
+      useSections: data.use_sections,
+      currentRound: data.current_round,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      category: data.category ? { id: data.category.id, name: data.category.name } : undefined,
+      chapters: (data.chapters || []).map((c: any) => this.mapToChapter(c)),
     };
-
-    //問題集を作成
-    async create(createQuizBookDto: CreateQuizBookDto, userId: string): Promise<QuizBook> {
-        const quizBook = this.quizBookRepository.create({
-            ...createQuizBookDto,
-            userId,
-            chapters: [],
-        });
-
-        return this.quizBookRepository.save(quizBook);
-    }
-
-    // 問題集を更新
-    async update(id: string, updateQuizBookDto: UpdateQuizBookDto, userId: string): Promise<QuizBook> {
-        const quizBook = await this.findOne(id, userId);
-
-        Object.assign(quizBook, updateQuizBookDto);
-
-        return this.quizBookRepository.save(quizBook);
-    }
-
-    //問題集を削除
-    async remove(id: string, userId: string): Promise<void> {
-        const quizBook = await this.findOne(id, userId);
-        await this.quizBookRepository.remove(quizBook);
-    }
-
-    // ========== Chapter CRUD ==========
-
-    // 章を追加
-    async createChapter(quizBookId: string, createChapterDto: CreateChapterDto, userId: string): Promise<Chapter> {
-        const quizBook = await this.findOne(quizBookId, userId);
-
-        const chapter = this.chapterRepository.create({
-            ...createChapterDto,
-            quizBookId: quizBook.id,
-        });
-
-        const savedChapter = await this.chapterRepository.save(chapter);
-
-        //問題集のchapterCountを更新
-        return savedChapter;
-    }
-
-    //章を更新
-    async updateChapter(quizBookId: string, chapterId: string, updateChapterDto: UpdateChapterDto, userId: string): Promise<Chapter> {
-        await this.findOne(quizBookId, userId); // 権限チェック
-
-        const chapter = await this.chapterRepository.findOne({
-            where: { id: chapterId, quizBookId },
-        });
-        if (!chapter) {
-            throw new NotFoundException('Chapter not found');
-        }
-        Object.assign(chapter, updateChapterDto);
-        return this.chapterRepository.save(chapter);
-    }
-
-    //章を削除
-    async removeChapter(quizBookId: string, chapterId: string, userId: string): Promise<void> {
-        await this.findOne(quizBookId, userId)// 権限チェック
-
-        const chapter = await this.chapterRepository.findOne({
-            where: { id: chapterId, quizBookId },
-        });
-
-        if (!chapter) {
-            throw new NotFoundException('Chapter not found');
-        }
-
-        await this.chapterRepository.remove(chapter);
-    }
-
-    // ========== Section CRUD ==========
-
-    // 節を追加
-    async createSection(quizBookId: string, chapterId: string, createSectionDto: CreateSectionDto, userId: string): Promise<Section> {
-        await this.findOne(quizBookId, userId); // 権限チェック
-
-        const chapter = await this.chapterRepository.findOne({
-            where: { id: chapterId, quizBookId },
-        });
-
-        if (!chapter) {
-            throw new NotFoundException('Chapter not found');
-        }
-
-        const section = this.sectionRepository.create({
-            ...createSectionDto,
-            chapterId: chapter.id,
-        });
-
-        return this.sectionRepository.save(section);
-    }
-
-    //節を更新
-    async updateSection(quizBookId: string, chapterId: string, sectionId: string, updateSectionDto: UpdateSectionDto, userId: string): Promise<Section> {
-        await this.findOne(quizBookId, userId);//権限チェック
-
-        const section = await this.sectionRepository.findOne({
-            where: { id: sectionId, chapterId },
-        });
-
-        if (!section) {
-            throw new NotFoundException('Section not found');
-        }
-        Object.assign(section, updateSectionDto);
-        return this.sectionRepository.save(section);
-    }
-
-    //節を削除
-    async removeSection(quizBookId: string, chapterId: string, sectionId: string, userId: string): Promise<void> {
-        await this.findOne(quizBookId, userId); //権限チェック
-
-        const section = await this.sectionRepository.findOne({
-            where: { id: sectionId, chapterId },
-        });
-
-        if (!section) {
-            throw new NotFoundException('Section not found');
-        }
-
-        await this.sectionRepository.remove(section);
-    }
-    // ========== QuestionAnswer CRUD ==========
-
-    // 回答を保存
-    async createAnswer(quizBookId: string, createAnswerDto: CreateAnswerDto, userId: string): Promise<QuestionAnswer> {
-        await this.findOne(quizBookId, userId); //権限チェック
-
-        //既存の回答を取得
-        const existingAnswer = await this.questionAnswerRepository.findOne({
-            where: {
-                questionNumber: createAnswerDto.questionNumber,
-                ...(createAnswerDto.chapterId && { chapterId: createAnswerDto.chapterId }),
-                ...(createAnswerDto.sectionId && { sectionId: createAnswerDto.sectionId }),
-            },
-        })
-
-        if (existingAnswer) {
-            //既存の回答に追加
-            const newAttempt = {
-                round: existingAnswer.attempts.length + 1,
-                result: createAnswerDto.result,
-                resultConfirmFlg: true,
-                answeredAt: new Date(),
-            };
-
-            existingAnswer.attempts.push(newAttempt);
-            const savedAnswer = await this.questionAnswerRepository.save(existingAnswer);
-
-            if (createAnswerDto.chapterId) {
-                await this.studyRecordsService.addStudyRecord(
-                    userId,
-                    quizBookId,
-                    createAnswerDto.chapterId,  // ✅ ここで string であることが保証される
-                    createAnswerDto.questionNumber,
-                    createAnswerDto.result,
-                    newAttempt.round,
-                    createAnswerDto.sectionId,
-                );
-            }
-
-            return savedAnswer;
-        } else {
-            // 新規作成
-            const answer = this.questionAnswerRepository.create({
-                questionNumber: createAnswerDto.questionNumber,
-                chapterId: createAnswerDto.chapterId,
-                sectionId: createAnswerDto.sectionId,
-                attempts: [{
-                    round: 1,
-                    result: createAnswerDto.result,
-                    resultConfirmFlg: true,
-                    answeredAt: new Date(),
-                }],
-            });
-
-            const savedAnswer = await this.questionAnswerRepository.save(answer);
-
-            // ✅ StudyRecord を追加
-            if (createAnswerDto.chapterId) {
-                await this.studyRecordsService.addStudyRecord(
-                    userId,
-                    quizBookId,
-                    createAnswerDto.chapterId,
-                    createAnswerDto.questionNumber,
-                    createAnswerDto.result,
-                    1,
-                    createAnswerDto.sectionId,
-                );
-            }
-
-            return savedAnswer;
-        }
-    }
-    // メモと付箋を更新
-    async updateAnswer(quizBookId: string, answerId: string, updateAnswerDto: UpdateAnswerDto, userId: string): Promise<QuestionAnswer> {
-        await this.findOne(quizBookId, userId); // 権限チェック
-
-        const answer = await this.questionAnswerRepository.findOne({
-            where: { id: answerId },
-        });
-
-        if (!answer) {
-            throw new NotFoundException('Answer not found');
-        }
-        
-        Object.assign(answer, updateAnswerDto);
-        return this.questionAnswerRepository.save(answer);
-    }
-    // 回答を削除（すべてのattempts）
-    async removeAnswer(quizBookId: string, answerId: string, userId: string): Promise<void> {
-        await this.findOne(quizBookId, userId); // 権限チェック
-
-        const answer = await this.questionAnswerRepository.findOne({
-            where: { id: answerId },
-        });
-
-        if (!answer) {
-            throw new NotFoundException('Answer not found');
-        }
-
-        await this.questionAnswerRepository.remove(answer);
-    }
-
-    // 最新のattemptのみ削除
-    async removeLatestAttempt(quizBookId: string, answerId: string, userId: string): Promise<void> {
-        await this.findOne(quizBookId, userId); // 権限チェック
-
-        const answer = await this.questionAnswerRepository.findOne({
-            where: { id: answerId },
-        });
-
-        if (!answer) {
-            throw new NotFoundException('Answer not found');
-        }
-
-        if (!answer.attempts || answer.attempts.length === 0) {
-            throw new NotFoundException('No attempts found');
-        }
-
-        // attemptsから最後の要素を削除
-        answer.attempts = answer.attempts.slice(0, -1);
-
-        // attemptsが空になった場合は、QuestionAnswer自体を削除
-        if (answer.attempts.length === 0) {
-            await this.questionAnswerRepository.remove(answer);
-        } else {
-            await this.questionAnswerRepository.save(answer);
-        }
-    }
-
-    async getAnalytics(quizBookId: string, userId: string): Promise<QuizBookAnalyticsDto> {
-        //問題集の存在確認と権限チェック
-        const quizBook = await this.findOne(quizBookId, userId);
-
-        //全ての回答データを取得
-        const answers = await this.questionAnswerRepository.find({
-            where: [
-                { chapter: { quizBookId } },
-                { section: { chapter: { quizBookId } } }
-            ],
-            relations: ['chapter', 'section']
-        });
-
-        //周回数を集計
-        const totalRounds = this.calculateTotalRounds(answers);
-
-        //各種統計の計算
-        const roundStats = this.calculateRoundStats(answers, totalRounds);  //周回ごとの正答率
-        const chapterStats = this.calculateChapterStats(answers, totalRounds); //チャプターごとの正答率
-        const sectionStats = this.calculateSectionStats(answers, totalRounds); //セクションごとの正答率
-
-        return {
-            quizBookId,
-            totalRounds,
-            roundStats,
-            chapterStats,
-            sectionStats,
-        };
-    }
-    /**
-    * 総周回数を計算（確定済み解答の最大round）
-    */
-    private calculateTotalRounds(answers: QuestionAnswer[]): number {
-        let maxRound = 0;
-
-        answers.forEach(answer => {
-            const confirmedAttempts = answer.attempts.filter(a => a.resultConfirmFlg);
-            confirmedAttempts.forEach(attempt => {
-                if (attempt.round > maxRound) {
-                    maxRound = attempt.round;
-                }
-            });
-        });
-
-        return maxRound;
-    }
-
-    /**
-     * 周回ごとの正答率を計算
-     */
-    private calculateRoundStats(
-        answers: QuestionAnswer[],
-        totalRounds: number,
-    ): RoundStatsDto[] {
-        const stats: RoundStatsDto[] = [];
-
-        for (let round = 1; round <= totalRounds; round++) {
-            let totalQuestions = 0;
-            let correctAnswers = 0;
-
-            answers.forEach(answer => {
-                const roundAttempt = answer.attempts.find(
-                    a => a.round === round && a.resultConfirmFlg,
-                );
-
-                //確定済みの問題数と正解した問題数をそれぞれ加算
-                if (roundAttempt) {
-                    totalQuestions++;
-                    if (roundAttempt.result === '○') {
-                        correctAnswers++;
-                    }
-                }
-            });
-
-            //正答率計算
-            const correctRate = totalQuestions > 0
-                ? Math.round((correctAnswers / totalQuestions) * 100 * 10) / 10
-                : 0;
-
-            //オブジェクトを配列に追加（周回の情報をstats配列に追加）
-            stats.push({
-                round,
-                totalQuestions,
-                correctAnswers,
-                correctRate,
-            });
-        }
-
-        return stats;
-    }
-
-    /**
-     * 周回 × Chapter ごとの正答率を計算
-     */
-    private calculateChapterStats(
-        answers: QuestionAnswer[],
-        totalRounds: number,
-    ): ChapterStatsDto[] {
-        const stats: ChapterStatsDto[] = [];
-
-        // Chapter IDごとにグループ化
-        const chapterGroups = new Map<string, QuestionAnswer[]>();
-
-        answers.forEach(answer => {
-            if (answer.chapterId) {
-                if (!chapterGroups.has(answer.chapterId)) {
-                    chapterGroups.set(answer.chapterId, []);
-                }
-                chapterGroups.get(answer.chapterId)!.push(answer);
-            }
-        });
-
-        //各chapter　×　各周回で集計
-        chapterGroups.forEach((chapterAnswers, chapterId) => {
-            const chapterNumber = chapterAnswers[0]?.chapter?.chapterNumber || 0;
-
-            for (let round = 1; round <= totalRounds; round++) {
-                let totalQuestions = 0;
-                let correctAnswers = 0;
-
-                chapterAnswers.forEach(answer => {
-                    const roundAttempt = answer.attempts.find(
-                        a => a.round === round && a.resultConfirmFlg,
-                    );
-
-                    if (roundAttempt) {
-                        totalQuestions++;
-                        if (roundAttempt.result === '○') {
-                            correctAnswers++;
-                        }
-                    }
-                });
-
-                if (totalQuestions > 0) {
-                    const correctRate = Math.round((correctAnswers / totalQuestions) * 100 * 10) / 10;
-
-                    stats.push({
-                        round,
-                        chapterId,
-                        chapterNumber,
-                        totalQuestions,
-                        correctAnswers,
-                        correctRate,
-                    });
-                }
-            }
-        });
-
-        return stats.sort((a, b) => {
-            if (a.round !== b.round) return a.round - b.round;
-            return a.chapterNumber - b.chapterNumber;
-        });
-    }
-    /**
-     * 周回 × Section ごとの正答率を計算
-     */
-    private calculateSectionStats(
-        answers: QuestionAnswer[],
-        totalRounds: number,
-    ): SectionStatsDto[] {
-        const stats: SectionStatsDto[] = [];
-
-        // Section IDごとにグループ化
-        const sectionGroups = new Map<string, QuestionAnswer[]>();
-
-        answers.forEach(answer => {
-            if (answer.sectionId) {
-                if (!sectionGroups.has(answer.sectionId)) {
-                    sectionGroups.set(answer.sectionId, []);
-                }
-                sectionGroups.get(answer.sectionId)!.push(answer);
-            }
-        });
-
-        // 各Section × 各周回で集計
-        sectionGroups.forEach((sectionAnswers, sectionId) => {
-            const chapterId = sectionAnswers[0]?.chapterId || '';
-            const sectionNumber = sectionAnswers[0]?.section?.sectionNumber || 0;
-
-            for (let round = 1; round <= totalRounds; round++) {
-                let totalQuestions = 0;
-                let correctAnswers = 0;
-
-                sectionAnswers.forEach(answer => {
-                    const roundAttempt = answer.attempts.find(
-                        a => a.round === round && a.resultConfirmFlg,
-                    );
-
-                    if (roundAttempt) {
-                        totalQuestions++;
-                        if (roundAttempt.result === '○') {
-                            correctAnswers++;
-                        }
-                    }
-                });
-
-                if (totalQuestions > 0) {
-                    const correctRate = Math.round((correctAnswers / totalQuestions) * 100 * 10) / 10;
-
-                    stats.push({
-                        round,
-                        sectionId,
-                        chapterId,
-                        sectionNumber,
-                        totalQuestions,
-                        correctAnswers,
-                        correctRate,
-                    });
-                }
-            }
-        });
-
-        return stats.sort((a, b) => {
-            if (a.round !== b.round) return a.round - b.round;
-            return a.sectionNumber - b.sectionNumber;
-        });
-    }
+  }
+
+  private mapToChapter(data: any): Chapter {
+    return {
+      id: data.id,
+      quizBookId: data.quiz_book_id,
+      chapterNumber: data.chapter_number,
+      title: data.title,
+      chapterRate: data.chapter_rate || 0,
+      questionCount: data.question_count,
+      sections: (data.sections || []).map((s: any) => this.mapToSection(s)),
+      questionAnswers: (data.question_answers || []).map((qa: any) => this.mapToQuestionAnswer(qa)),
+    };
+  }
+
+  private mapToSection(data: any): Section {
+    return {
+      id: data.id,
+      chapterId: data.chapter_id,
+      sectionNumber: data.section_number,
+      title: data.title,
+      questionCount: data.question_count,
+      questionAnswers: (data.question_answers || []).map((qa: any) => this.mapToQuestionAnswer(qa)),
+    };
+  }
+
+  private mapToQuestionAnswer(data: any): QuestionAnswer {
+    return {
+      id: data.id,
+      questionNumber: data.question_number,
+      chapterId: data.chapter_id,
+      sectionId: data.section_id,
+      memo: data.memo,
+      isBookmarked: data.is_bookmarked,
+      attempts: data.attempts || [],
+    };
+  }
 }

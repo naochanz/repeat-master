@@ -1,64 +1,107 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Category } from './entities/category.entity';
+import { SupabaseService } from '../supabase/supabase.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
+export interface Category {
+  id: string;
+  name: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 @Injectable()
 export class CategoriesService {
-  constructor(
-    @InjectRepository(Category)
-    private categoryRepository: Repository<Category>,
-  ) {}
+  constructor(private supabaseService: SupabaseService) {}
 
-  // 全カテゴリを取得
   async findAll(): Promise<Category[]> {
-    return this.categoryRepository.find({
-      order: { name: 'ASC' },
-    });
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name');
+
+    if (error) throw error;
+    return (data || []).map(this.mapToCategory);
   }
 
-  // カテゴリを1件取得
   async findOne(id: string): Promise<Category> {
-    const category = await this.categoryRepository.findOne({
-      where: { id },
-    });
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    if (!category) {
+    if (error || !data) {
       throw new NotFoundException('Category not found');
     }
-
-    return category;
+    return this.mapToCategory(data);
   }
 
-  // カテゴリを作成
   async create(createCategoryDto: CreateCategoryDto): Promise<Category> {
+    const supabase = this.supabaseService.getClient();
+
     // 重複チェック
-    const existing = await this.categoryRepository.findOne({
-      where: { name: createCategoryDto.name },
-    });
+    const { data: existing } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('name', createCategoryDto.name)
+      .single();
 
     if (existing) {
       throw new ConflictException('Category already exists');
     }
 
-    const category = this.categoryRepository.create(createCategoryDto);
-    return this.categoryRepository.save(category);
+    const { data, error } = await supabase
+      .from('categories')
+      .insert({
+        name: createCategoryDto.name,
+        description: createCategoryDto.description,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return this.mapToCategory(data);
   }
 
-  // カテゴリを更新
   async update(id: string, updateCategoryDto: UpdateCategoryDto): Promise<Category> {
-    const category = await this.findOne(id);
-    
-    Object.assign(category, updateCategoryDto);
-    
-    return this.categoryRepository.save(category);
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase
+      .from('categories')
+      .update({
+        name: updateCategoryDto.name,
+        description: updateCategoryDto.description,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error || !data) {
+      throw new NotFoundException('Category not found');
+    }
+    return this.mapToCategory(data);
   }
 
-  // カテゴリを削除
   async remove(id: string): Promise<void> {
-    const category = await this.findOne(id);
-    await this.categoryRepository.remove(category);
+    const supabase = this.supabaseService.getClient();
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  private mapToCategory(data: any): Category {
+    return {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
   }
 }

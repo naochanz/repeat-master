@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { StudyRecordsService } from './study-records.service';
 import { StudyRecordsController } from './study-records.controller';
-import { StudyRecord } from './entities/study-record.entity';
+import { SupabaseModule } from '../supabase/supabase.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([StudyRecord])],
+  imports: [SupabaseModule],
   controllers: [StudyRecordsController],
   providers: [StudyRecordsService],
   exports: [StudyRecordsService],

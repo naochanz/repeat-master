@@ -1,61 +1,70 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
-import * as bcrypt from 'bcrypt';
+import { SupabaseService } from '../supabase/supabase.service';
 import { UpdateUserGoalDto } from './dto/update-user-goal.dto';
+
+export interface UserProfile {
+  id: string;
+  email: string | null;
+  name: string | null;
+  goal: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 @Injectable()
 export class UsersService {
-  constructor(
-    @InjectRepository(User)
-    private usersRepository: Repository<User>,
-  ) { }
+  constructor(private supabaseService: SupabaseService) {}
 
-  async create(email: string, password: string, name?: string): Promise<User> {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = this.usersRepository.create({
-      email,
-      password: hashedPassword,
-      name,
-    });
-    return this.usersRepository.save(user);
+  async findById(id: string): Promise<UserProfile | null> {
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return this.mapToUserProfile(data);
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email } });
-  }
-
-  async findById(id: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { id } });
-  }
-
-  async findOne(userId: string): Promise<User> {
+  async findOne(userId: string): Promise<UserProfile> {
     const user = await this.findById(userId);
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    //パスワードは返さない
-    const { password, ...userWithoutPassword } = user;
-
-    return userWithoutPassword as User;
+    return user;
   }
 
-  async updateGoal(userId: string, updateUserGoalDto: UpdateUserGoalDto): Promise<User> {
-    const user = await this.findById(userId);
-    if (!user) {
+  async updateGoal(userId: string, updateUserGoalDto: UpdateUserGoalDto): Promise<UserProfile> {
+    const supabase = this.supabaseService.getClient();
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ goal: updateUserGoalDto.goal })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error || !data) {
       throw new NotFoundException('User not found');
     }
 
-    user.goal = updateUserGoalDto.goal;
+    return this.mapToUserProfile(data);
+  }
 
-    const savedUser = await this.usersRepository.save(user);
-
-    //パスワードは返さない
-    const { password, ...userWithoutPassword } = savedUser;
-
-    return userWithoutPassword as User;
+  private mapToUserProfile(data: any): UserProfile {
+    return {
+      id: data.id,
+      email: data.email,
+      name: data.name,
+      goal: data.goal,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
   }
 }
