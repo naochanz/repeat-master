@@ -56,7 +56,6 @@ export class JwtAuthGuard implements CanActivate {
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-      console.log('Token verification failed:', error?.message);
       throw new UnauthorizedException('Invalid token');
     }
 
