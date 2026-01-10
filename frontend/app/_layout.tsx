@@ -29,10 +29,11 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const loadToken = useAuthStore(state => state.loadToken);
+  const initialize = useAuthStore(state => state.initialize);
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  const isLoading = useAuthStore(state => state.isLoading);
   const pathname = usePathname();
-  
+
   const [loaded, error] = useFonts({
     'ZenKaku-Regular': ZenKakuGothicNew_400Regular,
     'ZenKaku-Medium': ZenKakuGothicNew_500Medium,
@@ -48,19 +49,19 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    loadToken();
+    initialize();
   }, []);
 
   useEffect(() => {
-    if (loaded) {
+    if (loaded && !isLoading) {
       SplashScreen.hideAsync();
       if (isAuthenticated) {
-        fetchQuizBooks(); // ✅ 認証済みの場合のみデータ取得
+        fetchQuizBooks();
       }
     }
-  }, [loaded, isAuthenticated]); // ✅ isAuthenticated を依存配列に追加
+  }, [loaded, isLoading, isAuthenticated]);
 
-  if (!loaded) {
+  if (!loaded || isLoading) {
     return null;
   }
 
