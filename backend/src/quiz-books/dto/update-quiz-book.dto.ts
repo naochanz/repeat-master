@@ -3,4 +3,5 @@ export class UpdateQuizBookDto {
     categoryId?: string;
     currentRate?: number;
     currentRound?: number;
+    useSections?: boolean;
   }

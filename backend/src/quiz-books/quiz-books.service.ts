@@ -11,14 +11,14 @@ import { UpdateSectionDto } from './dto/update-section.dto';
 import { UpdateAnswerDto } from './dto/update-answer.dto';
 import { SectionStatsDto, ChapterStatsDto, QuizBookAnalyticsDto, RoundStatsDto } from './dto/quiz-book-analytics';
 
-interface Attempt {
+export interface Attempt {
   round: number;
   result: '○' | '×';
   resultConfirmFlg: boolean;
   answeredAt: string;
 }
 
-interface QuestionAnswer {
+export interface QuestionAnswer {
   id: string;
   questionNumber: number;
   chapterId: string | null;
@@ -28,7 +28,7 @@ interface QuestionAnswer {
   attempts: Attempt[];
 }
 
-interface Section {
+export interface Section {
   id: string;
   chapterId: string;
   sectionNumber: number;
@@ -37,7 +37,7 @@ interface Section {
   questionAnswers?: QuestionAnswer[];
 }
 
-interface Chapter {
+export interface Chapter {
   id: string;
   quizBookId: string;
   chapterNumber: number;
@@ -48,7 +48,7 @@ interface Chapter {
   questionAnswers?: QuestionAnswer[];
 }
 
-interface QuizBook {
+export interface QuizBook {
   id: string;
   userId: string;
   categoryId: string | null;
