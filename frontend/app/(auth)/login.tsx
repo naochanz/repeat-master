@@ -40,9 +40,10 @@ const Login = () => {
             await loginAction(data.email, data.password);
             router.replace('/(tabs)');
         } catch (error: any) {
+            console.error('Login error:', error);
             Alert.alert(
                 'エラー',
-                error.response?.data?.message || 'ログインに失敗しました'
+                error.message || error.response?.data?.message || 'ログインに失敗しました'
             );
         }
     };
