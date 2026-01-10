@@ -223,16 +223,89 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     }
   },
 
-  // ========== Answer操作 ==========
+  // ========== Answer操作 (Optimistic UI) ==========
 
   saveAnswer: async (quizBookId: string, questionNumber: number, result: '○' | '×', chapterId?: string, sectionId?: string) => {
-    try {
-      await answerApi.create(quizBookId, questionNumber, result, chapterId, sectionId);
-      await get().fetchQuizBooks();
-    } catch (error) {
-      console.error('Failed to save answer:', error);
-      throw error;
-    }
+    const { quizBooks } = get();
+
+    // Optimistic UI: ローカル状態を即座に更新
+    const newAttempt = {
+      round: 1,
+      result,
+      resultConfirmFlg: true,
+      answeredAt: new Date().toISOString(),
+    };
+
+    const updatedQuizBooks = quizBooks.map(book => {
+      if (book.id !== quizBookId) return book;
+
+      return {
+        ...book,
+        chapters: book.chapters.map(chapter => {
+          if (chapter.id !== chapterId) return chapter;
+
+          if (sectionId && chapter.sections) {
+            return {
+              ...chapter,
+              sections: chapter.sections.map(section => {
+                if (section.id !== sectionId) return section;
+
+                const existingQa = section.questionAnswers?.find(qa => qa.questionNumber === questionNumber);
+                if (existingQa) {
+                  return {
+                    ...section,
+                    questionAnswers: section.questionAnswers?.map(qa =>
+                      qa.questionNumber === questionNumber
+                        ? { ...qa, attempts: [...qa.attempts, { ...newAttempt, round: qa.attempts.length + 1 }] }
+                        : qa
+                    ),
+                  };
+                } else {
+                  return {
+                    ...section,
+                    questionAnswers: [
+                      ...(section.questionAnswers || []),
+                      { questionNumber, attempts: [newAttempt], chapterId, sectionId },
+                    ],
+                  };
+                }
+              }),
+            };
+          } else {
+            const existingQa = chapter.questionAnswers?.find(qa => qa.questionNumber === questionNumber);
+            if (existingQa) {
+              return {
+                ...chapter,
+                questionAnswers: chapter.questionAnswers?.map(qa =>
+                  qa.questionNumber === questionNumber
+                    ? { ...qa, attempts: [...qa.attempts, { ...newAttempt, round: qa.attempts.length + 1 }] }
+                    : qa
+                ),
+              };
+            } else {
+              return {
+                ...chapter,
+                questionAnswers: [
+                  ...(chapter.questionAnswers || []),
+                  { questionNumber, attempts: [newAttempt], chapterId },
+                ],
+              };
+            }
+          }
+        }),
+      };
+    });
+
+    // 即座にUIを更新
+    set({ quizBooks: updatedQuizBooks });
+
+    // バックグラウンドでAPI呼び出し
+    answerApi.create(quizBookId, questionNumber, result, chapterId, sectionId)
+      .catch(async (error) => {
+        console.error('Failed to save answer:', error);
+        // 失敗したらデータを再取得して正しい状態に戻す
+        await get().fetchQuizBooks();
+      });
   },
 
   updateMemo: async (quizBookId: string, answerId: string, memo: string) => {
@@ -246,37 +319,63 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
   toggleBookmark: async (chapterId: string, sectionId: string | null, questionNumber: number) => {
     const { quizBooks } = get();
-  
-    // 対象の問題を探す
-    for (const book of quizBooks) {
-      for (const chapter of book.chapters) {
-        if (chapter.id === chapterId) {
-          // 問題リストを取得
-          const questionAnswers = sectionId
-            ? chapter.sections?.find(s => s.id === sectionId)?.questionAnswers
-            : chapter.questionAnswers;
-  
-          // 対象の問題を見つける
-          const qa = questionAnswers?.find(q => q.questionNumber === questionNumber);
-          
-          if (qa && qa.id) {
-            // 現在の状態をトグル
-            const newBookmarkStatus = !qa.isBookmarked;
-            
-            try {
-              await answerApi.updateBookmark(book.id, qa.id, newBookmarkStatus);
-              await get().fetchQuizBooks();
-            } catch (error) {
-              console.error('Failed to toggle bookmark:', error);
-              throw error;
-            }
-            return;
-          }
+    let bookId: string | null = null;
+    let answerId: string | null = null;
+    let newBookmarkStatus = false;
+
+    // Optimistic UI: 即座にローカル状態を更新
+    const updatedQuizBooks = quizBooks.map(book => ({
+      ...book,
+      chapters: book.chapters.map(chapter => {
+        if (chapter.id !== chapterId) return chapter;
+
+        if (sectionId && chapter.sections) {
+          return {
+            ...chapter,
+            sections: chapter.sections.map(section => {
+              if (section.id !== sectionId) return section;
+              return {
+                ...section,
+                questionAnswers: section.questionAnswers?.map(qa => {
+                  if (qa.questionNumber === questionNumber) {
+                    bookId = book.id;
+                    answerId = qa.id || null;
+                    newBookmarkStatus = !qa.isBookmarked;
+                    return { ...qa, isBookmarked: newBookmarkStatus };
+                  }
+                  return qa;
+                }),
+              };
+            }),
+          };
+        } else {
+          return {
+            ...chapter,
+            questionAnswers: chapter.questionAnswers?.map(qa => {
+              if (qa.questionNumber === questionNumber) {
+                bookId = book.id;
+                answerId = qa.id || null;
+                newBookmarkStatus = !qa.isBookmarked;
+                return { ...qa, isBookmarked: newBookmarkStatus };
+              }
+              return qa;
+            }),
+          };
         }
-      }
+      }),
+    }));
+
+    // 即座にUIを更新
+    set({ quizBooks: updatedQuizBooks });
+
+    // バックグラウンドでAPI呼び出し
+    if (bookId && answerId) {
+      answerApi.updateBookmark(bookId, answerId, newBookmarkStatus)
+        .catch(async (error) => {
+          console.error('Failed to toggle bookmark:', error);
+          await get().fetchQuizBooks();
+        });
     }
-    
-    console.error('Question not found for bookmark toggle');
   },
   
   // ✅ 追加: 付箋の状態を確認
