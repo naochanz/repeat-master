@@ -105,7 +105,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     }
   },
 
-  // ========== QuizBook CRUD ==========
+  // ========== QuizBook CRUD (Optimistic UI) ==========
 
   fetchQuizBooks: async () => {
     set({ isLoading: true });
@@ -123,15 +123,34 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   createQuizBook: async (title: string, categoryId: string, useSections: boolean) => {
-    set({ isLoading: true });
-    try {
-      await quizBookApi.create(title, categoryId, useSections);
-      await get().fetchQuizBooks(); // 再取得
-    } catch (error) {
-      console.error('Failed to create quiz book:', error);
-      set({ isLoading: false });
-      throw error;
-    }
+    const { quizBooks, categories } = get();
+    const tempId = `temp-${Date.now()}`;
+    const category = categories.find(c => c.id === categoryId);
+
+    // Optimistic UI: 即座にローカル状態を更新
+    const newQuizBook: QuizBook = {
+      id: tempId,
+      title,
+      categoryId,
+      category: category || { id: categoryId, name: '', createdAt: '', updatedAt: '' },
+      useSections,
+      chapterCount: 0,
+      currentRate: 0,
+      currentRound: 1,
+      chapters: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    set({ quizBooks: [newQuizBook, ...quizBooks], isLoading: false });
+
+    // バックグラウンドでAPI呼び出し
+    quizBookApi.create(title, categoryId, useSections)
+      .then(() => get().fetchQuizBooks())
+      .catch(async (error) => {
+        console.error('Failed to create quiz book:', error);
+        await get().fetchQuizBooks();
+      });
   },
 
   addQuizBook: async (title: string, categoryId: string, useSections: boolean) => {
@@ -159,16 +178,41 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     }
   },
 
-  // ========== Chapter CRUD ==========
+  // ========== Chapter CRUD (Optimistic UI) ==========
 
   addChapter: async (quizBookId: string, chapterNumber: number, title?: string, questionCount?: number) => {
-    try {
-      await chapterApi.create(quizBookId, chapterNumber, title, questionCount);
-      await get().fetchQuizBooks();
-    } catch (error) {
-      console.error('Failed to add chapter:', error);
-      throw error;
-    }
+    const { quizBooks } = get();
+    const tempId = `temp-chapter-${Date.now()}`;
+
+    // Optimistic UI: 即座にローカル状態を更新
+    const newChapter: Chapter = {
+      id: tempId,
+      title: title || '',
+      chapterNumber,
+      chapterRate: 0,
+      questionCount: questionCount || 0,
+      questionAnswers: [],
+      sections: [],
+    };
+
+    const updatedQuizBooks = quizBooks.map(book => {
+      if (book.id !== quizBookId) return book;
+      return {
+        ...book,
+        chapters: [...book.chapters, newChapter].sort((a, b) => a.chapterNumber - b.chapterNumber),
+        chapterCount: book.chapterCount + 1,
+      };
+    });
+
+    set({ quizBooks: updatedQuizBooks });
+
+    // バックグラウンドでAPI呼び出し
+    chapterApi.create(quizBookId, chapterNumber, title, questionCount)
+      .then(() => get().fetchQuizBooks())
+      .catch(async (error) => {
+        console.error('Failed to add chapter:', error);
+        await get().fetchQuizBooks();
+      });
   },
 
   updateChapter: async (quizBookId: string, chapterId: string, updates: any) => {
@@ -191,16 +235,44 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     }
   },
 
-  // ========== Section CRUD ==========
+  // ========== Section CRUD (Optimistic UI) ==========
 
   addSection: async (quizBookId: string, chapterId: string, sectionNumber: number, title?: string, questionCount?: number) => {
-    try {
-      await sectionApi.create(quizBookId, chapterId, sectionNumber, title, questionCount);
-      await get().fetchQuizBooks();
-    } catch (error) {
-      console.error('Failed to add section:', error);
-      throw error;
-    }
+    const { quizBooks } = get();
+    const tempId = `temp-section-${Date.now()}`;
+
+    // Optimistic UI: 即座にローカル状態を更新
+    const newSection: Section = {
+      id: tempId,
+      title: title || '',
+      sectionNumber,
+      questionCount: questionCount || 0,
+      questionAnswers: [],
+    };
+
+    const updatedQuizBooks = quizBooks.map(book => {
+      if (book.id !== quizBookId) return book;
+      return {
+        ...book,
+        chapters: book.chapters.map(chapter => {
+          if (chapter.id !== chapterId) return chapter;
+          return {
+            ...chapter,
+            sections: [...(chapter.sections || []), newSection].sort((a, b) => a.sectionNumber - b.sectionNumber),
+          };
+        }),
+      };
+    });
+
+    set({ quizBooks: updatedQuizBooks });
+
+    // バックグラウンドでAPI呼び出し
+    sectionApi.create(quizBookId, chapterId, sectionNumber, title, questionCount)
+      .then(() => get().fetchQuizBooks())
+      .catch(async (error) => {
+        console.error('Failed to add section:', error);
+        await get().fetchQuizBooks();
+      });
   },
 
   updateSection: async (quizBookId: string, chapterId: string, sectionId: string, updates: any) => {
@@ -519,25 +591,41 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 
   addQuestionToTarget: async (chapterId: string, sectionId: string | null) => {
     const { quizBooks } = get();
+    let bookId: string | null = null;
 
-    for (const book of quizBooks) {
-      for (const chapter of book.chapters) {
-        if (chapter.id === chapterId) {
-          if (sectionId) {
-            const section = chapter.sections?.find(s => s.id === sectionId);
-            if (section) {
-              await get().updateSection(book.id, chapterId, sectionId, {
-                questionCount: (section.questionCount || 0) + 1
-              });
-            }
-          } else {
-            await get().updateChapter(book.id, chapterId, {
-              questionCount: (chapter.questionCount || 0) + 1
-            });
-          }
-          return;
+    // Optimistic UI: 即座にローカル状態を更新
+    const updatedQuizBooks = quizBooks.map(book => ({
+      ...book,
+      chapters: book.chapters.map(chapter => {
+        if (chapter.id !== chapterId) return chapter;
+        bookId = book.id;
+
+        if (sectionId && chapter.sections) {
+          return {
+            ...chapter,
+            sections: chapter.sections.map(section => {
+              if (section.id !== sectionId) return section;
+              return { ...section, questionCount: (section.questionCount || 0) + 1 };
+            }),
+          };
+        } else {
+          return { ...chapter, questionCount: (chapter.questionCount || 0) + 1 };
         }
-      }
+      }),
+    }));
+
+    set({ quizBooks: updatedQuizBooks });
+
+    // バックグラウンドでAPI呼び出し
+    if (bookId) {
+      const apiCall = sectionId
+        ? sectionApi.update(bookId, chapterId, sectionId, { questionCount: updatedQuizBooks.find(b => b.id === bookId)?.chapters.find(c => c.id === chapterId)?.sections?.find(s => s.id === sectionId)?.questionCount })
+        : chapterApi.update(bookId, chapterId, { questionCount: updatedQuizBooks.find(b => b.id === bookId)?.chapters.find(c => c.id === chapterId)?.questionCount });
+
+      apiCall.catch(async (error) => {
+        console.error('Failed to add question:', error);
+        await get().fetchQuizBooks();
+      });
     }
   },
 
