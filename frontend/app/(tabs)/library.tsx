@@ -1,6 +1,6 @@
 import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
-import { router, useFocusEffect, useNavigation } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { AlertCircle, Edit, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
@@ -14,6 +14,11 @@ import QuizBookTitleModal from '../_compornents/QuizBookTitleModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LibraryScreen() {
+  const { scannedBookTitle, openCategoryModal } = useLocalSearchParams<{
+    scannedBookTitle?: string;
+    openCategoryModal?: string;
+  }>();
+
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const categories = useQuizBookStore(state => state.categories);
   const fetchCategories = useQuizBookStore(state => state.fetchCategories);
@@ -22,7 +27,7 @@ export default function LibraryScreen() {
   const deleteCategory = useQuizBookStore(state => state.deleteCategory);
   const addQuizBook = useQuizBookStore(state => state.addQuizBook);
   const deleteQuizBook = useQuizBookStore(state => state.deleteQuizBook);
-  
+
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [addItemModalVisible, setAddItemModalVisible] = useState(false);
@@ -30,6 +35,7 @@ export default function LibraryScreen() {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [titleModalVisible, setTitleModalVisible] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [scannedTitle, setScannedTitle] = useState<string>('');
 
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -45,6 +51,17 @@ export default function LibraryScreen() {
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  // バーコードスキャンから戻ってきた場合の処理
+  useEffect(() => {
+    if (scannedBookTitle && openCategoryModal === 'true') {
+      setScannedTitle(scannedBookTitle);
+      setIsAddingCategory(false);
+      setCategoryModalVisible(true);
+      // パラメータをクリア
+      router.setParams({ scannedBookTitle: undefined, openCategoryModal: undefined });
+    }
+  }, [scannedBookTitle, openCategoryModal]);
 
   useFocusEffect(
     useCallback(() => {
@@ -127,6 +144,11 @@ export default function LibraryScreen() {
     setCategoryModalVisible(true);
   };
 
+  const handleScanBarcode = () => {
+    setAddItemModalVisible(false);
+    router.push('/barcode-scanner');
+  };
+
   const handleCategorySelect = async (categoryNameOrId: string) => {
     if (isAddingCategory) {
       // カテゴリ追加モード：カテゴリのみ作成
@@ -179,6 +201,7 @@ export default function LibraryScreen() {
       await addQuizBook(title, selectedCategoryId, true);
       setTitleModalVisible(false);
       setSelectedCategoryId('');
+      setScannedTitle('');
     } catch (error) {
       console.error('Failed to confirm Title:', error);
     }
@@ -187,6 +210,7 @@ export default function LibraryScreen() {
   const handleTitleCancel = () => {
     setTitleModalVisible(false);
     setSelectedCategoryId('');
+    setScannedTitle('');
   };
 
   const handleCardPress = (quizBookId: string) => {
@@ -337,6 +361,7 @@ export default function LibraryScreen() {
         visible={addItemModalVisible}
         onAddCategory={handleAddCategory}
         onAddQuizBook={handleAddQuizBook}
+        onScanBarcode={handleScanBarcode}
         onClose={() => setAddItemModalVisible(false)}
       />
 
@@ -359,6 +384,7 @@ export default function LibraryScreen() {
       <QuizBookTitleModal
         visible={titleModalVisible}
         categoryName={categories.find(c => c.id === selectedCategoryId)?.name || ''}
+        initialTitle={scannedTitle}
         onConfirm={handleTitleConfirm}
         onCancel={handleTitleCancel}
       />
