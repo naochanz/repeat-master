@@ -241,6 +241,7 @@ const styles = StyleSheet.create({
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Bold',
+    marginTop: theme.spacing.md,
     marginBottom: theme.spacing.lg,
   },
   goalCard: {

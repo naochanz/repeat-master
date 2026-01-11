@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-chart-kit';
 import { router, useFocusEffect } from 'expo-router';
-import { List, TrendingDown, X } from 'lucide-react-native';
+import { List, TrendingDown, X, AlertCircle } from 'lucide-react-native';
 import { quizBookApi } from '@/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -286,7 +286,10 @@ export default function AnalyticsScreen() {
 
         {Object.keys(groupedQuizBooks).length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>問題集がありません</Text>
+            <View style={styles.emptyContent}>
+              <AlertCircle size={20} color={theme.colors.warning[600]} />
+              <Text style={styles.emptyStateText}>まだカテゴリが登録されていません</Text>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -463,15 +466,20 @@ const styles = StyleSheet.create({
     color: theme.colors.secondary[500],
   },
   emptyState: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: theme.spacing['4xl'],
+    padding: theme.spacing.xl,
+  },
+  emptyContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyStateText: {
-    fontSize: theme.typography.fontSizes.lg,
+    marginLeft: theme.spacing.sm,
+    fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Medium',
-    color: theme.colors.secondary[500],
+    color: theme.colors.secondary[600],
   },
   modalOverlay: {
     flex: 1,
