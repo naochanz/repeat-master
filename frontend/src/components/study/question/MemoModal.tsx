@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, Modal, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 type MemoModalProps = {
     visible: boolean;
@@ -19,6 +19,9 @@ const MemoModal: React.FC<MemoModalProps> = ({
     onSave,
     onChangeText,
 }) => {
+    const theme = useAppTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const handleCancel = () => {
         onChangeText('');
         onClose();
@@ -78,7 +81,7 @@ const MemoModal: React.FC<MemoModalProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',

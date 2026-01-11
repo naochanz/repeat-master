@@ -1,7 +1,7 @@
 // frontend/src/components/study/question/QuestionCard.tsx
 
-import { theme } from '@/constants/theme';
-import React, { useEffect, useRef, useState } from 'react';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getCardColors, questionColors, QuestionColor } from '@/src/utils/questionHelpers';
@@ -63,6 +63,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   history,
   onPress
 }) => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const confirmedHistory = history.filter(a => a.resultConfirmFlg === true);
 
   // ✅ 各カードの色を取得（ヘルパー関数を呼ぶだけ）
@@ -480,7 +483,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   stackContainer: {
     position: 'relative',
     marginHorizontal: theme.spacing.md,

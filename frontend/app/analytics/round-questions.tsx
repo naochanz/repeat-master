@@ -1,4 +1,4 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import React, { useCallback, useMemo } from 'react';
 import {
@@ -15,6 +15,9 @@ import CustomTabBar from '@/components/CustomTabBar';
 import { Attempt } from '@/types/QuizBook';
 
 export default function RoundQuestionsScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const params = useLocalSearchParams<{
     targetId: string;
     targetType: string;
@@ -229,7 +232,7 @@ export default function RoundQuestionsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   wrapper: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],

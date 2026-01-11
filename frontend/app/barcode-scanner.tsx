@@ -1,9 +1,9 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { googleBooksApi, BookInfo } from '@/services/googleBooksApi';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, Stack } from 'expo-router';
 import { ArrowLeft, Camera, X } from 'lucide-react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
@@ -15,6 +15,9 @@ import {
 } from 'react-native';
 
 export default function BarcodeScannerScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [scanning, setScanning] = useState(true);
@@ -204,7 +207,7 @@ export default function BarcodeScannerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral[900],

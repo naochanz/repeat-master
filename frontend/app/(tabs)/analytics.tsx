@@ -1,4 +1,4 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -36,6 +36,9 @@ interface QuizBookAnalytics {
 }
 
 export default function AnalyticsScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const categories = useQuizBookStore(state => state.categories);
   const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
@@ -329,7 +332,7 @@ export default function AnalyticsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral.white,

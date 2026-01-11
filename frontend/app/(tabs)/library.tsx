@@ -1,4 +1,4 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
@@ -16,6 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { showSuccessToast, showErrorToast, showWarningToast } from '@/utils/toast';
 
 export default function LibraryScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const { scannedBookTitle, scannedBookIsbn, scannedBookThumbnail, openCategoryModal } = useLocalSearchParams<{
     scannedBookTitle?: string;
     scannedBookIsbn?: string;
@@ -539,7 +542,7 @@ export default function LibraryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.neutral.white,

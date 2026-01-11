@@ -1,10 +1,13 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import React from 'react';
-import { theme } from '@/constants/theme';
+import React, { useMemo } from 'react';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 
 export default function TermsScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Stack.Screen
@@ -103,7 +106,7 @@ export default function TermsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],

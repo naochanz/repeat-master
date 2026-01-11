@@ -1,4 +1,4 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { quizBookApi } from '@/services/api';
 import React, { useCallback, useState, useMemo } from 'react';
@@ -53,6 +53,9 @@ interface Analytics {
 }
 
 export default function DetailedAnalyticsScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const { id } = useLocalSearchParams<{ id: string }>();
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
@@ -473,7 +476,7 @@ export default function DetailedAnalyticsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   wrapper: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],

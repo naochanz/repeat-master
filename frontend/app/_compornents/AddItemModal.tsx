@@ -1,6 +1,6 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { BookOpen, FolderPlus, ScanBarcode, X } from 'lucide-react-native';
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Modal,
   Pressable,
@@ -26,6 +26,9 @@ const AddItemModal = ({
   onScanBarcode,
   onClose,
 }: AddItemModalProps) => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <Modal
       visible={visible}
@@ -97,7 +100,7 @@ const AddItemModal = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

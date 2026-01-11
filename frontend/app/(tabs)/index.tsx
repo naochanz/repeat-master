@@ -1,4 +1,4 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUserStore } from '@/stores/userStore';
 import { useAuthStore } from '@/stores/authStore';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
@@ -9,6 +9,9 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-na
 import { CommonActions } from '@react-navigation/native';
 
 export default function DashboardScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   // ✅ バックエンドから取得
   const user = useUserStore(state => state.user);
   const recentStudyRecords = useUserStore(state => state.recentStudyRecords);
@@ -224,7 +227,7 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],

@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch, Modal, TextInput } from 'react-native';
-import React, { useEffect, useState } from 'react';
-import { theme } from '@/constants/theme';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { router } from 'expo-router';
 import { LogOut, Crown, ChevronRight, RefreshCw, Trash2, Moon, User, Edit3 } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/authStore';
@@ -11,6 +11,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { showSuccessToast, showErrorToast } from '@/utils/toast';
 
 export default function SettingsScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const logout = useAuthStore(state => state.logout);
   const profile = useAuthStore(state => state.profile);
   const updateProfile = useAuthStore(state => state.updateProfile);
@@ -300,7 +303,7 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],

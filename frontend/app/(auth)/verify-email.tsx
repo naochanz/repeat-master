@@ -1,12 +1,15 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import React from 'react';
+import React, { useMemo } from 'react';
 import AppName from '../_compornents/Header';
 import { router, useLocalSearchParams } from 'expo-router';
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 const VerifyEmail = () => {
+    const theme = useAppTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
+
     const { email } = useLocalSearchParams<{ email: string }>();
 
     return (
@@ -46,7 +49,7 @@ const VerifyEmail = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: theme.colors.neutral[50],

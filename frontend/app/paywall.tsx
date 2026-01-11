@@ -1,7 +1,7 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { Check, Crown, X } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -16,6 +16,9 @@ import { PurchasesPackage } from 'react-native-purchases';
 import { showErrorToast, showSuccessToast } from '@/utils/toast';
 
 export default function PaywallScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const { source } = useLocalSearchParams<{ source?: string }>();
   const {
     isPremium,
@@ -212,7 +215,7 @@ export default function PaywallScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral.white,

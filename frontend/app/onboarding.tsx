@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from 'react-native';
-import React, { useState, useRef } from 'react';
-import { theme } from '@/constants/theme';
+import React, { useState, useRef, useMemo } from 'react';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,30 +21,33 @@ interface OnboardingPage {
   color: string;
 }
 
-const pages: OnboardingPage[] = [
-  {
-    icon: <BookOpen size={80} color={theme.colors.primary[600]} strokeWidth={1.5} />,
-    title: '問題集を登録',
-    description: '使っている問題集を登録して\n解答履歴を記録しましょう',
-    color: theme.colors.primary[100],
-  },
-  {
-    icon: <BarChart3 size={80} color={theme.colors.success[600]} strokeWidth={1.5} />,
-    title: '学習を分析',
-    description: '正答率や学習時間を可視化して\n効率的に弱点を克服',
-    color: theme.colors.success[100],
-  },
-  {
-    icon: <Trophy size={80} color={theme.colors.warning[500]} strokeWidth={1.5} />,
-    title: '目標を達成',
-    description: '反復学習で着実にマスター\nあなたの合格をサポートします',
-    color: theme.colors.warning[100],
-  },
-];
-
 export const ONBOARDING_COMPLETE_KEY = '@repeat_master_onboarding_complete';
 
 export default function OnboardingScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const pages: OnboardingPage[] = useMemo(() => [
+    {
+      icon: <BookOpen size={80} color={theme.colors.primary[600]} strokeWidth={1.5} />,
+      title: '問題集を登録',
+      description: '使っている問題集を登録して\n解答履歴を記録しましょう',
+      color: theme.colors.primary[100],
+    },
+    {
+      icon: <BarChart3 size={80} color={theme.colors.success[600]} strokeWidth={1.5} />,
+      title: '学習を分析',
+      description: '正答率や学習時間を可視化して\n効率的に弱点を克服',
+      color: theme.colors.success[100],
+    },
+    {
+      icon: <Trophy size={80} color={theme.colors.warning[500]} strokeWidth={1.5} />,
+      title: '目標を達成',
+      description: '反復学習で着実にマスター\nあなたの合格をサポートします',
+      color: theme.colors.warning[100],
+    },
+  ], [theme]);
+
   const [currentPage, setCurrentPage] = useState(0);
   const progress = useSharedValue(0);
 
@@ -121,7 +124,7 @@ export default function OnboardingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral.white,

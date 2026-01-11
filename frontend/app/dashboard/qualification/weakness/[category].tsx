@@ -1,5 +1,5 @@
 import CustomTabBar from '@/components/CustomTabBar';
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { AlertTriangle, ArrowLeft, ChevronRight } from 'lucide-react-native';
@@ -8,6 +8,8 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function WeaknessAnalysisScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { category } = useLocalSearchParams<{ category: string }>();
   const quizBooks = useQuizBookStore(state => state.quizBooks);
 
@@ -171,7 +173,7 @@ export default function WeaknessAnalysisScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],

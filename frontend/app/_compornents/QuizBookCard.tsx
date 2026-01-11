@@ -1,7 +1,7 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { ChevronDown, MoreVertical, Trash2, Trophy, RotateCcw, CheckCircle } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { Category } from '@/types/QuizBook';
@@ -29,6 +29,8 @@ interface QuizBookCardProps {
 }
 
 const QuizBookCard = ({ quizBook, onPress, onDelete, onComplete, onReactivate, existingCategories }: QuizBookCardProps) => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const updateQuizBook = useQuizBookStore(state => state.updateQuizBook);
   const [showMenu, setShowMenu] = useState(false);
   const [editedTitle, setEditedTitle] = useState(quizBook.title);
@@ -255,7 +257,7 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, onComplete, onReactivate, e
   )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   bookContainer: {
     position: 'relative',
     aspectRatio: 0.7,

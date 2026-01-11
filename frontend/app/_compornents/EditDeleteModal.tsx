@@ -1,6 +1,6 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { Trash2 } from 'lucide-react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Modal, Pressable, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface EditDeleteModalProps {
@@ -26,6 +26,8 @@ const EditDeleteModal = ({
   editPlaceholder = '入力してください',
   showEditField = true
 }: EditDeleteModalProps) => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [inputValue, setInputValue] = useState(editValue);
 
   useEffect(() => {
@@ -101,7 +103,7 @@ const EditDeleteModal = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

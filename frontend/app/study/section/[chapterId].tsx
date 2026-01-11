@@ -1,15 +1,17 @@
 import EditDeleteModal from '@/app/_compornents/EditDeleteModal';
 import CustomTabBar from '@/components/CustomTabBar';
 import Card from '@/components/ui/Card';
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, ArrowLeft, MoreVertical, Plus } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SectionList = () => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { chapterId } = useLocalSearchParams();
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
@@ -379,7 +381,7 @@ const SectionList = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   wrapper: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],

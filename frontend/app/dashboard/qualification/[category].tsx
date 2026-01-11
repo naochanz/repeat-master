@@ -1,6 +1,6 @@
 import ConfirmDialog from '@/app/_compornents/ConfirmDialog';
 import CustomTabBar from '@/components/CustomTabBar';
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { AlertTriangle, ArrowLeft, ChevronRight, Edit, MoreVertical, Trash2, TrendingUp } from 'lucide-react-native';
@@ -13,6 +13,8 @@ const CHART_WIDTH = SCREEN_WIDTH - (theme.spacing.lg * 4);
 const CHART_HEIGHT = 200;
 
 export default function QualificationDetailScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { category } = useLocalSearchParams<{ category: string }>();
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const deleteQuizBook = useQuizBookStore(state => state.deleteQuizBook);
@@ -349,7 +351,7 @@ export default function QualificationDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],

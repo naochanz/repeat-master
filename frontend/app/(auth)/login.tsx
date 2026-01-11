@@ -1,10 +1,10 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAuthStore } from '@/stores/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showErrorToast } from '@/utils/toast';
@@ -26,6 +26,9 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 const Login = () => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const loginAction = useAuthStore((state) => state.login);
   const isLoading = useAuthStore((state) => state.isLoading);
 
@@ -153,7 +156,7 @@ const Login = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral.white,

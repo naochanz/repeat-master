@@ -1,6 +1,6 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { X } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Modal,
   Pressable,
@@ -37,6 +37,8 @@ const CategorySelectModal = ({
   onSelect,
   onClose,
 }: CategorySelectModalProps) => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [newCategory, setNewCategory] = useState('');
   const [isAddingNew, setIsAddingNew] = useState(false);
 
@@ -186,7 +188,7 @@ const CategorySelectModal = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
