@@ -338,7 +338,7 @@ export default function DetailedAnalyticsScreen() {
           ),
         }}
       />
-      <SafeAreaView style={styles.wrapper} edges={['left', 'right', 'bottom']}>
+      <SafeAreaView style={styles.wrapper}>
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {chapterData.map((chapter) => (
             <View key={chapter.id} style={styles.chapterSection}>
@@ -465,9 +465,8 @@ export default function DetailedAnalyticsScreen() {
             </Pressable>
           </Pressable>
         </Modal>
-
-        <CustomTabBar />
       </SafeAreaView>
+      <CustomTabBar />
     </>
   );
 }
@@ -494,7 +493,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   },
   // 章セクション
   chapterSection: {
-    marginTop: theme.spacing['2xl'],
+    marginTop: theme.spacing.xl,
   },
   chapterHeader: {
     paddingHorizontal: theme.spacing.lg,
