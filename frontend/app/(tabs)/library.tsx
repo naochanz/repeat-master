@@ -14,8 +14,9 @@ import QuizBookTitleModal from '../_compornents/QuizBookTitleModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LibraryScreen() {
-  const { scannedBookTitle, openCategoryModal } = useLocalSearchParams<{
+  const { scannedBookTitle, scannedBookIsbn, openCategoryModal } = useLocalSearchParams<{
     scannedBookTitle?: string;
+    scannedBookIsbn?: string;
     openCategoryModal?: string;
   }>();
 
@@ -36,6 +37,7 @@ export default function LibraryScreen() {
   const [titleModalVisible, setTitleModalVisible] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [scannedTitle, setScannedTitle] = useState<string>('');
+  const [scannedIsbn, setScannedIsbn] = useState<string>('');
 
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -56,12 +58,13 @@ export default function LibraryScreen() {
   useEffect(() => {
     if (scannedBookTitle && openCategoryModal === 'true') {
       setScannedTitle(scannedBookTitle);
+      setScannedIsbn(scannedBookIsbn || '');
       setIsAddingCategory(false);
       setCategoryModalVisible(true);
       // パラメータをクリア
-      router.setParams({ scannedBookTitle: undefined, openCategoryModal: undefined });
+      router.setParams({ scannedBookTitle: undefined, scannedBookIsbn: undefined, openCategoryModal: undefined });
     }
-  }, [scannedBookTitle, openCategoryModal]);
+  }, [scannedBookTitle, scannedBookIsbn, openCategoryModal]);
 
   useFocusEffect(
     useCallback(() => {
@@ -198,10 +201,11 @@ export default function LibraryScreen() {
 
   const handleTitleConfirm = async (title: string) => {
     try {
-      await addQuizBook(title, selectedCategoryId, true);
+      await addQuizBook(title, selectedCategoryId, true, scannedIsbn || undefined);
       setTitleModalVisible(false);
       setSelectedCategoryId('');
       setScannedTitle('');
+      setScannedIsbn('');
     } catch (error) {
       console.error('Failed to confirm Title:', error);
     }
@@ -211,6 +215,7 @@ export default function LibraryScreen() {
     setTitleModalVisible(false);
     setSelectedCategoryId('');
     setScannedTitle('');
+    setScannedIsbn('');
   };
 
   const handleCardPress = (quizBookId: string) => {

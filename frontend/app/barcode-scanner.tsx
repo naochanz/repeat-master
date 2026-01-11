@@ -73,6 +73,7 @@ export default function BarcodeScannerScreen() {
         pathname: '/(tabs)/library',
         params: {
           scannedBookTitle: bookInfo.title,
+          scannedBookIsbn: bookInfo.isbn,
           openCategoryModal: 'true'
         }
       });

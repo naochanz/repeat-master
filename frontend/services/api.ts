@@ -67,8 +67,8 @@ export const categoryApi = {
 export const quizBookApi = {
   getAll: () => api.get('/quiz-books'),
   getOne: (id: string) => api.get(`/quiz-books/${id}`),
-  create: (title: string, categoryId: string, useSections: boolean) =>
-    api.post('/quiz-books', { title, categoryId, useSections }),
+  create: (title: string, categoryId: string, useSections: boolean, isbn?: string) =>
+    api.post('/quiz-books', { title, categoryId, useSections, isbn }),
   update: (id: string, data: any) => api.patch(`/quiz-books/${id}`, data),
   delete: (id: string) => api.delete(`/quiz-books/${id}`),
   getAnalytics: (id: string) => api.get(`/quiz-books/${id}/analytics`),

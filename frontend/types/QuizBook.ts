@@ -10,8 +10,9 @@ export interface Category {
 export interface QuizBook {
   id: string;
   title: string;
+  isbn?: string | null;
   category: Category;
-  categoryId: string; 
+  categoryId: string;
   chapterCount: number;
   chapters: Chapter[];
   currentRate: number;

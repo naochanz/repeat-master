@@ -53,6 +53,7 @@ export interface QuizBook {
   userId: string;
   categoryId: string | null;
   title: string;
+  isbn: string | null;
   chapterCount: number;
   currentRate: number;
   useSections: boolean;
@@ -144,6 +145,7 @@ export class QuizBooksService {
         title: createQuizBookDto.title,
         category_id: createQuizBookDto.categoryId,
         use_sections: createQuizBookDto.useSections,
+        isbn: createQuizBookDto.isbn || null,
         user_id: userId,
       })
       .select()
@@ -663,6 +665,7 @@ export class QuizBooksService {
       userId: data.user_id,
       categoryId: data.category_id,
       title: data.title,
+      isbn: data.isbn,
       chapterCount: data.chapter_count,
       currentRate: data.current_rate,
       useSections: data.use_sections,
