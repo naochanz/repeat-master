@@ -131,7 +131,7 @@ export default function DashboardScreen() {
               <Edit3 size={20} color={theme.colors.secondary[100]} />
             </View>
             <Text style={styles.goalText}>
-              {user?.goal || '目標を設定してください'}
+              {user?.goal || '目標を設定しましょう'}
             </Text>
           </TouchableOpacity>
 

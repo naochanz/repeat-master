@@ -288,7 +288,7 @@ export default function AnalyticsScreen() {
           <View style={styles.emptyState}>
             <View style={styles.emptyContent}>
               <AlertCircle size={20} color={theme.colors.warning[600]} />
-              <Text style={styles.emptyStateText}>まだカテゴリが登録されていません</Text>
+              <Text style={styles.emptyStateText}>分析可能な問題集がありません</Text>
             </View>
           </View>
         )}
