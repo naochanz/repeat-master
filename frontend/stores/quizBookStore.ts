@@ -165,11 +165,24 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   updateQuizBook: async (id: string, updates: any) => {
+    const { quizBooks } = get();
+    const previousQuizBooks = [...quizBooks];
+
+    // Optimistic UI: 即座にローカル状態を更新
+    set({
+      quizBooks: quizBooks.map(book =>
+        book.id === id ? { ...book, ...updates } : book
+      )
+    });
+
     try {
       await quizBookApi.update(id, updates);
+      // 成功時は最新データを取得（他のフィールドも更新されている可能性があるため）
       await get().fetchQuizBooks();
     } catch (error) {
       console.error('Failed to update quiz book:', error);
+      // 失敗時はロールバック
+      set({ quizBooks: previousQuizBooks });
       showErrorToast('問題集の更新に失敗しました。');
       throw error;
     }
@@ -225,11 +238,28 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   updateChapter: async (quizBookId: string, chapterId: string, updates: any) => {
+    const { quizBooks } = get();
+    const previousQuizBooks = [...quizBooks];
+
+    // Optimistic UI: 即座にローカル状態を更新
+    set({
+      quizBooks: quizBooks.map(book => {
+        if (book.id !== quizBookId) return book;
+        return {
+          ...book,
+          chapters: book.chapters.map(chapter =>
+            chapter.id === chapterId ? { ...chapter, ...updates } : chapter
+          )
+        };
+      })
+    });
+
     try {
       await chapterApi.update(quizBookId, chapterId, updates);
       await get().fetchQuizBooks();
     } catch (error) {
       console.error('Failed to update chapter:', error);
+      set({ quizBooks: previousQuizBooks });
       showErrorToast('章の更新に失敗しました。');
       throw error;
     }
@@ -288,11 +318,34 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   updateSection: async (quizBookId: string, chapterId: string, sectionId: string, updates: any) => {
+    const { quizBooks } = get();
+    const previousQuizBooks = [...quizBooks];
+
+    // Optimistic UI: 即座にローカル状態を更新
+    set({
+      quizBooks: quizBooks.map(book => {
+        if (book.id !== quizBookId) return book;
+        return {
+          ...book,
+          chapters: book.chapters.map(chapter => {
+            if (chapter.id !== chapterId) return chapter;
+            return {
+              ...chapter,
+              sections: (chapter.sections || []).map(section =>
+                section.id === sectionId ? { ...section, ...updates } : section
+              )
+            };
+          })
+        };
+      })
+    });
+
     try {
       await sectionApi.update(quizBookId, chapterId, sectionId, updates);
       await get().fetchQuizBooks();
     } catch (error) {
       console.error('Failed to update section:', error);
+      set({ quizBooks: previousQuizBooks });
       showErrorToast('節の更新に失敗しました。');
       throw error;
     }

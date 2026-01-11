@@ -221,7 +221,9 @@ const SectionList = () => {
                 </Text>
 
                 <Text style={{ fontSize: 14, textAlign: 'center' }}>
-                  {`第${chapter.chapterNumber}章 ${chapter.title}`}
+                  {chapter.title?.trim()
+                    ? `第${chapter.chapterNumber}章 ${chapter.title}`
+                    : `第${chapter.chapterNumber}章`}
                 </Text>
               </View>
             ),

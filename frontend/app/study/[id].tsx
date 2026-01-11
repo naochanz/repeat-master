@@ -46,6 +46,8 @@ const StudyHome = () => {
         )
     }
 
+    const displayRound = (quizBook.currentRound || 0) + 1;
+
     const getChapterTotalQuestions = (chapter: typeof quizBook.chapters[0]) => {
         if (chapter.sections && chapter.sections.length > 0) {
             return chapter.sections.reduce((sum, section) => {
@@ -54,6 +56,39 @@ const StudyHome = () => {
         } else {
             return chapter.questionCount || 0;
         };
+    }
+
+    // フロントエンドで章の正答率を計算（現在の周回用）
+    const getChapterRate = (chapter: typeof quizBook.chapters[0]) => {
+        let totalQuestions = 0;
+        let correctAnswers = 0;
+
+        const processAnswers = (answers: any[]) => {
+            answers.forEach((qa) => {
+                const roundAttempt = qa.attempts?.find(
+                    (a: any) => a.round === displayRound && a.resultConfirmFlg
+                );
+                if (roundAttempt) {
+                    totalQuestions++;
+                    if (roundAttempt.result === '○') {
+                        correctAnswers++;
+                    }
+                }
+            });
+        };
+
+        if (chapter.sections && chapter.sections.length > 0) {
+            chapter.sections.forEach((section) => {
+                if (section.questionAnswers) {
+                    processAnswers(section.questionAnswers);
+                }
+            });
+        } else if (chapter.questionAnswers) {
+            processAnswers(chapter.questionAnswers);
+        }
+
+        if (totalQuestions === 0) return 0;
+        return Math.round((correctAnswers / totalQuestions) * 100);
     }
 
     const handleChapterPress = (chapter: typeof quizBook.chapters[0]) => {
@@ -241,20 +276,22 @@ const StudyHome = () => {
 
                                         <View style={styles.chapterHeader}>
                                             <Text style={styles.chapterTitle}>
-                                                第{chapter.chapterNumber}章 {chapter.title}
+                                                {chapter.title?.trim()
+                                                    ? `第${chapter.chapterNumber}章 ${chapter.title}`
+                                                    : `第${chapter.chapterNumber}章`}
                                             </Text>
                                         </View>
                                         <View style={styles.chapterStats}>
                                             <View style={styles.statItem}>
-                                                <Text style={styles.statLabel}>{(quizBook.currentRound || 0) + 1}周目 正答率</Text>
+                                                <Text style={styles.statLabel}>{displayRound}周目 正答率</Text>
                                                 <Text style={[styles.statValue, {
-                                                    color: chapter.chapterRate >= 80
+                                                    color: getChapterRate(chapter) >= 80
                                                         ? theme.colors.success[600]
-                                                        : chapter.chapterRate >= 60
+                                                        : getChapterRate(chapter) >= 60
                                                             ? theme.colors.warning[600]
                                                             : theme.colors.error[600]
                                                 }]}>
-                                                    {chapter.chapterRate}%
+                                                    {getChapterRate(chapter)}%
                                                 </Text>
                                             </View>
                                             <View style={styles.divider} />
@@ -343,7 +380,7 @@ const StudyHome = () => {
                         <View style={styles.modalContent}>
                             <Text style={styles.modalTitle}>周回確定</Text>
                             <Text style={styles.modalMessage}>
-                                {quizBook.title}の第{(quizBook.currentRound || 0) + 1}周を確定しますか？
+                                {quizBook.title}の第{displayRound}周を確定しますか？
                             </Text>
                             {unansweredQuestionsWarning && (
                                 <View style={styles.warningContainer}>

@@ -361,7 +361,9 @@ export default function DetailedAnalyticsScreen() {
                     {chapter.sections.map((section) => (
                       <View key={section.id} style={styles.carouselCard}>
                         <Text style={styles.carouselCardTitle}>
-                          {section.sectionNumber}. {section.title}
+                          {section.title?.trim()
+                            ? `第${section.sectionNumber}節 ${section.title}`
+                            : `第${section.sectionNumber}節`}
                         </Text>
                         <View style={styles.chartContainer}>
                           {renderChart(
@@ -467,7 +469,7 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    backgroundColor: theme.colors.neutral.white,
+    backgroundColor: theme.colors.neutral[50],
   },
   loadingContainer: {
     flex: 1,

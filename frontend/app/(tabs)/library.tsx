@@ -266,10 +266,6 @@ export default function LibraryScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Animated.View style={[{ flex: 1 }, animatedStyle]}>
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>登録済み問題集</Text>
-        </View>
-
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -460,20 +456,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.neutral.white,
-  },
-  sectionContainer: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.neutral.white,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.secondary[200],
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: theme.typography.fontSizes.lg,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'Zenkaku',
   },
   scrollView: {
     flex: 1,

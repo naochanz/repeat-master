@@ -293,8 +293,12 @@ const QuestionList = () => {
 
           <Text style={styles.headerTitle} numberOfLines={1}>
             {displayInfo.type === 'chapter'
-              ? `第${displayInfo.chapterNumber}章`
-              : `${displayInfo.sectionNumber}. ${displayInfo.title}`}
+              ? displayInfo.title?.trim()
+                ? `第${displayInfo.chapterNumber}章 ${displayInfo.title}`
+                : `第${displayInfo.chapterNumber}章`
+              : displayInfo.title?.trim()
+                ? `第${displayInfo.sectionNumber}節 ${displayInfo.title}`
+                : `第${displayInfo.sectionNumber}節`}
           </Text>
 
           <TouchableOpacity onPress={openMenu} style={styles.headerButton}>

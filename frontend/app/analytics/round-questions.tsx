@@ -51,8 +51,12 @@ export default function RoundQuestionsScreen() {
         if (section) {
           return {
             type: 'section' as const,
-            title: `${section.sectionNumber}. ${section.title || ''}`,
-            chapterTitle: `第${chapter.chapterNumber}章`,
+            title: section.title?.trim()
+              ? `第${section.sectionNumber}節 ${section.title}`
+              : `第${section.sectionNumber}節`,
+            chapterTitle: chapter.title?.trim()
+              ? `第${chapter.chapterNumber}章 ${chapter.title}`
+              : `第${chapter.chapterNumber}章`,
             questionCount: section.questionCount,
             questionAnswers: section.questionAnswers || [],
           };
@@ -63,8 +67,10 @@ export default function RoundQuestionsScreen() {
       if (chapter) {
         return {
           type: 'chapter' as const,
-          title: `第${chapter.chapterNumber}章`,
-          chapterTitle: chapter.title || '',
+          title: chapter.title?.trim()
+            ? `第${chapter.chapterNumber}章 ${chapter.title}`
+            : `第${chapter.chapterNumber}章`,
+          chapterTitle: '',
           questionCount: chapter.questionCount || 0,
           questionAnswers: chapter.questionAnswers || [],
         };
