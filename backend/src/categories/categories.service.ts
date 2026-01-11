@@ -128,6 +128,16 @@ export class CategoriesService {
       throw new ForbiddenException('Access denied');
     }
 
+    // カテゴリに属するquiz_booksを先に削除（CASCADEで章・節・回答も削除される）
+    const { error: quizBooksError } = await supabase
+      .from('quiz_books')
+      .delete()
+      .eq('category_id', id)
+      .eq('user_id', userId);
+
+    if (quizBooksError) throw quizBooksError;
+
+    // カテゴリを削除
     const { error } = await supabase
       .from('categories')
       .delete()

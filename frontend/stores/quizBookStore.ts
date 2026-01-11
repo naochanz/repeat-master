@@ -94,21 +94,29 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   deleteCategory: async (id: string) => {
-    try {
-      // カテゴリに属する全ての問題集を削除
-      const categoryBooks = get().quizBooks.filter(book => book.categoryId === id);
-      for (const book of categoryBooks) {
-        await get().deleteQuizBook(book.id);
-      }
+    const { categories, quizBooks } = get();
+    const previousCategories = [...categories];
+    const previousQuizBooks = [...quizBooks];
 
-      // カテゴリを削除
-      await categoryApi.delete(id);
-      await get().fetchCategories();
-    } catch (error) {
-      console.error('Failed to delete category:', error);
-      showErrorToast('カテゴリの削除に失敗しました。');
-      throw error;
-    }
+    // Optimistic UI: 即座にカテゴリと関連する問題集を削除
+    set({
+      categories: categories.filter(c => c.id !== id),
+      quizBooks: quizBooks.filter(book => book.categoryId !== id),
+    });
+
+    // バックグラウンドでAPI呼び出し（バックエンドで問題集も一緒に削除される）
+    categoryApi.delete(id)
+      .then(() => {
+        // 成功時は最新データを取得
+        get().fetchCategories();
+        get().fetchQuizBooks();
+      })
+      .catch(async (error) => {
+        console.error('Failed to delete category:', error);
+        // 失敗時はロールバック
+        set({ categories: previousCategories, quizBooks: previousQuizBooks });
+        showErrorToast('カテゴリの削除に失敗しました。再度お試しください。');
+      });
   },
 
   // ========== QuizBook CRUD (Optimistic UI) ==========
@@ -193,14 +201,21 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   deleteQuizBook: async (id: string) => {
-    try {
-      await quizBookApi.delete(id);
-      await get().fetchQuizBooks();
-    } catch (error) {
-      console.error('Failed to delete quiz book:', error);
-      showErrorToast('問題集の削除に失敗しました。');
-      throw error;
-    }
+    const { quizBooks } = get();
+    const previousQuizBooks = [...quizBooks];
+
+    // Optimistic UI: 即座にローカル状態から削除
+    set({ quizBooks: quizBooks.filter(book => book.id !== id) });
+
+    // バックグラウンドでAPI呼び出し
+    quizBookApi.delete(id)
+      .then(() => get().fetchQuizBooks())
+      .catch(async (error) => {
+        console.error('Failed to delete quiz book:', error);
+        // 失敗時はロールバック
+        set({ quizBooks: previousQuizBooks });
+        showErrorToast('問題集の削除に失敗しました。再度お試しください。');
+      });
   },
 
   completeQuizBook: async (id: string) => {
@@ -312,14 +327,30 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   deleteChapter: async (quizBookId: string, chapterId: string) => {
-    try {
-      await chapterApi.delete(quizBookId, chapterId);
-      await get().fetchQuizBooks();
-    } catch (error) {
-      console.error('Failed to delete chapter:', error);
-      showErrorToast('章の削除に失敗しました。');
-      throw error;
-    }
+    const { quizBooks } = get();
+    const previousQuizBooks = [...quizBooks];
+
+    // Optimistic UI: 即座にローカル状態から削除
+    set({
+      quizBooks: quizBooks.map(book => {
+        if (book.id !== quizBookId) return book;
+        return {
+          ...book,
+          chapters: book.chapters.filter(chapter => chapter.id !== chapterId),
+          chapterCount: Math.max(0, book.chapterCount - 1),
+        };
+      })
+    });
+
+    // バックグラウンドでAPI呼び出し
+    chapterApi.delete(quizBookId, chapterId)
+      .then(() => get().fetchQuizBooks())
+      .catch(async (error) => {
+        console.error('Failed to delete chapter:', error);
+        // 失敗時はロールバック
+        set({ quizBooks: previousQuizBooks });
+        showErrorToast('章の削除に失敗しました。再度お試しください。');
+      });
   },
 
   // ========== Section CRUD (Optimistic UI) ==========
@@ -398,14 +429,35 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   deleteSection: async (quizBookId: string, chapterId: string, sectionId: string) => {
-    try {
-      await sectionApi.delete(quizBookId, chapterId, sectionId);
-      await get().fetchQuizBooks();
-    } catch (error) {
-      console.error('Failed to delete section:', error);
-      showErrorToast('節の削除に失敗しました。');
-      throw error;
-    }
+    const { quizBooks } = get();
+    const previousQuizBooks = [...quizBooks];
+
+    // Optimistic UI: 即座にローカル状態から削除
+    set({
+      quizBooks: quizBooks.map(book => {
+        if (book.id !== quizBookId) return book;
+        return {
+          ...book,
+          chapters: book.chapters.map(chapter => {
+            if (chapter.id !== chapterId) return chapter;
+            return {
+              ...chapter,
+              sections: (chapter.sections || []).filter(section => section.id !== sectionId),
+            };
+          }),
+        };
+      })
+    });
+
+    // バックグラウンドでAPI呼び出し
+    sectionApi.delete(quizBookId, chapterId, sectionId)
+      .then(() => get().fetchQuizBooks())
+      .catch(async (error) => {
+        console.error('Failed to delete section:', error);
+        // 失敗時はロールバック
+        set({ quizBooks: previousQuizBooks });
+        showErrorToast('節の削除に失敗しました。再度お試しください。');
+      });
   },
 
   // ========== Answer操作 (Optimistic UI) ==========
@@ -748,63 +800,168 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 
   deleteQuestionFromTarget: async (chapterId: string, sectionId: string | null, questionNumber: number) => {
     const { quizBooks } = get();
+    const previousQuizBooks = [...quizBooks];
+
+    // 対象の問題情報を取得
+    let bookId: string | null = null;
+    let answerId: string | null = null;
 
     for (const book of quizBooks) {
       for (const chapter of book.chapters) {
         if (chapter.id === chapterId) {
-          // 回答データを削除
           const questionAnswers = sectionId
             ? chapter.sections?.find(s => s.id === sectionId)?.questionAnswers
             : chapter.questionAnswers;
-
           const qa = questionAnswers?.find(q => q.questionNumber === questionNumber);
           if (qa && qa.id) {
-            await answerApi.delete(book.id, qa.id);
+            bookId = book.id;
+            answerId = qa.id;
           }
+          break;
+        }
+      }
+      if (bookId) break;
+    }
 
-          // questionCountを減らす
+    // Optimistic UI: 即座にローカル状態から削除
+    set({
+      quizBooks: quizBooks.map(book => ({
+        ...book,
+        chapters: book.chapters.map(chapter => {
+          if (chapter.id !== chapterId) return chapter;
+
+          if (sectionId && chapter.sections) {
+            return {
+              ...chapter,
+              sections: chapter.sections.map(section => {
+                if (section.id !== sectionId) return section;
+                return {
+                  ...section,
+                  questionCount: Math.max(0, (section.questionCount || 0) - 1),
+                  questionAnswers: section.questionAnswers?.filter(qa => qa.questionNumber !== questionNumber),
+                };
+              }),
+            };
+          } else {
+            return {
+              ...chapter,
+              questionCount: Math.max(0, (chapter.questionCount || 0) - 1),
+              questionAnswers: chapter.questionAnswers?.filter(qa => qa.questionNumber !== questionNumber),
+            };
+          }
+        }),
+      }))
+    });
+
+    // バックグラウンドでAPI呼び出し
+    if (bookId && answerId) {
+      answerApi.delete(bookId, answerId)
+        .then(async () => {
+          // questionCountを更新するAPIを呼び出す
           if (sectionId) {
-            const section = chapter.sections?.find(s => s.id === sectionId);
+            const section = previousQuizBooks
+              .flatMap(b => b.chapters)
+              .find(c => c.id === chapterId)
+              ?.sections?.find(s => s.id === sectionId);
             if (section && section.questionCount && section.questionCount > 0) {
-              await get().updateSection(book.id, chapterId, sectionId, {
+              await sectionApi.update(bookId!, chapterId, sectionId, {
                 questionCount: section.questionCount - 1
               });
             }
           } else {
-            if (chapter.questionCount && chapter.questionCount > 0) {
-              await get().updateChapter(book.id, chapterId, {
+            const chapter = previousQuizBooks
+              .flatMap(b => b.chapters)
+              .find(c => c.id === chapterId);
+            if (chapter && chapter.questionCount && chapter.questionCount > 0) {
+              await chapterApi.update(bookId!, chapterId, {
                 questionCount: chapter.questionCount - 1
               });
             }
           }
-          return;
-        }
-      }
+          get().fetchQuizBooks();
+        })
+        .catch(async (error) => {
+          console.error('Failed to delete question:', error);
+          set({ quizBooks: previousQuizBooks });
+          showErrorToast('問題の削除に失敗しました。再度お試しください。');
+        });
     }
   },
 
   deleteLatestAttempt: async (chapterId: string, sectionId: string | null, questionNumber: number) => {
     const { quizBooks } = get();
+    const previousQuizBooks = [...quizBooks];
+
+    // 対象の問題情報を取得
+    let bookId: string | null = null;
+    let answerId: string | null = null;
 
     for (const book of quizBooks) {
       for (const chapter of book.chapters) {
         if (chapter.id === chapterId) {
-          // 回答データを取得
           const questionAnswers = sectionId
             ? chapter.sections?.find(s => s.id === sectionId)?.questionAnswers
             : chapter.questionAnswers;
-
           const qa = questionAnswers?.find(q => q.questionNumber === questionNumber);
           if (qa && qa.id) {
-            // 最新のattemptのみ削除
-            await answerApi.deleteLatest(book.id, qa.id);
+            bookId = book.id;
+            answerId = qa.id;
           }
-
-          // データを再取得
-          await get().fetchQuizBooks();
-          return;
+          break;
         }
       }
+      if (bookId) break;
+    }
+
+    // Optimistic UI: 即座にローカル状態を更新（最新のattemptを削除）
+    set({
+      quizBooks: quizBooks.map(book => ({
+        ...book,
+        chapters: book.chapters.map(chapter => {
+          if (chapter.id !== chapterId) return chapter;
+
+          if (sectionId && chapter.sections) {
+            return {
+              ...chapter,
+              sections: chapter.sections.map(section => {
+                if (section.id !== sectionId) return section;
+                return {
+                  ...section,
+                  questionAnswers: section.questionAnswers?.map(qa => {
+                    if (qa.questionNumber !== questionNumber) return qa;
+                    const newAttempts = qa.attempts.slice(0, -1);
+                    return newAttempts.length > 0
+                      ? { ...qa, attempts: newAttempts }
+                      : qa; // attemptsが空になる場合はそのまま（サーバーで削除される）
+                  }).filter(qa => qa.questionNumber !== questionNumber || qa.attempts.length > 0),
+                };
+              }),
+            };
+          } else {
+            return {
+              ...chapter,
+              questionAnswers: chapter.questionAnswers?.map(qa => {
+                if (qa.questionNumber !== questionNumber) return qa;
+                const newAttempts = qa.attempts.slice(0, -1);
+                return newAttempts.length > 0
+                  ? { ...qa, attempts: newAttempts }
+                  : qa;
+              }).filter(qa => qa.questionNumber !== questionNumber || qa.attempts.length > 0),
+            };
+          }
+        }),
+      }))
+    });
+
+    // バックグラウンドでAPI呼び出し
+    if (bookId && answerId) {
+      answerApi.deleteLatest(bookId, answerId)
+        .then(() => get().fetchQuizBooks())
+        .catch(async (error) => {
+          console.error('Failed to delete latest attempt:', error);
+          set({ quizBooks: previousQuizBooks });
+          showErrorToast('履歴の削除に失敗しました。再度お試しください。');
+        });
     }
   },
 }));
