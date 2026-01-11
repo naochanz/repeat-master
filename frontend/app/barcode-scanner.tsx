@@ -295,13 +295,13 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 8,
   },
   instructionContainer: {
-    backgroundColor: theme.colors.neutral[900],
+    backgroundColor: theme.colors.neutral[50],
     padding: theme.spacing.xl,
     paddingBottom: theme.spacing.xl * 2,
   },
   instructionText: {
     fontSize: theme.typography.fontSizes.base,
-    color: theme.colors.neutral.white,
+    color: theme.colors.secondary[800],
     fontFamily: 'ZenKaku-Regular',
     textAlign: 'center',
     lineHeight: 24,
