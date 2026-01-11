@@ -9,12 +9,13 @@ import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const CHART_WIDTH = SCREEN_WIDTH - (theme.spacing.lg * 4);
 const CHART_HEIGHT = 200;
 
 export default function QualificationDetailScreen() {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const CHART_WIDTH = SCREEN_WIDTH - (theme.spacing.lg * 4);
+
   const { category } = useLocalSearchParams<{ category: string }>();
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const deleteQuizBook = useQuizBookStore(state => state.deleteQuizBook);
