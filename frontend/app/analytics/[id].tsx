@@ -430,44 +430,47 @@ export default function DetailedAnalyticsScreen() {
           </ScrollView>
         ) : (
           // 節がない場合: 章カルーセル
-          <View style={styles.chapterCarouselWrapper}>
-            <ScrollView
-              horizontal
-              pagingEnabled={false}
-              snapToInterval={CAROUSEL_ITEM_WIDTH}
-              snapToAlignment="start"
-              decelerationRate="fast"
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chapterCarouselContent}
-              onMomentumScrollEnd={handleChapterCarouselScroll}
-            >
-              {chapterData.map((chapter) => (
-                <View key={chapter.id} style={styles.chapterCarouselCard}>
-                  <Text style={styles.chapterCarouselTitle}>
-                    第{chapter.chapterNumber}章
-                  </Text>
-                  {chapter.title && chapter.title !== `第${chapter.chapterNumber}章` && (
-                    <Text style={styles.chapterCarouselSubtitle} numberOfLines={2}>
-                      {chapter.title}
+          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+            <View style={styles.chapterCarouselWrapper}>
+              <ScrollView
+                horizontal
+                pagingEnabled={false}
+                snapToInterval={CAROUSEL_ITEM_WIDTH}
+                snapToAlignment="start"
+                decelerationRate="fast"
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chapterCarouselContent}
+                onMomentumScrollEnd={handleChapterCarouselScroll}
+              >
+                {chapterData.map((chapter) => (
+                  <View key={chapter.id} style={styles.chapterCarouselCard}>
+                    <Text style={styles.chapterCarouselTitle}>
+                      第{chapter.chapterNumber}章
                     </Text>
-                  )}
-                  <View style={styles.chartContainer}>
-                    {renderChart(
-                      chapter.stats,
-                      chapter.id,
-                      'chapter',
-                      chapter.id,
-                      chapter.chapterNumber,
-                      undefined,
-                      undefined,
-                      CAROUSEL_ITEM_WIDTH - 40
+                    {chapter.title && chapter.title !== `第${chapter.chapterNumber}章` && (
+                      <Text style={styles.chapterCarouselSubtitle} numberOfLines={2}>
+                        {chapter.title}
+                      </Text>
                     )}
+                    <View style={styles.chartContainer}>
+                      {renderChart(
+                        chapter.stats,
+                        chapter.id,
+                        'chapter',
+                        chapter.id,
+                        chapter.chapterNumber,
+                        undefined,
+                        undefined,
+                        CAROUSEL_ITEM_WIDTH - 40
+                      )}
+                    </View>
                   </View>
-                </View>
-              ))}
-            </ScrollView>
-            {renderChapterCarouselIndicator()}
-          </View>
+                ))}
+              </ScrollView>
+              {renderChapterCarouselIndicator()}
+            </View>
+            <View style={styles.bottomSpacer} />
+          </ScrollView>
         )}
 
         {/* プロット選択モーダル */}
@@ -631,9 +634,7 @@ const styles = StyleSheet.create({
   },
   // 章カルーセル（節がない場合）
   chapterCarouselWrapper: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.xl,
+    paddingTop: theme.spacing.lg,
   },
   chapterCarouselContent: {
     paddingHorizontal: 20,
