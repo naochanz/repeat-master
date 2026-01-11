@@ -14,9 +14,10 @@ import QuizBookTitleModal from '../_compornents/QuizBookTitleModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function LibraryScreen() {
-  const { scannedBookTitle, scannedBookIsbn, openCategoryModal } = useLocalSearchParams<{
+  const { scannedBookTitle, scannedBookIsbn, scannedBookThumbnail, openCategoryModal } = useLocalSearchParams<{
     scannedBookTitle?: string;
     scannedBookIsbn?: string;
+    scannedBookThumbnail?: string;
     openCategoryModal?: string;
   }>();
 
@@ -38,6 +39,7 @@ export default function LibraryScreen() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [scannedTitle, setScannedTitle] = useState<string>('');
   const [scannedIsbn, setScannedIsbn] = useState<string>('');
+  const [scannedThumbnail, setScannedThumbnail] = useState<string>('');
 
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -59,12 +61,13 @@ export default function LibraryScreen() {
     if (scannedBookTitle && openCategoryModal === 'true') {
       setScannedTitle(scannedBookTitle);
       setScannedIsbn(scannedBookIsbn || '');
+      setScannedThumbnail(scannedBookThumbnail || '');
       setIsAddingCategory(false);
       setCategoryModalVisible(true);
       // パラメータをクリア
-      router.setParams({ scannedBookTitle: undefined, scannedBookIsbn: undefined, openCategoryModal: undefined });
+      router.setParams({ scannedBookTitle: undefined, scannedBookIsbn: undefined, scannedBookThumbnail: undefined, openCategoryModal: undefined });
     }
-  }, [scannedBookTitle, scannedBookIsbn, openCategoryModal]);
+  }, [scannedBookTitle, scannedBookIsbn, scannedBookThumbnail, openCategoryModal]);
 
   useFocusEffect(
     useCallback(() => {
@@ -201,11 +204,12 @@ export default function LibraryScreen() {
 
   const handleTitleConfirm = async (title: string) => {
     try {
-      await addQuizBook(title, selectedCategoryId, true, scannedIsbn || undefined);
+      await addQuizBook(title, selectedCategoryId, true, scannedIsbn || undefined, scannedThumbnail || undefined);
       setTitleModalVisible(false);
       setSelectedCategoryId('');
       setScannedTitle('');
       setScannedIsbn('');
+      setScannedThumbnail('');
     } catch (error) {
       console.error('Failed to confirm Title:', error);
     }
@@ -216,6 +220,7 @@ export default function LibraryScreen() {
     setSelectedCategoryId('');
     setScannedTitle('');
     setScannedIsbn('');
+    setScannedThumbnail('');
   };
 
   const handleCardPress = (quizBookId: string) => {

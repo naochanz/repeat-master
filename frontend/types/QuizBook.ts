@@ -11,6 +11,7 @@ export interface QuizBook {
   id: string;
   title: string;
   isbn?: string | null;
+  thumbnailUrl?: string | null;
   category: Category;
   categoryId: string;
   chapterCount: number;

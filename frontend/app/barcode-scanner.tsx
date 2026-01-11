@@ -74,6 +74,7 @@ export default function BarcodeScannerScreen() {
         params: {
           scannedBookTitle: bookInfo.title,
           scannedBookIsbn: bookInfo.isbn,
+          scannedBookThumbnail: bookInfo.thumbnail || '',
           openCategoryModal: 'true'
         }
       });

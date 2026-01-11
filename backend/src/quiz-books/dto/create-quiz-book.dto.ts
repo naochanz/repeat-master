@@ -3,4 +3,5 @@ export class CreateQuizBookDto {
     categoryId: string;
     useSections: boolean;
     isbn?: string;
+    thumbnailUrl?: string;
   }

@@ -17,8 +17,8 @@ interface QuizBookStore {
   // QuizBook操作
   fetchQuizBooks: () => Promise<void>;
   getQuizBookById: (id: string) => QuizBook | undefined;
-  createQuizBook: (title: string, categoryId: string, useSections: boolean, isbn?: string) => Promise<void>;
-  addQuizBook: (title: string, categoryId: string, useSections: boolean, isbn?: string) => Promise<void>; // createQuizBookのエイリアス
+  createQuizBook: (title: string, categoryId: string, useSections: boolean, isbn?: string, thumbnailUrl?: string) => Promise<void>;
+  addQuizBook: (title: string, categoryId: string, useSections: boolean, isbn?: string, thumbnailUrl?: string) => Promise<void>; // createQuizBookのエイリアス
   updateQuizBook: (id: string, updates: any) => Promise<void>;
   deleteQuizBook: (id: string) => Promise<void>;
 
@@ -127,7 +127,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     return get().quizBooks.find(book => book.id === id);
   },
 
-  createQuizBook: async (title: string, categoryId: string, useSections: boolean, isbn?: string) => {
+  createQuizBook: async (title: string, categoryId: string, useSections: boolean, isbn?: string, thumbnailUrl?: string) => {
     const { quizBooks, categories } = get();
     const tempId = `temp-${Date.now()}`;
     const category = categories.find(c => c.id === categoryId);
@@ -137,6 +137,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       id: tempId,
       title,
       isbn: isbn || null,
+      thumbnailUrl: thumbnailUrl || null,
       categoryId,
       category: category || { id: categoryId, name: '', createdAt: '', updatedAt: '' },
       useSections,
@@ -151,7 +152,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     set({ quizBooks: [newQuizBook, ...quizBooks], isLoading: false });
 
     // バックグラウンドでAPI呼び出し
-    quizBookApi.create(title, categoryId, useSections, isbn)
+    quizBookApi.create(title, categoryId, useSections, isbn, thumbnailUrl)
       .then(() => get().fetchQuizBooks())
       .catch(async (error) => {
         console.error('Failed to create quiz book:', error);
@@ -160,9 +161,9 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       });
   },
 
-  addQuizBook: async (title: string, categoryId: string, useSections: boolean, isbn?: string) => {
+  addQuizBook: async (title: string, categoryId: string, useSections: boolean, isbn?: string, thumbnailUrl?: string) => {
     // createQuizBookのエイリアス（後方互換性のため）
-    return get().createQuizBook(title, categoryId, useSections, isbn);
+    return get().createQuizBook(title, categoryId, useSections, isbn, thumbnailUrl);
   },
 
   updateQuizBook: async (id: string, updates: any) => {

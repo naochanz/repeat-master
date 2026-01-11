@@ -2,7 +2,7 @@ import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { ChevronDown, MoreVertical, Trash2 } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { Category } from '@/types/QuizBook';
 
@@ -15,6 +15,7 @@ interface QuizBook {
   useSections?: boolean;
   correctRate?: number;
   currentRound?: number;
+  thumbnailUrl?: string | null;
 }
 
 interface QuizBookCardProps {
@@ -66,6 +67,8 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, existingCategories }: QuizB
     await updateQuizBook(quizBook.id, { useSections: value });
   };
 
+  const hasThumbnail = !!quizBook.thumbnailUrl;
+
   return (
     <>
       <View style={styles.bookContainer}>
@@ -74,37 +77,63 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, existingCategories }: QuizB
           onPress={onPress}
           activeOpacity={0.8}
         >
-          <View style={styles.bookSpine}>
-            <View style={styles.bookTop} />
-            <View style={styles.bookMain}>
-              <TouchableOpacity
-                style={styles.menuButton}
-                onPress={handleMenuPress}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <MoreVertical size={16} color={theme.colors.secondary[600]} />
-              </TouchableOpacity>
-
-              <View style={styles.bookContent}>
-                <Text style={styles.bookTitle} numberOfLines={6}>
-                  {quizBook.title || '未設定'}
-                </Text>
-
-                <View style={styles.bookStats}>
-                  <View style={styles.bookStatItem}>
-                    <Text style={styles.bookStatLabel}>現在</Text>
-                    <Text style={[styles.bookStatValue, { color: theme.colors.primary[600] }]}>
-                    {(quizBook.currentRound || 0) + 1}
-                    </Text>
-                    <Text style={styles.bookStatLabel}>周目</Text>
-                  </View>
+          {hasThumbnail ? (
+            // サムネイルありのカード（バーコードスキャンで登録）
+            <View style={styles.thumbnailCard}>
+              <Image
+                source={{ uri: quizBook.thumbnailUrl! }}
+                style={styles.thumbnailImage}
+                resizeMode="cover"
+              />
+              <View style={styles.thumbnailOverlay}>
+                <TouchableOpacity
+                  style={styles.thumbnailMenuButton}
+                  onPress={handleMenuPress}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <MoreVertical size={16} color={theme.colors.neutral.white} />
+                </TouchableOpacity>
+                <View style={styles.thumbnailRoundBadge}>
+                  <Text style={styles.thumbnailRoundText}>
+                    現在{(quizBook.currentRound || 0) + 1}周目
+                  </Text>
                 </View>
               </View>
             </View>
-            <View style={styles.bookBottom} />
-          </View>
+          ) : (
+            // サムネイルなしの従来のカード
+            <View style={styles.bookSpine}>
+              <View style={styles.bookTop} />
+              <View style={styles.bookMain}>
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={handleMenuPress}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <MoreVertical size={16} color={theme.colors.secondary[600]} />
+                </TouchableOpacity>
+
+                <View style={styles.bookContent}>
+                  <Text style={styles.bookTitle} numberOfLines={3} ellipsizeMode="tail">
+                    {quizBook.title || '未設定'}
+                  </Text>
+
+                  <View style={styles.bookStats}>
+                    <View style={styles.bookStatItem}>
+                      <Text style={styles.bookStatLabel}>現在</Text>
+                      <Text style={[styles.bookStatValue, { color: theme.colors.primary[600] }]}>
+                      {(quizBook.currentRound || 0) + 1}
+                      </Text>
+                      <Text style={styles.bookStatLabel}>周目</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.bookBottom} />
+            </View>
+          )}
         </TouchableOpacity>
-        <View style={styles.bookShadow} />
+        {!hasThumbnail && <View style={styles.bookShadow} />}
       </View>
 
       <Modal
@@ -194,6 +223,42 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 2,
   },
+  // サムネイルカードスタイル
+  thumbnailCard: {
+    flex: 1,
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+    ...theme.shadows.md,
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbnailOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
+    padding: theme.spacing.sm,
+  },
+  thumbnailMenuButton: {
+    alignSelf: 'flex-end',
+    padding: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: theme.borderRadius.sm,
+  },
+  thumbnailRoundBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+  },
+  thumbnailRoundText: {
+    fontSize: theme.typography.fontSizes.xs,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.neutral.white,
+    fontFamily: 'ZenKaku-Bold',
+  },
+  // 従来のブックスタイル
   bookSpine: {
     flex: 1,
     backgroundColor: theme.colors.neutral.white,
