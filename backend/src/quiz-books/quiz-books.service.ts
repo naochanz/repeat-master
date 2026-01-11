@@ -727,7 +727,9 @@ export class QuizBooksService {
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       category: data.category ? { id: data.category.id, name: data.category.name } : undefined,
-      chapters: (data.chapters || []).map((c: any) => this.mapToChapter(c)),
+      chapters: (data.chapters || [])
+        .map((c: any) => this.mapToChapter(c))
+        .sort((a: Chapter, b: Chapter) => a.chapterNumber - b.chapterNumber),
     };
   }
 
@@ -739,7 +741,9 @@ export class QuizBooksService {
       title: data.title,
       chapterRate: data.chapter_rate || 0,
       questionCount: data.question_count,
-      sections: (data.sections || []).map((s: any) => this.mapToSection(s)),
+      sections: (data.sections || [])
+        .map((s: any) => this.mapToSection(s))
+        .sort((a: Section, b: Section) => a.sectionNumber - b.sectionNumber),
       questionAnswers: (data.question_answers || []).map((qa: any) => this.mapToQuestionAnswer(qa)),
     };
   }
