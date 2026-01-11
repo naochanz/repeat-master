@@ -1036,6 +1036,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   pickerItem: {
     fontSize: theme.typography.fontSizes['2xl'],
     fontFamily: 'ZenKaku-Regular',
+    color: theme.colors.secondary[900],
   },
   addMultipleActions: {
     flexDirection: 'row',
