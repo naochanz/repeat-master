@@ -24,8 +24,6 @@ import CustomTabBar from '@/components/CustomTabBar';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 40;
 const CAROUSEL_ITEM_WIDTH = SCREEN_WIDTH - 60;
-const CARD_GAP = 10;
-const SNAP_INTERVAL = CAROUSEL_ITEM_WIDTH + CARD_GAP;
 
 interface ChapterStats {
   round: number;
@@ -76,9 +74,6 @@ export default function DetailedAnalyticsScreen() {
 
   const quizBook = quizBooks.find(b => b.id === id);
 
-  // 現在の周回数（表示用）
-  const displayRound = (quizBook?.currentRound || 0) + 1;
-
   useFocusEffect(
     useCallback(() => {
       loadData();
@@ -110,18 +105,10 @@ export default function DetailedAnalyticsScreen() {
         .filter(s => s.chapterId === chapter.id)
         .sort((a, b) => a.round - b.round);
 
-      // 現在の周回の正答率を取得
-      const currentRoundStats = stats.find(s => s.round === displayRound);
-      const currentRate = currentRoundStats?.correctRate ?? null;
-
       const sections = (chapter.sections || []).map(section => {
         const sectionStats = analytics.sectionStats
           .filter(s => s.sectionId === section.id)
           .sort((a, b) => a.round - b.round);
-
-        // 節の現在周回の正答率
-        const sectionCurrentStats = sectionStats.find(s => s.round === displayRound);
-        const sectionCurrentRate = sectionCurrentStats?.correctRate ?? null;
 
         return {
           id: section.id,
@@ -129,7 +116,6 @@ export default function DetailedAnalyticsScreen() {
           sectionNumber: section.sectionNumber,
           title: section.title || `${section.sectionNumber}節`,
           stats: sectionStats,
-          currentRate: sectionCurrentRate,
         };
       }).sort((a, b) => a.sectionNumber - b.sectionNumber);
 
@@ -138,12 +124,11 @@ export default function DetailedAnalyticsScreen() {
         chapterNumber: chapter.chapterNumber,
         title: chapter.title || `第${chapter.chapterNumber}章`,
         stats,
-        currentRate,
         hasSections: quizBook.useSections && (chapter.sections?.length ?? 0) > 0,
         sections,
       };
     });
-  }, [analytics, quizBook, displayRound]);
+  }, [analytics, quizBook]);
 
   // 問題集が節を使用しているかどうか
   const useSections = quizBook?.useSections && chapterData.some(c => c.hasSections);
@@ -193,7 +178,7 @@ export default function DetailedAnalyticsScreen() {
 
   const handleSectionScroll = (chapterId: string) => (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / SNAP_INTERVAL);
+    const index = Math.round(offsetX / CAROUSEL_ITEM_WIDTH);
     setSectionIndices(prev => ({ ...prev, [chapterId]: index }));
   };
 
@@ -350,17 +335,9 @@ export default function DetailedAnalyticsScreen() {
             <View key={chapter.id} style={styles.chapterSection}>
               {/* 章ヘッダー */}
               <View style={styles.chapterHeader}>
-                <View style={styles.chapterHeaderTop}>
-                  <Text style={styles.chapterTitle}>
-                    第{chapter.chapterNumber}章
-                  </Text>
-                  {chapter.currentRate !== null && (
-                    <View style={styles.currentRateBadge}>
-                      <Text style={styles.currentRateLabel}>{displayRound}周目</Text>
-                      <Text style={styles.currentRateValue}>{chapter.currentRate}%</Text>
-                    </View>
-                  )}
-                </View>
+                <Text style={styles.chapterTitle}>
+                  第{chapter.chapterNumber}章
+                </Text>
                 {chapter.title && chapter.title !== `第${chapter.chapterNumber}章` && (
                   <Text style={styles.chapterSubtitle} numberOfLines={1}>
                     {chapter.title}
@@ -374,7 +351,7 @@ export default function DetailedAnalyticsScreen() {
                   <ScrollView
                     horizontal
                     pagingEnabled={false}
-                    snapToInterval={SNAP_INTERVAL}
+                    snapToInterval={CAROUSEL_ITEM_WIDTH}
                     snapToAlignment="start"
                     decelerationRate="fast"
                     showsHorizontalScrollIndicator={false}
@@ -383,14 +360,9 @@ export default function DetailedAnalyticsScreen() {
                   >
                     {chapter.sections.map((section) => (
                       <View key={section.id} style={styles.carouselCard}>
-                        <View style={styles.sectionCardHeader}>
-                          <Text style={styles.carouselCardTitle}>
-                            {section.sectionNumber}. {section.title}
-                          </Text>
-                          {section.currentRate !== null && (
-                            <Text style={styles.sectionCurrentRate}>{section.currentRate}%</Text>
-                          )}
-                        </View>
+                        <Text style={styles.carouselCardTitle}>
+                          {section.sectionNumber}. {section.title}
+                        </Text>
                         <View style={styles.chartContainer}>
                           {renderChart(
                             section.stats,
@@ -542,11 +514,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.md,
   },
-  chapterHeaderTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   chapterTitle: {
     fontSize: theme.typography.fontSizes.xl,
     fontFamily: 'ZenKaku-Bold',
@@ -558,53 +525,23 @@ const styles = StyleSheet.create({
     color: theme.colors.secondary[600],
     marginTop: theme.spacing.xs,
   },
-  currentRateBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    backgroundColor: theme.colors.primary[50],
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.md,
-  },
-  currentRateLabel: {
-    fontSize: theme.typography.fontSizes.xs,
-    fontFamily: 'ZenKaku-Regular',
-    color: theme.colors.primary[600],
-  },
-  currentRateValue: {
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.primary[600],
-  },
   // カルーセル
   carouselContent: {
     paddingHorizontal: 20,
   },
   carouselCard: {
     width: CAROUSEL_ITEM_WIDTH,
-    marginRight: CARD_GAP,
+    marginRight: 10,
     backgroundColor: theme.colors.neutral.white,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
     ...theme.shadows.md,
   },
-  sectionCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
   carouselCardTitle: {
     fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Bold',
     color: theme.colors.secondary[900],
-    flex: 1,
-  },
-  sectionCurrentRate: {
-    fontSize: theme.typography.fontSizes.lg,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.primary[600],
+    marginBottom: theme.spacing.md,
   },
   carouselIndicatorContainer: {
     flexDirection: 'row',
