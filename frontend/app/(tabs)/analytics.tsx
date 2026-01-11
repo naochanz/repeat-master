@@ -57,20 +57,35 @@ export default function AnalyticsScreen() {
 
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([fetchQuizBooks(), fetchCategories()]);
+    try {
+      await Promise.all([fetchQuizBooks(), fetchCategories()]);
 
-    // すべての問題集の分析データを取得
-    const analyticsData: { [quizBookId: string]: QuizBookAnalytics } = {};
-    for (const book of quizBooks) {
-      try {
-        const response = await quizBookApi.getAnalytics(book.id);
-        analyticsData[book.id] = response.data;
-      } catch (error) {
-        console.error(`Failed to fetch analytics for ${book.id}:`, error);
+      // ストアから最新のquizBooksを取得
+      const currentQuizBooks = useQuizBookStore.getState().quizBooks;
+
+      // 問題集がない場合は早期リターン
+      if (currentQuizBooks.length === 0) {
+        setAnalytics({});
+        setLoading(false);
+        return;
       }
+
+      // すべての問題集の分析データを取得
+      const analyticsData: { [quizBookId: string]: QuizBookAnalytics } = {};
+      for (const book of currentQuizBooks) {
+        try {
+          const response = await quizBookApi.getAnalytics(book.id);
+          analyticsData[book.id] = response.data;
+        } catch (error) {
+          console.error(`Failed to fetch analytics for ${book.id}:`, error);
+        }
+      }
+      setAnalytics(analyticsData);
+    } catch (error) {
+      console.error('Failed to load analytics data:', error);
+    } finally {
+      setLoading(false);
     }
-    setAnalytics(analyticsData);
-    setLoading(false);
   };
 
   // 資格グループごとに問題集をグループ化（全カテゴリを表示）

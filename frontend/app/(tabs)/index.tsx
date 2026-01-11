@@ -1,8 +1,9 @@
 import { theme } from '@/constants/theme';
 import { useUserStore } from '@/stores/userStore';
+import { useAuthStore } from '@/stores/authStore';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { Edit3, Target } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { CommonActions } from '@react-navigation/native';
@@ -15,11 +16,28 @@ export default function DashboardScreen() {
   const fetchRecentStudyRecords = useUserStore(state => state.fetchRecentStudyRecords);
   const updateUserGoal = useUserStore(state => state.updateUserGoal);
 
+  // ユーザープロファイル
+  const profile = useAuthStore(state => state.profile);
+
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [tempGoal, setTempGoal] = useState('');
 
   const navigation = useNavigation();
   const opacity = useSharedValue(0);
+
+  // 時間帯による挨拶
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    const name = profile?.name || 'ゲスト';
+
+    if (hour >= 5 && hour < 12) {
+      return `おはようございます、${name}さん`;
+    } else if (hour >= 12 && hour < 18) {
+      return `こんにちは、${name}さん`;
+    } else {
+      return `おかえりなさい、${name}さん`;
+    }
+  }, [profile?.name]);
 
   // ✅ 画面フォーカス時にデータを取得
   useFocusEffect(
@@ -95,6 +113,9 @@ export default function DashboardScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* 挨拶 */}
+          <Text style={styles.greeting}>{greeting}</Text>
+
           <TouchableOpacity
             style={styles.goalCard}
             onPress={handleEditGoal}
@@ -214,6 +235,13 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: theme.spacing.lg,
     paddingTop: theme.spacing.md,
+  },
+  greeting: {
+    fontSize: theme.typography.fontSizes.xl,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+    marginBottom: theme.spacing.lg,
   },
   goalCard: {
     backgroundColor: theme.colors.primary[600],
