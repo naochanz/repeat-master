@@ -229,8 +229,8 @@ export default function RoundQuestionsScreen() {
 
           <View style={styles.bottomSpacer} />
         </ScrollView>
-        <CustomTabBar />
       </SafeAreaView>
+      <CustomTabBar />
     </>
   );
 }
