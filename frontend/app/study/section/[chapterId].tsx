@@ -48,6 +48,32 @@ const SectionList = () => {
 
   const { book, chapter } = chapterData;
   const sections = chapter.sections || [];
+  const displayRound = (book.currentRound || 0) + 1;
+
+  // 節ごとの正答率を計算（現在の周回）
+  const getSectionRate = (section: typeof sections[0]) => {
+    if (!section.questionAnswers || section.questionAnswers.length === 0) {
+      return 0;
+    }
+
+    let totalQuestions = 0;
+    let correctAnswers = 0;
+
+    section.questionAnswers.forEach((qa) => {
+      const roundAttempt = qa.attempts?.find(
+        (a: any) => a.round === displayRound && a.resultConfirmFlg
+      );
+      if (roundAttempt) {
+        totalQuestions++;
+        if (roundAttempt.result === '○') {
+          correctAnswers++;
+        }
+      }
+    });
+
+    if (totalQuestions === 0) return 0;
+    return Math.round((correctAnswers / totalQuestions) * 100);
+  };
 
   const handleSelectUseSections = async (useSections: boolean) => {
     await updateQuizBook(book.id, { useSections });
@@ -257,9 +283,25 @@ const SectionList = () => {
                       )}
                     </View>
                     <View style={styles.sectionStats}>
-                      <Text style={styles.questionCount}>
-                        {section.questionCount}問
-                      </Text>
+                      <View style={styles.statItem}>
+                        <Text style={styles.statLabel}>正答率</Text>
+                        <Text style={[styles.statValue, {
+                          color: getSectionRate(section) >= 80
+                            ? theme.colors.success[600]
+                            : getSectionRate(section) >= 60
+                              ? theme.colors.warning[600]
+                              : theme.colors.error[600]
+                        }]}>
+                          {getSectionRate(section)}%
+                        </Text>
+                      </View>
+                      <View style={styles.divider} />
+                      <View style={styles.statItem}>
+                        <Text style={styles.statLabel}>問題数</Text>
+                        <Text style={styles.statValue}>
+                          {section.questionCount}問
+                        </Text>
+                      </View>
                     </View>
                   </Card>
                 </TouchableOpacity>
@@ -476,9 +518,32 @@ const styles = StyleSheet.create({
     fontFamily: 'ZenKaku-Bold',
   },
   sectionStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingTop: theme.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: theme.colors.secondary[200],
-    paddingTop: theme.spacing.sm,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: theme.typography.fontSizes.xs,
+    color: theme.colors.secondary[600],
+    marginBottom: 2,
+    fontFamily: 'ZenKaku-Regular',
+  },
+  statValue: {
+    fontSize: theme.typography.fontSizes.lg,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+  },
+  divider: {
+    width: 1,
+    height: 24,
+    backgroundColor: theme.colors.secondary[200],
   },
   questionCount: {
     fontSize: theme.typography.fontSizes.sm,

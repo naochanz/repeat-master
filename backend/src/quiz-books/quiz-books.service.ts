@@ -91,11 +91,11 @@ export class QuizBooksService {
 
     const quizBooks: QuizBook[] = (data || []).map((item: any) => this.mapToQuizBook(item));
 
-    // 各章の正答率を計算
+    // 各章の正答率を計算（現在取り組み中の周回 = currentRound + 1）
     quizBooks.forEach((quizBook) => {
-      const currentRound = quizBook.currentRound || 1;
+      const displayRound = (quizBook.currentRound || 0) + 1;
       quizBook.chapters.forEach((chapter) => {
-        chapter.chapterRate = this.calculateChapterRateForRound(chapter, currentRound);
+        chapter.chapterRate = this.calculateChapterRateForRound(chapter, displayRound);
       });
     });
 
@@ -126,10 +126,10 @@ export class QuizBooksService {
 
     const quizBook = this.mapToQuizBook(data);
 
-    // 各章の正答率を計算
-    const currentRound = quizBook.currentRound || 1;
+    // 各章の正答率を計算（現在取り組み中の周回 = currentRound + 1）
+    const displayRound = (quizBook.currentRound || 0) + 1;
     quizBook.chapters.forEach((chapter) => {
-      chapter.chapterRate = this.calculateChapterRateForRound(chapter, currentRound);
+      chapter.chapterRate = this.calculateChapterRateForRound(chapter, displayRound);
     });
 
     return quizBook;
