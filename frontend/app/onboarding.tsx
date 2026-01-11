@@ -1,27 +1,22 @@
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image, ScrollView } from 'react-native';
-import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Image } from 'react-native';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ChevronRight, ChevronLeft } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
   FadeIn,
   FadeOut,
 } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const PHONE_WIDTH = SCREEN_WIDTH * 0.65;
-const PHONE_HEIGHT = PHONE_WIDTH * 2.0;
+const IMAGE_WIDTH = SCREEN_WIDTH * 0.75;
+const IMAGE_HEIGHT = IMAGE_WIDTH * 1.8;
 
 interface OnboardingPage {
   stepNumber: number;
   title: string;
-  subtitle: string;
   description: string;
   images: any[];
   accentColor: string;
@@ -46,32 +41,28 @@ export default function OnboardingScreen() {
     {
       stepNumber: 1,
       title: '問題集を登録',
-      subtitle: 'かんたん登録',
-      description: '使っている問題集を登録するだけ。\nカテゴリ分けで整理もラクラク。',
+      description: '使っている問題集をカテゴリ分けして登録',
       images: [step1Image],
       accentColor: theme.colors.primary[600],
     },
     {
       stepNumber: 2,
       title: '正誤を記録',
-      subtitle: 'ワンタップで記録',
-      description: '○×ボタンで解答結果をサクッと記録。\n日付も自動で保存されます。',
+      description: '○×ボタンで解答結果をサクッと記録',
       images: [step2Image],
       accentColor: theme.colors.success[600],
     },
     {
       stepNumber: 3,
       title: '周回で実力アップ',
-      subtitle: '反復学習',
-      description: '1周目より2周目、2周目より3周目。\n繰り返すほど正答率がグングン上昇！',
+      description: '繰り返すほど正答率がグングン上昇',
       images: [step3Image1, step3Image2],
       accentColor: theme.colors.warning[500],
     },
     {
       stepNumber: 4,
-      title: '弱点を分析',
-      subtitle: '効率的な学習',
-      description: 'グラフで成長を実感。\n章ごとの弱点を把握して集中攻略！',
+      title: '分析で弱点克服',
+      description: 'グラフで成長を実感、弱点を集中攻略',
       images: [step4Image1, step4Image2, step4Image3],
       accentColor: theme.colors.error[500],
     },
@@ -79,11 +70,28 @@ export default function OnboardingScreen() {
 
   const [currentPage, setCurrentPage] = useState(0);
   const [imageIndex, setImageIndex] = useState(0);
-  const animationProgress = useSharedValue(0);
+  const imageTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const page = pages[currentPage];
+  const hasMultipleImages = page.images.length > 1;
+
+  // 画像の自動切り替え（2.5秒ごと）
+  useEffect(() => {
+    if (hasMultipleImages) {
+      imageTimerRef.current = setInterval(() => {
+        setImageIndex((prev) => (prev + 1) % page.images.length);
+      }, 2500);
+    }
+
+    return () => {
+      if (imageTimerRef.current) {
+        clearInterval(imageTimerRef.current);
+      }
+    };
+  }, [currentPage, hasMultipleImages, page.images.length]);
 
   const handleNext = async () => {
     if (currentPage < pages.length - 1) {
-      animationProgress.value = withTiming(currentPage + 1, { duration: 300 });
       setCurrentPage(currentPage + 1);
       setImageIndex(0);
     } else {
@@ -91,16 +99,13 @@ export default function OnboardingScreen() {
     }
   };
 
-  const handlePrev = () => {
-    if (currentPage > 0) {
-      animationProgress.value = withTiming(currentPage - 1, { duration: 300 });
-      setCurrentPage(currentPage - 1);
-      setImageIndex(0);
-    }
-  };
-
   const handleSkip = async () => {
     await completeOnboarding();
+  };
+
+  const handleDotPress = (index: number) => {
+    setCurrentPage(index);
+    setImageIndex(0);
   };
 
   const completeOnboarding = async () => {
@@ -112,23 +117,12 @@ export default function OnboardingScreen() {
     router.replace('/login');
   };
 
-  const page = pages[currentPage];
-  const hasMultipleImages = page.images.length > 1;
-
-  const handleImageTap = () => {
-    if (hasMultipleImages) {
-      setImageIndex((prev) => (prev + 1) % page.images.length);
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.stepIndicator}>
-          <Text style={[styles.stepText, { color: page.accentColor }]}>
-            STEP {page.stepNumber}
-          </Text>
+        <View style={[styles.stepBadge, { backgroundColor: page.accentColor }]}>
+          <Text style={styles.stepBadgeText}>STEP {page.stepNumber}/4</Text>
         </View>
         {currentPage < pages.length - 1 && (
           <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
@@ -139,95 +133,68 @@ export default function OnboardingScreen() {
 
       {/* Content */}
       <View style={styles.content}>
-        {/* Title Section */}
-        <View style={styles.titleSection}>
-          <Text style={styles.subtitle}>{page.subtitle}</Text>
-          <Text style={styles.title}>{page.title}</Text>
+        {/* Title and Description - 上部に配置 */}
+        <View style={styles.textSection}>
+          <Text style={[styles.title, { color: page.accentColor }]}>{page.title}</Text>
+          <Text style={styles.description}>{page.description}</Text>
         </View>
 
-        {/* Phone Mockup */}
-        <TouchableOpacity
-          style={styles.phoneContainer}
-          onPress={handleImageTap}
-          activeOpacity={hasMultipleImages ? 0.9 : 1}
-        >
-          <View style={[styles.phoneMockup, { borderColor: page.accentColor }]}>
-            <View style={styles.phoneNotch} />
-            <Animated.View
-              key={`${currentPage}-${imageIndex}`}
-              entering={FadeIn.duration(300)}
-              style={styles.phoneScreen}
-            >
-              <Image
-                source={page.images[imageIndex]}
-                style={styles.screenshotImage}
-                resizeMode="cover"
-              />
-            </Animated.View>
-          </View>
+        {/* Screenshot with auto-switching */}
+        <View style={styles.imageContainer}>
+          <Animated.Image
+            key={`${currentPage}-${imageIndex}`}
+            entering={FadeIn.duration(400)}
+            exiting={FadeOut.duration(200)}
+            source={page.images[imageIndex]}
+            style={styles.screenshot}
+            resizeMode="contain"
+          />
 
-          {/* Image indicators for multiple images */}
+          {/* Image indicators */}
           {hasMultipleImages && (
-            <View style={styles.imageIndicators}>
+            <View style={styles.imageDots}>
               {page.images.map((_, idx) => (
                 <View
                   key={idx}
                   style={[
-                    styles.imageIndicator,
-                    idx === imageIndex && { backgroundColor: page.accentColor, width: 20 },
+                    styles.imageDot,
+                    idx === imageIndex && { backgroundColor: page.accentColor, width: 16 },
                   ]}
                 />
               ))}
-              <Text style={styles.tapHint}>タップで切り替え</Text>
             </View>
           )}
-        </TouchableOpacity>
-
-        {/* Description */}
-        <Text style={styles.description}>{page.description}</Text>
+        </View>
       </View>
 
       {/* Footer */}
       <View style={styles.footer}>
-        {/* Pagination */}
+        {/* Page dots */}
         <View style={styles.pagination}>
           {pages.map((_, index) => (
-            <View
+            <TouchableOpacity
               key={index}
+              onPress={() => handleDotPress(index)}
+              hitSlop={{ top: 10, bottom: 10, left: 5, right: 5 }}
               style={[
-                styles.dot,
-                index === currentPage && [styles.dotActive, { backgroundColor: page.accentColor }],
+                styles.pageDot,
+                index === currentPage && { backgroundColor: page.accentColor, width: 24 },
               ]}
             />
           ))}
         </View>
 
-        {/* Navigation Buttons */}
-        <View style={styles.buttonRow}>
-          {currentPage > 0 ? (
-            <TouchableOpacity
-              style={styles.prevButton}
-              onPress={handlePrev}
-              activeOpacity={0.8}
-            >
-              <ChevronLeft size={20} color={theme.colors.secondary[600]} />
-              <Text style={styles.prevButtonText}>戻る</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.prevButton} />
-          )}
-
-          <TouchableOpacity
-            style={[styles.nextButton, { backgroundColor: page.accentColor }]}
-            onPress={handleNext}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.nextButtonText}>
-              {currentPage === pages.length - 1 ? 'はじめる' : '次へ'}
-            </Text>
-            <ChevronRight size={20} color={theme.colors.neutral.white} />
-          </TouchableOpacity>
-        </View>
+        {/* Next button */}
+        <TouchableOpacity
+          style={[styles.nextButton, { backgroundColor: page.accentColor }]}
+          onPress={handleNext}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.nextButtonText}>
+            {currentPage === pages.length - 1 ? 'はじめる' : '次へ'}
+          </Text>
+          <ChevronRight size={18} color={theme.colors.neutral.white} />
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -236,166 +203,113 @@ export default function OnboardingScreen() {
 const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.neutral[50],
+    backgroundColor: theme.colors.neutral.white,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    height: 48,
   },
-  stepIndicator: {
+  stepBadge: {
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.borderRadius.full,
-    backgroundColor: theme.colors.neutral.white,
-    ...theme.shadows.sm,
   },
-  stepText: {
-    fontSize: theme.typography.fontSizes.sm,
+  stepBadgeText: {
+    fontSize: theme.typography.fontSizes.xs,
     fontWeight: theme.typography.fontWeights.bold as any,
     fontFamily: 'ZenKaku-Bold',
-    letterSpacing: 1,
+    color: theme.colors.neutral.white,
+    letterSpacing: 0.5,
   },
   skipButton: {
     padding: theme.spacing.sm,
   },
   skipText: {
-    fontSize: theme.typography.fontSizes.base,
-    color: theme.colors.secondary[500],
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.secondary[400],
     fontFamily: 'ZenKaku-Medium',
   },
   content: {
     flex: 1,
-    alignItems: 'center',
     paddingHorizontal: theme.spacing.lg,
   },
-  titleSection: {
+  textSection: {
     alignItems: 'center',
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-  },
-  subtitle: {
-    fontSize: theme.typography.fontSizes.sm,
-    color: theme.colors.secondary[500],
-    fontFamily: 'ZenKaku-Medium',
-    marginBottom: theme.spacing.xs,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
   },
   title: {
-    fontSize: theme.typography.fontSizes['2xl'],
+    fontSize: 24,
     fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Bold',
+    marginBottom: theme.spacing.xs,
     textAlign: 'center',
   },
-  phoneContainer: {
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
+  description: {
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.secondary[500],
+    fontFamily: 'ZenKaku-Regular',
+    textAlign: 'center',
   },
-  phoneMockup: {
-    width: PHONE_WIDTH,
-    height: PHONE_HEIGHT,
-    backgroundColor: theme.colors.neutral.white,
-    borderRadius: 32,
-    borderWidth: 4,
-    overflow: 'hidden',
-    ...theme.shadows.lg,
-  },
-  phoneNotch: {
-    position: 'absolute',
-    top: 8,
-    left: '50%',
-    marginLeft: -40,
-    width: 80,
-    height: 24,
-    backgroundColor: theme.colors.secondary[900],
-    borderRadius: 12,
-    zIndex: 10,
-  },
-  phoneScreen: {
+  imageContainer: {
     flex: 1,
-    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  screenshotImage: {
-    width: '100%',
-    height: '100%',
+  screenshot: {
+    width: IMAGE_WIDTH,
+    height: IMAGE_HEIGHT,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
-  imageIndicators: {
+  imageDots: {
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
     marginTop: theme.spacing.md,
     gap: theme.spacing.xs,
   },
-  imageIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.secondary[300],
-  },
-  tapHint: {
-    fontSize: theme.typography.fontSizes.xs,
-    color: theme.colors.secondary[400],
-    fontFamily: 'ZenKaku-Regular',
-    marginLeft: theme.spacing.sm,
-  },
-  description: {
-    fontSize: theme.typography.fontSizes.base,
-    color: theme.colors.secondary[600],
-    fontFamily: 'ZenKaku-Regular',
-    textAlign: 'center',
-    lineHeight: 26,
-    paddingHorizontal: theme.spacing.md,
+  imageDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.colors.secondary[200],
   },
   footer: {
     paddingHorizontal: theme.spacing.xl,
-    paddingBottom: theme.spacing.xl,
+    paddingBottom: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
   },
   pagination: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
     gap: theme.spacing.sm,
   },
-  dot: {
+  pageDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: theme.colors.secondary[200],
   },
-  dotActive: {
-    width: 24,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-  },
-  prevButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    minWidth: 100,
-  },
-  prevButtonText: {
-    fontSize: theme.typography.fontSizes.base,
-    color: theme.colors.secondary[600],
-    fontFamily: 'ZenKaku-Medium',
-  },
   nextButton: {
-    flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: theme.spacing.lg,
+    paddingVertical: 14,
     borderRadius: theme.borderRadius.lg,
     gap: theme.spacing.xs,
   },
   nextButtonText: {
-    fontSize: theme.typography.fontSizes.lg,
+    fontSize: theme.typography.fontSizes.base,
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.neutral.white,
     fontFamily: 'ZenKaku-Bold',
