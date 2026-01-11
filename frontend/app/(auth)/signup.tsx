@@ -8,7 +8,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAuthStore } from '@/stores/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showErrorToast } from '@/utils/toast';
-import { BookOpen, Mail, Lock, User, ChevronLeft } from 'lucide-react-native';
+import { BookOpen, Mail, Lock, User } from 'lucide-react-native';
 
 const signupSchema = z
   .object({
@@ -80,12 +80,6 @@ const Signup = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Back to login */}
-          <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/login')}>
-            <ChevronLeft size={20} color={theme.colors.secondary[500]} />
-            <Text style={styles.backButtonText}>ログインに戻る</Text>
-          </TouchableOpacity>
-
           {/* Logo */}
           <View style={styles.logoContainer}>
             <View style={styles.logoCircle}>
@@ -228,17 +222,6 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     flexGrow: 1,
     paddingHorizontal: theme.spacing.xl,
     paddingBottom: theme.spacing.xl,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-    marginLeft: -theme.spacing.sm,
-  },
-  backButtonText: {
-    fontSize: theme.typography.fontSizes.sm,
-    color: theme.colors.secondary[500],
-    fontFamily: 'ZenKaku-Medium',
   },
   logoContainer: {
     alignItems: 'center',

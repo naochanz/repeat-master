@@ -8,9 +8,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAuthStore } from '@/stores/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showErrorToast } from '@/utils/toast';
-import { BookOpen, Mail, Lock, ChevronLeft } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ONBOARDING_COMPLETE_KEY } from '../onboarding';
+import { BookOpen, Mail, Lock } from 'lucide-react-native';
 
 const loginSchema = z.object({
   email: z
@@ -50,11 +48,6 @@ const Login = () => {
     }
   };
 
-  const handleBackToOnboarding = async () => {
-    await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
-    router.replace('/onboarding');
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
@@ -66,12 +59,6 @@ const Login = () => {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Back to onboarding */}
-          <TouchableOpacity style={styles.backButton} onPress={handleBackToOnboarding}>
-            <ChevronLeft size={20} color={theme.colors.secondary[500]} />
-            <Text style={styles.backButtonText}>はじめに戻る</Text>
-          </TouchableOpacity>
-
           {/* Logo */}
           <View style={styles.logoContainer}>
             <View style={styles.logoCircle}>
@@ -168,17 +155,6 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     flexGrow: 1,
     paddingHorizontal: theme.spacing.xl,
     paddingBottom: theme.spacing.xl,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.md,
-    marginLeft: -theme.spacing.sm,
-  },
-  backButtonText: {
-    fontSize: theme.typography.fontSizes.sm,
-    color: theme.colors.secondary[500],
-    fontFamily: 'ZenKaku-Medium',
   },
   logoContainer: {
     alignItems: 'center',
