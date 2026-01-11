@@ -52,56 +52,113 @@ export const Fonts = Platform.select({
   },
 });
 
-export const theme = {
-  colors: {
-    primary: {
-      50: '#fff7ed',
-      100: '#ffedd5',
-      200: '#fed7aa',
-      300: '#fdba74',
-      400: '#fb923c',
-      500: '#f97316',
-      600: '#ea580c',
-      700: '#c2410c',
-      800: '#9a3412',
-      900: '#7c2d12',
-    },
-    secondary: {
-      50: '#f8fafc',
-      100: '#f1f5f9',
-      200: '#e2e8f0',
-      300: '#cbd5e1',
-      400: '#94a3b8',
-      500: '#64748b',
-      600: '#475569',
-      700: '#334155',
-      800: '#1e293b',
-      900: '#0f172a',
-    },
-    neutral: {
-      50: '#f9fafb',
-      100: '#f3f4f6',
-      white: '#ffffff',
-    },
-    error: {
-      50: '#fef2f2',
-      300: '#fca5a5',
-      500: '#ef4444',
-      600: '#dc2626',
-    },
-    warning: {
-      50: '#fffbeb',
-      300: '#fcd34d',
-      500: '#f59e0b',
-      600: '#d97706',
-    },
-    success: {
-      50: '#ecfdf5',
-      300: '#6ee7b7',
-      500: '#10b981',
-      600: '#059669',
-    },
+// ライトモードのカラー
+const lightColors = {
+  primary: {
+    50: '#fff7ed',
+    100: '#ffedd5',
+    200: '#fed7aa',
+    300: '#fdba74',
+    400: '#fb923c',
+    500: '#f97316',
+    600: '#ea580c',
+    700: '#c2410c',
+    800: '#9a3412',
+    900: '#7c2d12',
   },
+  secondary: {
+    50: '#f8fafc',
+    100: '#f1f5f9',
+    200: '#e2e8f0',
+    300: '#cbd5e1',
+    400: '#94a3b8',
+    500: '#64748b',
+    600: '#475569',
+    700: '#334155',
+    800: '#1e293b',
+    900: '#0f172a',
+  },
+  neutral: {
+    50: '#f9fafb',
+    100: '#f3f4f6',
+    white: '#ffffff',
+  },
+  background: '#ffffff',
+  surface: '#f9fafb',
+  error: {
+    50: '#fef2f2',
+    300: '#fca5a5',
+    500: '#ef4444',
+    600: '#dc2626',
+  },
+  warning: {
+    50: '#fffbeb',
+    300: '#fcd34d',
+    500: '#f59e0b',
+    600: '#d97706',
+  },
+  success: {
+    50: '#ecfdf5',
+    300: '#6ee7b7',
+    500: '#10b981',
+    600: '#059669',
+  },
+};
+
+// ダークモードのカラー
+const darkColors = {
+  primary: {
+    50: '#7c2d12',
+    100: '#9a3412',
+    200: '#c2410c',
+    300: '#ea580c',
+    400: '#f97316',
+    500: '#fb923c',
+    600: '#fdba74',
+    700: '#fed7aa',
+    800: '#ffedd5',
+    900: '#fff7ed',
+  },
+  secondary: {
+    50: '#1e293b',
+    100: '#334155',
+    200: '#475569',
+    300: '#64748b',
+    400: '#94a3b8',
+    500: '#cbd5e1',
+    600: '#e2e8f0',
+    700: '#f1f5f9',
+    800: '#f8fafc',
+    900: '#ffffff',
+  },
+  neutral: {
+    50: '#1e293b',
+    100: '#334155',
+    white: '#0f172a',
+  },
+  background: '#0f172a',
+  surface: '#1e293b',
+  error: {
+    50: '#450a0a',
+    300: '#b91c1c',
+    500: '#ef4444',
+    600: '#f87171',
+  },
+  warning: {
+    50: '#451a03',
+    300: '#b45309',
+    500: '#f59e0b',
+    600: '#fbbf24',
+  },
+  success: {
+    50: '#022c22',
+    300: '#047857',
+    500: '#10b981',
+    600: '#34d399',
+  },
+};
+
+const baseTheme = {
   typography: {
     fontSizes: {
       xs: 12,
@@ -130,6 +187,8 @@ export const theme = {
     md: 16,
     lg: 24,
     xl: 32,
+    '2xl': 48,
+    '4xl': 64,
   },
   borderRadius: {
     sm: 4,
@@ -168,5 +227,31 @@ export const theme = {
       shadowRadius: 8,
       elevation: 8,
     },
+    xl: {
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 6,
+      },
+      shadowOpacity: 0.25,
+      shadowRadius: 12,
+      elevation: 12,
+    },
   },
 };
+
+export const lightTheme = {
+  ...baseTheme,
+  colors: lightColors,
+};
+
+export const darkTheme = {
+  ...baseTheme,
+  colors: darkColors,
+};
+
+// デフォルトはライトテーマ（後方互換性のため）
+export const theme = lightTheme;
+
+// テーマを取得する関数
+export const getTheme = (isDark: boolean) => isDark ? darkTheme : lightTheme;

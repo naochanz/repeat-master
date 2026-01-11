@@ -1,18 +1,26 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch, Modal, TextInput } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import { theme } from '@/constants/theme';
 import { router } from 'expo-router';
-import { LogOut, Crown, ChevronRight, RefreshCw, Trash2 } from 'lucide-react-native';
+import { LogOut, Crown, ChevronRight, RefreshCw, Trash2, Moon, User, Edit3 } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { userApi } from '@/services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showSuccessToast, showErrorToast } from '@/utils/toast';
 
 export default function SettingsScreen() {
   const logout = useAuthStore(state => state.logout);
+  const profile = useAuthStore(state => state.profile);
+  const updateProfile = useAuthStore(state => state.updateProfile);
   const { isPremium, expirationDate, willRenew, refreshStatus, restorePurchases, isLoading } = useSubscriptionStore();
+  const { isDark, setMode } = useThemeStore();
+
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [tempName, setTempName] = useState('');
+  const [isUpdatingName, setIsUpdatingName] = useState(false);
 
   useEffect(() => {
     refreshStatus();
@@ -29,6 +37,34 @@ export default function SettingsScreen() {
 
   const handleRestore = async () => {
     await restorePurchases();
+  };
+
+  const handleToggleDarkMode = async (value: boolean) => {
+    await setMode(value ? 'dark' : 'light');
+  };
+
+  const handleEditName = () => {
+    setTempName(profile?.name || '');
+    setShowNameModal(true);
+  };
+
+  const handleSaveName = async () => {
+    if (!tempName.trim()) {
+      showErrorToast('ユーザー名を入力してください');
+      return;
+    }
+
+    setIsUpdatingName(true);
+    try {
+      await updateProfile({ name: tempName.trim() });
+      showSuccessToast('ユーザー名を更新しました');
+      setShowNameModal(false);
+    } catch (error) {
+      console.error('Failed to update name:', error);
+      showErrorToast('ユーザー名の更新に失敗しました');
+    } finally {
+      setIsUpdatingName(false);
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -70,6 +106,46 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.content}>
+        {/* プロフィール */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>プロフィール</Text>
+
+          <TouchableOpacity
+            style={styles.profileCard}
+            onPress={handleEditName}
+            activeOpacity={0.7}
+          >
+            <View style={styles.profileIcon}>
+              <User size={24} color={theme.colors.primary[600]} />
+            </View>
+            <View style={styles.profileContent}>
+              <Text style={styles.profileLabel}>ユーザー名</Text>
+              <Text style={styles.profileValue}>{profile?.name || '未設定'}</Text>
+            </View>
+            <Edit3 size={20} color={theme.colors.secondary[400]} />
+          </TouchableOpacity>
+        </View>
+
+        {/* 外観 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>外観</Text>
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingLeft}>
+              <View style={styles.settingIcon}>
+                <Moon size={20} color={theme.colors.primary[600]} />
+              </View>
+              <Text style={styles.settingLabel}>ダークモード</Text>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={handleToggleDarkMode}
+              trackColor={{ false: theme.colors.secondary[200], true: theme.colors.primary[400] }}
+              thumbColor={isDark ? theme.colors.primary[600] : theme.colors.neutral.white}
+            />
+          </View>
+        </View>
+
         {/* サブスクリプション状態 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>プラン</Text>
@@ -179,6 +255,47 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* ユーザー名編集モーダル */}
+      <Modal
+        visible={showNameModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowNameModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>ユーザー名を変更</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={tempName}
+              onChangeText={setTempName}
+              placeholder="ユーザー名"
+              placeholderTextColor={theme.colors.secondary[400]}
+              maxLength={30}
+              autoFocus
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowNameModal(false)}
+                disabled={isUpdatingName}
+              >
+                <Text style={styles.cancelButtonText}>キャンセル</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleSaveName}
+                disabled={isUpdatingName}
+              >
+                <Text style={styles.saveButtonText}>
+                  {isUpdatingName ? '保存中...' : '保存'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -204,6 +321,69 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.neutral.white,
+    padding: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[200],
+    ...theme.shadows.sm,
+  },
+  profileIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.primary[100],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
+  },
+  profileContent: {
+    flex: 1,
+  },
+  profileLabel: {
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.secondary[500],
+    fontFamily: 'ZenKaku-Regular',
+    marginBottom: 2,
+  },
+  profileValue: {
+    fontSize: theme.typography.fontSizes.base,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.colors.neutral.white,
+    padding: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[200],
+    ...theme.shadows.sm,
+  },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primary[100],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
+  },
+  settingLabel: {
+    fontSize: theme.typography.fontSizes.base,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Medium',
+  },
   premiumCard: {
     backgroundColor: theme.colors.neutral.white,
     borderRadius: theme.borderRadius.lg,
@@ -224,7 +404,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.warning[100],
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: 999,
   },
   premiumBadgeText: {
     fontSize: theme.typography.fontSizes.sm,
@@ -337,7 +517,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.error[200],
+    borderColor: theme.colors.error[300],
     ...theme.shadows.sm,
   },
   deleteAccountButtonText: {
@@ -362,5 +542,67 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.base,
     color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Medium',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.lg,
+  },
+  modalContent: {
+    backgroundColor: theme.colors.neutral.white,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
+    width: '100%',
+    maxWidth: 400,
+    ...theme.shadows.lg,
+  },
+  modalTitle: {
+    fontSize: theme.typography.fontSizes.lg,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+    marginBottom: theme.spacing.lg,
+    textAlign: 'center',
+  },
+  modalInput: {
+    backgroundColor: theme.colors.neutral[50],
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[200],
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    fontSize: theme.typography.fontSizes.base,
+    fontFamily: 'ZenKaku-Regular',
+    color: theme.colors.secondary[900],
+    marginBottom: theme.spacing.lg,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: theme.colors.secondary[100],
+  },
+  cancelButtonText: {
+    fontSize: theme.typography.fontSizes.base,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[700],
+    fontFamily: 'ZenKaku-Bold',
+  },
+  saveButton: {
+    backgroundColor: theme.colors.primary[600],
+  },
+  saveButtonText: {
+    fontSize: theme.typography.fontSizes.base,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.neutral.white,
+    fontFamily: 'ZenKaku-Bold',
   },
 });
