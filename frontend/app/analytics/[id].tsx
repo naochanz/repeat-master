@@ -1,7 +1,7 @@
 import { theme } from '@/constants/theme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { quizBookApi } from '@/services/api';
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,15 +12,18 @@ import {
   Modal,
   Pressable,
   ActivityIndicator,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-chart-kit';
 import { router, useFocusEffect, useLocalSearchParams, Stack } from 'expo-router';
-import { ArrowLeft, ChevronLeft, ChevronRight, X } from 'lucide-react-native';
+import { ArrowLeft, X } from 'lucide-react-native';
 import CustomTabBar from '@/components/CustomTabBar';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 40;
+const CAROUSEL_ITEM_WIDTH = SCREEN_WIDTH - 60;
 
 interface ChapterStats {
   round: number;
@@ -56,8 +59,8 @@ export default function DetailedAnalyticsScreen() {
 
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
-  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+  const [sectionIndices, setSectionIndices] = useState<{ [chapterId: string]: number }>({});
+  const [chapterCarouselIndex, setChapterCarouselIndex] = useState(0);
   const [selectedPlot, setSelectedPlot] = useState<{
     round: number;
     correctRate: number;
@@ -103,64 +106,33 @@ export default function DetailedAnalyticsScreen() {
         .filter(s => s.chapterId === chapter.id)
         .sort((a, b) => a.round - b.round);
 
+      const sections = (chapter.sections || []).map(section => {
+        const sectionStats = analytics.sectionStats
+          .filter(s => s.sectionId === section.id)
+          .sort((a, b) => a.round - b.round);
+
+        return {
+          id: section.id,
+          chapterId: chapter.id,
+          sectionNumber: section.sectionNumber,
+          title: section.title || `${section.sectionNumber}節`,
+          stats: sectionStats,
+        };
+      }).sort((a, b) => a.sectionNumber - b.sectionNumber);
+
       return {
         id: chapter.id,
         chapterNumber: chapter.chapterNumber,
         title: chapter.title || `第${chapter.chapterNumber}章`,
         stats,
         hasSections: quizBook.useSections && (chapter.sections?.length ?? 0) > 0,
-        sections: chapter.sections || [],
+        sections,
       };
     });
   }, [analytics, quizBook]);
 
-  // 現在の章の節データ
-  const currentChapterSections = useMemo(() => {
-    if (!analytics || chapterData.length === 0) return [];
-
-    const currentChapter = chapterData[currentChapterIndex];
-    if (!currentChapter?.hasSections) return [];
-
-    return currentChapter.sections.map(section => {
-      const stats = analytics.sectionStats
-        .filter(s => s.sectionId === section.id)
-        .sort((a, b) => a.round - b.round);
-
-      return {
-        id: section.id,
-        chapterId: currentChapter.id,
-        sectionNumber: section.sectionNumber,
-        title: section.title || `${section.sectionNumber}節`,
-        stats,
-      };
-    }).sort((a, b) => a.sectionNumber - b.sectionNumber);
-  }, [analytics, chapterData, currentChapterIndex]);
-
-  const handlePrevChapter = () => {
-    if (currentChapterIndex > 0) {
-      setCurrentChapterIndex(currentChapterIndex - 1);
-      setCurrentSectionIndex(0);
-    }
-  };
-
-  const handleNextChapter = () => {
-    if (currentChapterIndex < chapterData.length - 1) {
-      setCurrentChapterIndex(currentChapterIndex + 1);
-      setCurrentSectionIndex(0);
-    }
-  };
-
-  const handlePrevSection = () => {
-    if (currentSectionIndex > 0) {
-      setCurrentSectionIndex(currentSectionIndex - 1);
-    }
-  };
-
-  const handleNextSection = () => {
-    if (currentSectionIndex < currentChapterSections.length - 1) {
-      setCurrentSectionIndex(currentSectionIndex + 1);
-    }
-  };
+  // 問題集が節を使用しているかどうか
+  const useSections = quizBook?.useSections && chapterData.some(c => c.hasSections);
 
   const handlePlotSelect = (
     round: number,
@@ -206,6 +178,18 @@ export default function DetailedAnalyticsScreen() {
     });
   };
 
+  const handleSectionScroll = (chapterId: string) => (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / CAROUSEL_ITEM_WIDTH);
+    setSectionIndices(prev => ({ ...prev, [chapterId]: index }));
+  };
+
+  const handleChapterCarouselScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const index = Math.round(offsetX / CAROUSEL_ITEM_WIDTH);
+    setChapterCarouselIndex(index);
+  };
+
   const renderChart = (
     stats: { round: number; correctRate: number }[],
     targetId: string,
@@ -213,11 +197,14 @@ export default function DetailedAnalyticsScreen() {
     chapterId: string,
     chapterNumber: number,
     sectionId?: string,
-    sectionNumber?: number
+    sectionNumber?: number,
+    chartWidth?: number
   ) => {
+    const width = chartWidth || CARD_WIDTH - 40;
+
     if (stats.length === 0) {
       return (
-        <View style={styles.emptyChart}>
+        <View style={[styles.emptyChart, { width }]}>
           <Text style={styles.emptyChartText}>データがありません</Text>
         </View>
       );
@@ -247,8 +234,8 @@ export default function DetailedAnalyticsScreen() {
       <View>
         <LineChart
           data={chartData}
-          width={CARD_WIDTH - 40}
-          height={220}
+          width={width}
+          height={200}
           chartConfig={{
             backgroundColor: theme.colors.neutral.white,
             backgroundGradientFrom: theme.colors.neutral.white,
@@ -262,7 +249,7 @@ export default function DetailedAnalyticsScreen() {
               borderRadius: theme.borderRadius.lg,
             },
             propsForDots: {
-              r: '8',
+              r: '7',
               strokeWidth: '2',
               stroke: theme.colors.primary[600],
             },
@@ -292,6 +279,41 @@ export default function DetailedAnalyticsScreen() {
     );
   };
 
+  // 節カルーセルのインジケーター
+  const renderSectionIndicator = (chapter: typeof chapterData[0]) => {
+    const currentIndex = sectionIndices[chapter.id] || 0;
+    return (
+      <View style={styles.carouselIndicatorContainer}>
+        {chapter.sections.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.carouselIndicator,
+              index === currentIndex && styles.carouselIndicatorActive,
+            ]}
+          />
+        ))}
+      </View>
+    );
+  };
+
+  // 章カルーセルのインジケーター（節がない場合）
+  const renderChapterCarouselIndicator = () => {
+    return (
+      <View style={styles.carouselIndicatorContainer}>
+        {chapterData.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.carouselIndicator,
+              index === chapterCarouselIndex && styles.carouselIndicatorActive,
+            ]}
+          />
+        ))}
+      </View>
+    );
+  };
+
   if (loading) {
     return (
       <View style={styles.wrapper}>
@@ -317,10 +339,6 @@ export default function DetailedAnalyticsScreen() {
     );
   }
 
-  const currentChapter = chapterData[currentChapterIndex];
-  const currentSection = currentChapterSections[currentSectionIndex];
-  const hasSections = currentChapter?.hasSections;
-
   return (
     <View style={styles.wrapper}>
       <SafeAreaView style={styles.safeArea}>
@@ -337,129 +355,120 @@ export default function DetailedAnalyticsScreen() {
           <View style={styles.headerButton} />
         </View>
 
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {/* 章ページネーション */}
-          <View style={styles.paginationContainer}>
-            <TouchableOpacity
-              style={[styles.paginationButton, currentChapterIndex === 0 && styles.paginationButtonDisabled]}
-              onPress={handlePrevChapter}
-              disabled={currentChapterIndex === 0}
-            >
-              <ChevronLeft size={24} color={currentChapterIndex === 0 ? theme.colors.secondary[300] : theme.colors.primary[600]} />
-            </TouchableOpacity>
-
-            <View style={styles.paginationInfo}>
-              <Text style={styles.paginationTitle}>
-                第{currentChapter?.chapterNumber}章
-              </Text>
-              {currentChapter?.title && (
-                <Text style={styles.paginationSubtitle} numberOfLines={1}>
-                  {currentChapter.title}
-                </Text>
-              )}
-            </View>
-
-            <TouchableOpacity
-              style={[styles.paginationButton, currentChapterIndex === chapterData.length - 1 && styles.paginationButtonDisabled]}
-              onPress={handleNextChapter}
-              disabled={currentChapterIndex === chapterData.length - 1}
-            >
-              <ChevronRight size={24} color={currentChapterIndex === chapterData.length - 1 ? theme.colors.secondary[300] : theme.colors.primary[600]} />
-            </TouchableOpacity>
-          </View>
-
-          {/* 章インジケーター */}
-          <View style={styles.indicatorContainer}>
-            {chapterData.map((_, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.indicator,
-                  index === currentChapterIndex && styles.indicatorActive,
-                ]}
-              />
-            ))}
-          </View>
-
-          {/* 節がある場合 */}
-          {hasSections && currentChapterSections.length > 0 ? (
-            <>
-              {/* 節ページネーション */}
-              <View style={styles.sectionPaginationContainer}>
-                <TouchableOpacity
-                  style={[styles.sectionPaginationButton, currentSectionIndex === 0 && styles.paginationButtonDisabled]}
-                  onPress={handlePrevSection}
-                  disabled={currentSectionIndex === 0}
-                >
-                  <ChevronLeft size={20} color={currentSectionIndex === 0 ? theme.colors.secondary[300] : theme.colors.primary[600]} />
-                </TouchableOpacity>
-
-                <View style={styles.sectionPaginationInfo}>
-                  <Text style={styles.sectionPaginationTitle}>
-                    {currentSection?.sectionNumber}. {currentSection?.title}
+        {useSections ? (
+          // 節がある場合: 章リスト + 節カルーセル
+          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+            {chapterData.map((chapter) => (
+              <View key={chapter.id} style={styles.chapterSection}>
+                {/* 章ヘッダー */}
+                <View style={styles.chapterHeader}>
+                  <Text style={styles.chapterTitle}>
+                    第{chapter.chapterNumber}章
                   </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.sectionPaginationButton, currentSectionIndex === currentChapterSections.length - 1 && styles.paginationButtonDisabled]}
-                  onPress={handleNextSection}
-                  disabled={currentSectionIndex === currentChapterSections.length - 1}
-                >
-                  <ChevronRight size={20} color={currentSectionIndex === currentChapterSections.length - 1 ? theme.colors.secondary[300] : theme.colors.primary[600]} />
-                </TouchableOpacity>
-              </View>
-
-              {/* 節インジケーター */}
-              <View style={styles.indicatorContainer}>
-                {currentChapterSections.map((_, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.sectionIndicator,
-                      index === currentSectionIndex && styles.sectionIndicatorActive,
-                    ]}
-                  />
-                ))}
-              </View>
-
-              {/* 節グラフカード */}
-              <View style={styles.chartCard}>
-                <Text style={styles.chartCardTitle}>
-                  {currentSection?.sectionNumber}. {currentSection?.title}
-                </Text>
-                <View style={styles.chartContainer}>
-                  {currentSection && renderChart(
-                    currentSection.stats,
-                    currentSection.id,
-                    'section',
-                    currentSection.chapterId,
-                    currentChapter.chapterNumber,
-                    currentSection.id,
-                    currentSection.sectionNumber
+                  {chapter.title && chapter.title !== `第${chapter.chapterNumber}章` && (
+                    <Text style={styles.chapterSubtitle} numberOfLines={1}>
+                      {chapter.title}
+                    </Text>
                   )}
                 </View>
-              </View>
-            </>
-          ) : (
-            /* 章グラフカード（節がない場合） */
-            <View style={styles.chartCard}>
-              <Text style={styles.chartCardTitle}>
-                第{currentChapter?.chapterNumber}章の正答率推移
-              </Text>
-              <View style={styles.chartContainer}>
-                {currentChapter && renderChart(
-                  currentChapter.stats,
-                  currentChapter.id,
-                  'chapter',
-                  currentChapter.id,
-                  currentChapter.chapterNumber
+
+                {chapter.hasSections && chapter.sections.length > 0 ? (
+                  // 節カルーセル
+                  <View>
+                    <ScrollView
+                      horizontal
+                      pagingEnabled={false}
+                      snapToInterval={CAROUSEL_ITEM_WIDTH}
+                      snapToAlignment="start"
+                      decelerationRate="fast"
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.carouselContent}
+                      onMomentumScrollEnd={handleSectionScroll(chapter.id)}
+                    >
+                      {chapter.sections.map((section) => (
+                        <View key={section.id} style={styles.carouselCard}>
+                          <Text style={styles.carouselCardTitle}>
+                            {section.sectionNumber}. {section.title}
+                          </Text>
+                          <View style={styles.chartContainer}>
+                            {renderChart(
+                              section.stats,
+                              section.id,
+                              'section',
+                              chapter.id,
+                              chapter.chapterNumber,
+                              section.id,
+                              section.sectionNumber,
+                              CAROUSEL_ITEM_WIDTH - 40
+                            )}
+                          </View>
+                        </View>
+                      ))}
+                    </ScrollView>
+                    {renderSectionIndicator(chapter)}
+                  </View>
+                ) : (
+                  // 節がない章はグラフを直接表示
+                  <View style={styles.chartCard}>
+                    <Text style={styles.chartCardTitle}>
+                      正答率推移
+                    </Text>
+                    <View style={styles.chartContainer}>
+                      {renderChart(
+                        chapter.stats,
+                        chapter.id,
+                        'chapter',
+                        chapter.id,
+                        chapter.chapterNumber
+                      )}
+                    </View>
+                  </View>
                 )}
               </View>
-            </View>
-          )}
-
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
+            ))}
+            <View style={styles.bottomSpacer} />
+          </ScrollView>
+        ) : (
+          // 節がない場合: 章カルーセル
+          <View style={styles.chapterCarouselWrapper}>
+            <ScrollView
+              horizontal
+              pagingEnabled={false}
+              snapToInterval={CAROUSEL_ITEM_WIDTH}
+              snapToAlignment="start"
+              decelerationRate="fast"
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chapterCarouselContent}
+              onMomentumScrollEnd={handleChapterCarouselScroll}
+            >
+              {chapterData.map((chapter) => (
+                <View key={chapter.id} style={styles.chapterCarouselCard}>
+                  <Text style={styles.chapterCarouselTitle}>
+                    第{chapter.chapterNumber}章
+                  </Text>
+                  {chapter.title && chapter.title !== `第${chapter.chapterNumber}章` && (
+                    <Text style={styles.chapterCarouselSubtitle} numberOfLines={2}>
+                      {chapter.title}
+                    </Text>
+                  )}
+                  <View style={styles.chartContainer}>
+                    {renderChart(
+                      chapter.stats,
+                      chapter.id,
+                      'chapter',
+                      chapter.id,
+                      chapter.chapterNumber,
+                      undefined,
+                      undefined,
+                      CAROUSEL_ITEM_WIDTH - 40
+                    )}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+            {renderChapterCarouselIndicator()}
+          </View>
+        )}
 
         {/* プロット選択モーダル */}
         <Modal
@@ -563,96 +572,97 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    padding: theme.spacing.md,
+    backgroundColor: theme.colors.neutral[50],
   },
-  paginationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.sm,
+  // 章セクション（節がある場合）
+  chapterSection: {
+    marginTop: theme.spacing.lg,
   },
-  paginationButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: theme.colors.primary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
+  chapterHeader: {
+    paddingHorizontal: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
-  paginationButtonDisabled: {
-    backgroundColor: theme.colors.neutral[100],
-  },
-  paginationInfo: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  paginationTitle: {
+  chapterTitle: {
     fontSize: theme.typography.fontSizes.xl,
     fontFamily: 'ZenKaku-Bold',
     color: theme.colors.secondary[900],
   },
-  paginationSubtitle: {
+  chapterSubtitle: {
     fontSize: theme.typography.fontSizes.sm,
     fontFamily: 'ZenKaku-Regular',
     color: theme.colors.secondary[600],
     marginTop: theme.spacing.xs,
   },
-  indicatorContainer: {
+  // カルーセル共通
+  carouselContent: {
+    paddingHorizontal: 20,
+  },
+  carouselCard: {
+    width: CAROUSEL_ITEM_WIDTH,
+    marginRight: 10,
+    backgroundColor: theme.colors.neutral.white,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.lg,
+    ...theme.shadows.md,
+  },
+  carouselCardTitle: {
+    fontSize: theme.typography.fontSizes.base,
+    fontFamily: 'ZenKaku-Bold',
+    color: theme.colors.secondary[900],
+    marginBottom: theme.spacing.md,
+  },
+  carouselIndicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: theme.spacing.xs,
-    marginBottom: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
-  indicator: {
+  carouselIndicator: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: theme.colors.secondary[300],
   },
-  indicatorActive: {
-    width: 24,
+  carouselIndicatorActive: {
+    width: 20,
     backgroundColor: theme.colors.primary[600],
   },
-  sectionIndicator: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: theme.colors.secondary[300],
-  },
-  sectionIndicatorActive: {
-    width: 18,
-    backgroundColor: theme.colors.primary[400],
-  },
-  sectionPaginationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    backgroundColor: theme.colors.neutral[50],
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.sm,
-  },
-  sectionPaginationButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.neutral.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sectionPaginationInfo: {
+  // 章カルーセル（節がない場合）
+  chapterCarouselWrapper: {
     flex: 1,
-    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.xl,
   },
-  sectionPaginationTitle: {
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Medium',
+  chapterCarouselContent: {
+    paddingHorizontal: 20,
+  },
+  chapterCarouselCard: {
+    width: CAROUSEL_ITEM_WIDTH,
+    marginRight: 10,
+    backgroundColor: theme.colors.neutral.white,
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.lg,
+    ...theme.shadows.md,
+  },
+  chapterCarouselTitle: {
+    fontSize: theme.typography.fontSizes.xl,
+    fontFamily: 'ZenKaku-Bold',
     color: theme.colors.secondary[900],
+    textAlign: 'center',
   },
+  chapterCarouselSubtitle: {
+    fontSize: theme.typography.fontSizes.sm,
+    fontFamily: 'ZenKaku-Regular',
+    color: theme.colors.secondary[600],
+    textAlign: 'center',
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.md,
+  },
+  // 通常チャートカード
   chartCard: {
+    marginHorizontal: theme.spacing.lg,
     backgroundColor: theme.colors.neutral.white,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
@@ -678,12 +688,11 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.sm,
   },
   emptyChart: {
-    height: 220,
+    height: 200,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.colors.neutral[50],
     borderRadius: theme.borderRadius.lg,
-    width: CARD_WIDTH - 40,
   },
   emptyChartText: {
     fontSize: theme.typography.fontSizes.base,
@@ -693,6 +702,7 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: theme.spacing['4xl'],
   },
+  // モーダル
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
