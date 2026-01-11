@@ -136,6 +136,7 @@ export default function RoundQuestionsScreen() {
     <>
       <Stack.Screen
         options={{
+          headerShown: true,
           headerTitle: () => (
             <View style={{ maxWidth: 280 }}>
               <Text
