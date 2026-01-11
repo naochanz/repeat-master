@@ -760,8 +760,9 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   addQuestionToTarget: async (chapterId: string, sectionId: string | null) => {
     const { quizBooks } = get();
     let bookId: string | null = null;
+    let newQuestionCount: number | undefined;
 
-    // Optimistic UI: 即座にローカル状態を更新
+    // ローカル状態を更新（UIの即時反映用）
     const updatedQuizBooks = quizBooks.map(book => ({
       ...book,
       chapters: book.chapters.map(chapter => {
@@ -773,28 +774,32 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
             ...chapter,
             sections: chapter.sections.map(section => {
               if (section.id !== sectionId) return section;
-              return { ...section, questionCount: (section.questionCount || 0) + 1 };
+              newQuestionCount = (section.questionCount || 0) + 1;
+              return { ...section, questionCount: newQuestionCount };
             }),
           };
         } else {
-          return { ...chapter, questionCount: (chapter.questionCount || 0) + 1 };
+          newQuestionCount = (chapter.questionCount || 0) + 1;
+          return { ...chapter, questionCount: newQuestionCount };
         }
       }),
     }));
 
     set({ quizBooks: updatedQuizBooks });
 
-    // バックグラウンドでAPI呼び出し
-    if (bookId) {
-      const apiCall = sectionId
-        ? sectionApi.update(bookId, chapterId, sectionId, { questionCount: updatedQuizBooks.find(b => b.id === bookId)?.chapters.find(c => c.id === chapterId)?.sections?.find(s => s.id === sectionId)?.questionCount })
-        : chapterApi.update(bookId, chapterId, { questionCount: updatedQuizBooks.find(b => b.id === bookId)?.chapters.find(c => c.id === chapterId)?.questionCount });
-
-      apiCall.catch(async (error) => {
+    // 同期的にAPI呼び出し（awaitで完了を待つ）
+    if (bookId && newQuestionCount !== undefined) {
+      try {
+        if (sectionId) {
+          await sectionApi.update(bookId, chapterId, sectionId, { questionCount: newQuestionCount });
+        } else {
+          await chapterApi.update(bookId, chapterId, { questionCount: newQuestionCount });
+        }
+      } catch (error) {
         console.error('Failed to add question:', error);
-        showErrorToast('問題の追加に失敗しました。再度お試しください。');
+        showErrorToast('問題の追加に失敗しました。');
         await get().fetchQuizBooks();
-      });
+      }
     }
   },
 
