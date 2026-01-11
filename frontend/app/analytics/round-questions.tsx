@@ -43,9 +43,13 @@ export default function RoundQuestionsScreen() {
     }, [])
   );
 
+  // 問題集データを取得
+  const quizBook = useMemo(() => {
+    return quizBooks.find(b => b.id === params.quizBookId);
+  }, [quizBooks, params.quizBookId]);
+
   // 該当の章または節のデータを取得
   const targetData = useMemo(() => {
-    const quizBook = quizBooks.find(b => b.id === params.quizBookId);
     if (!quizBook) return null;
 
     if (targetType === 'section' && params.sectionId) {
@@ -81,7 +85,7 @@ export default function RoundQuestionsScreen() {
     }
 
     return null;
-  }, [quizBooks, params]);
+  }, [quizBook, params, targetType]);
 
   // 指定周回の結果を持つ問題をフィルタリング
   const roundQuestions = useMemo(() => {
@@ -120,13 +124,11 @@ export default function RoundQuestionsScreen() {
 
   if (!targetData) {
     return (
-      <View style={styles.wrapper}>
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>データが見つかりません</Text>
-          </View>
-        </SafeAreaView>
-      </View>
+      <SafeAreaView style={styles.wrapper}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>データが見つかりません</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -139,12 +141,12 @@ export default function RoundQuestionsScreen() {
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center' }}
+                style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', color: theme.colors.secondary[900] }}
               >
-                {round}周目の問題一覧
+                {quizBook?.title || '問題一覧'}
               </Text>
-              <Text style={{ fontSize: 14, textAlign: 'center' }}>
-                {targetData.title}
+              <Text style={{ fontSize: 14, textAlign: 'center', color: theme.colors.secondary[700] }}>
+                {targetData.chapterTitle ? `${targetData.chapterTitle} / ${targetData.title}` : targetData.title} - {round}周目
               </Text>
             </View>
           ),
@@ -158,7 +160,7 @@ export default function RoundQuestionsScreen() {
           ),
         }}
       />
-      <View style={styles.wrapper}>
+      <SafeAreaView style={styles.wrapper} edges={['left', 'right', 'bottom']}>
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
 
           {/* 統計カード */}
@@ -227,7 +229,7 @@ export default function RoundQuestionsScreen() {
           <View style={styles.bottomSpacer} />
         </ScrollView>
         <CustomTabBar />
-      </View>
+      </SafeAreaView>
     </>
   );
 }

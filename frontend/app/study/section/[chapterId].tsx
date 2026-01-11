@@ -98,7 +98,9 @@ const SectionList = () => {
     });
   };
 
-  const handleChapterPress = () => {
+  const handleChapterPress = async () => {
+    // 節を利用しないを選択したのでuseSectionsをfalseに設定
+    await updateQuizBook(book.id, { useSections: false });
     router.push({
       pathname: '/study/question/[id]',
       params: { id: chapter.id }
