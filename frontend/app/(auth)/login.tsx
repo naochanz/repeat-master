@@ -1,6 +1,5 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native'
-import React from 'react'
-import AppName from '../_compornents/Header';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import React from 'react';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,215 +8,274 @@ import { theme } from '@/constants/theme';
 import { useAuthStore } from '@/stores/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showErrorToast } from '@/utils/toast';
+import { BookOpen, Mail, Lock, ChevronLeft } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ONBOARDING_COMPLETE_KEY } from '../onboarding';
 
 const loginSchema = z.object({
-    email: z
-        .string()
-        .min(1, "メールアドレスは必須です")
-        .email("正しいメールアドレスを入力してください"),
-
-    password: z
-        .string()
-        .min(1, "パスワードは必須です")
-        .min(8, "パスワードは8文字以上で入力してください"),
+  email: z
+    .string()
+    .min(1, 'メールアドレスは必須です')
+    .email('正しいメールアドレスを入力してください'),
+  password: z
+    .string()
+    .min(1, 'パスワードは必須です')
+    .min(8, 'パスワードは8文字以上で入力してください'),
 });
 
-type loginFormData = z.infer<typeof loginSchema>;
+type LoginFormData = z.infer<typeof loginSchema>;
 
 const Login = () => {
-    const loginAction = useAuthStore(state => state.login);
-    const isLoading = useAuthStore(state => state.isLoading);
+  const loginAction = useAuthStore((state) => state.login);
+  const isLoading = useAuthStore((state) => state.isLoading);
 
-    const {
-        control,
-        handleSubmit,
-        formState: { errors }
-    } = useForm<loginFormData>({
-        resolver: zodResolver(loginSchema)
-    });
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
 
-    const onSubmit = async (data: loginFormData) => {
-        try {
-            await loginAction(data.email, data.password);
-            router.replace('/(tabs)');
-        } catch (error: any) {
-            const errorMessage = error.message || error.response?.data?.message || 'ログインに失敗しました';
-            showErrorToast(errorMessage, 'ログインエラー');
-        }
-    };
+  const onSubmit = async (data: LoginFormData) => {
+    try {
+      await loginAction(data.email, data.password);
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      const errorMessage = error.message || error.response?.data?.message || 'ログインに失敗しました';
+      showErrorToast(errorMessage, 'ログインエラー');
+    }
+  };
 
-    return (
-        <>
-            <SafeAreaView style={styles.safeArea} edges={['top']}>
-                <AppName />
+  const handleBackToOnboarding = async () => {
+    await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
+    router.replace('/onboarding');
+  };
 
-                <View style={styles.container}>
-                    <View style={styles.loginContainer}>
-                        <Text style={styles.loginContainerText}>ログイン情報を入力してください</Text>
-                    </View>
+  return (
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Back to onboarding */}
+          <TouchableOpacity style={styles.backButton} onPress={handleBackToOnboarding}>
+            <ChevronLeft size={20} color={theme.colors.secondary[500]} />
+            <Text style={styles.backButtonText}>はじめに戻る</Text>
+          </TouchableOpacity>
 
-                    <View style={styles.formContainer}>
+          {/* Logo */}
+          <View style={styles.logoContainer}>
+            <View style={styles.logoCircle}>
+              <BookOpen size={48} color={theme.colors.primary[600]} strokeWidth={1.5} />
+            </View>
+            <Text style={styles.appName}>Repeat Master</Text>
+            <Text style={styles.tagline}>反復学習で確実にマスター</Text>
+          </View>
 
-                        {/* Email */}
-                        <View style={styles.mailContainer}>
-                            <Controller
-                                control={control}
-                                name="email"
-                                render={({ field: { onChange, value } }) => (
-                                    <View>
-                                        <Text style={styles.mailText}>メールアドレス：</Text>
-                                        <TextInput
-                                            value={value}
-                                            onChangeText={onChange}
-                                            placeholder="example@e-mail.com"
-                                            style={styles.email}
-                                            placeholderTextColor={theme.colors.secondary[400]}
-                                        />
-                                        {errors.email && <Text style={styles.error}>{errors.email.message}</Text>}
-                                    </View>
-                                )}
-                            />
-                        </View>
+          {/* Form */}
+          <View style={styles.formContainer}>
+            <Text style={styles.formTitle}>ログイン</Text>
 
-                        {/* Password */}
-                        <Controller
-                            control={control}
-                            name="password"
-                            render={({ field: { onChange, value } }) => (
-                                <View style={styles.passContainer}>
-                                    <Text style={styles.passText}>パスワード：</Text>
-                                    <TextInput
-                                        value={value}
-                                        onChangeText={onChange}
-                                        placeholder="パスワードを入力してください"
-                                        style={styles.password}
-                                        secureTextEntry={true}
-                                        placeholderTextColor={theme.colors.secondary[400]}
-                                    />
-                                    {errors.password && <Text style={styles.error}>{errors.password.message}</Text>}
-                                </View>
-                            )}
-                        />
+            {/* Email */}
+            <View style={styles.inputGroup}>
+              <View style={styles.inputWrapper}>
+                <Mail size={20} color={theme.colors.secondary[400]} style={styles.inputIcon} />
+                <Controller
+                  control={control}
+                  name="email"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      value={value}
+                      onChangeText={onChange}
+                      placeholder="メールアドレス"
+                      style={styles.input}
+                      placeholderTextColor={theme.colors.secondary[400]}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoComplete="email"
+                    />
+                  )}
+                />
+              </View>
+              {errors.email && <Text style={styles.error}>{errors.email.message}</Text>}
+            </View>
 
-                        <TouchableOpacity
-                            style={styles.loginButton}
-                            onPress={handleSubmit(onSubmit)}
-                            disabled={isLoading}
-                        >
-                            <Text style={styles.buttonText}>
-                                {isLoading ? 'ログイン中...' : 'ログイン'}
-                            </Text>
-                        </TouchableOpacity>
+            {/* Password */}
+            <View style={styles.inputGroup}>
+              <View style={styles.inputWrapper}>
+                <Lock size={20} color={theme.colors.secondary[400]} style={styles.inputIcon} />
+                <Controller
+                  control={control}
+                  name="password"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      value={value}
+                      onChangeText={onChange}
+                      placeholder="パスワード"
+                      style={styles.input}
+                      secureTextEntry
+                      placeholderTextColor={theme.colors.secondary[400]}
+                      autoComplete="password"
+                    />
+                  )}
+                />
+              </View>
+              {errors.password && <Text style={styles.error}>{errors.password.message}</Text>}
+            </View>
 
-                        <TouchableOpacity style={styles.signupButton} onPress={() => router.replace('/signup')}>
-                            <Text style={[styles.buttonText, { color: theme.colors.secondary[700] }]}>新規登録</Text>
-                        </TouchableOpacity>
+            {/* Login Button */}
+            <TouchableOpacity
+              style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+              onPress={handleSubmit(onSubmit)}
+              disabled={isLoading}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.primaryButtonText}>{isLoading ? 'ログイン中...' : 'ログイン'}</Text>
+            </TouchableOpacity>
 
-                    </View>
-                </View>
-            </SafeAreaView>
-        </>
-    );
+            {/* Signup Link */}
+            <View style={styles.signupContainer}>
+              <Text style={styles.signupText}>アカウントをお持ちでない方</Text>
+              <TouchableOpacity onPress={() => router.replace('/signup')}>
+                <Text style={styles.signupLink}>新規登録</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 };
 
 const styles = StyleSheet.create({
-    safeArea: {
-        flex: 1,
-        backgroundColor: theme.colors.neutral[50],
-    },
-    container: {
-        margin: 0,
-        flex: 1,
-        padding: theme.spacing.md,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: theme.colors.neutral[50],
-    },
-    loginContainer: {
-        flex: 0.2,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    loginContainerText: {
-        fontSize: theme.typography.fontSizes.xl,
-        color: theme.colors.secondary[900],
-        fontFamily: 'ZenKaku-Bold',
-    },
-    formContainer: {
-        flex: 1,
-        width: '100%',
-        padding: theme.spacing.md,
-    },
-    mailContainer: {
-        marginBottom: theme.spacing.md,
-    },
-    mailText: {
-        color: theme.colors.secondary[700],
-        paddingVertical: theme.spacing.xs,
-        fontFamily: 'ZenKaku-Medium',
-        fontSize: theme.typography.fontSizes.base,
-    },
-    email: {
-        padding: theme.spacing.sm,
-        borderWidth: 1,
-        borderRadius: theme.borderRadius.md,
-        borderColor: theme.colors.secondary[300],
-        width: '100%',
-        backgroundColor: theme.colors.neutral.white,
-        fontSize: theme.typography.fontSizes.base,
-        fontFamily: 'ZenKaku-Regular',
-    },
-    passContainer: {
-        marginTop: theme.spacing.md,
-        marginBottom: theme.spacing.md,
-    },
-    passText: {
-        color: theme.colors.secondary[700],
-        paddingVertical: theme.spacing.xs,
-        fontFamily: 'ZenKaku-Medium',
-        fontSize: theme.typography.fontSizes.base,
-    },
-    password: {
-        padding: theme.spacing.sm,
-        borderWidth: 1,
-        borderRadius: theme.borderRadius.md,
-        borderColor: theme.colors.secondary[300],
-        width: '100%',
-        backgroundColor: theme.colors.neutral.white,
-        fontSize: theme.typography.fontSizes.base,
-        fontFamily: 'ZenKaku-Regular',
-    },
-    loginButton: {
-        padding: theme.spacing.md,
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '100%',
-        backgroundColor: theme.colors.primary[600],
-        marginTop: theme.spacing.xl * 2,
-        borderRadius: theme.borderRadius.md,
-        ...theme.shadows.md,
-    },
-    signupButton: {
-        padding: theme.spacing.md,
-        justifyContent: 'center',
-        alignItems: 'center',
-        width: '100%',
-        backgroundColor: theme.colors.secondary[200],
-        marginVertical: theme.spacing.lg,
-        borderRadius: theme.borderRadius.md,
-    },
-    buttonText: {
-        fontWeight: theme.typography.fontWeights.bold as any,
-        color: theme.colors.neutral.white,
-        fontFamily: 'ZenKaku-Bold',
-        fontSize: theme.typography.fontSizes.base,
-    },
-    error: {
-        color: theme.colors.error[600],
-        fontSize: theme.typography.fontSizes.sm,
-        fontFamily: 'ZenKaku-Regular',
-        marginTop: theme.spacing.xs,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.neutral.white,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: theme.spacing.xl,
+    paddingBottom: theme.spacing.xl,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    marginLeft: -theme.spacing.sm,
+  },
+  backButtonText: {
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.secondary[500],
+    fontFamily: 'ZenKaku-Medium',
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.xl * 2,
+  },
+  logoCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: theme.colors.primary[100],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
+  },
+  appName: {
+    fontSize: theme.typography.fontSizes['2xl'],
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+    marginBottom: theme.spacing.xs,
+  },
+  tagline: {
+    fontSize: theme.typography.fontSizes.base,
+    color: theme.colors.secondary[500],
+    fontFamily: 'ZenKaku-Regular',
+  },
+  formContainer: {
+    flex: 1,
+  },
+  formTitle: {
+    fontSize: theme.typography.fontSizes.xl,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+    marginBottom: theme.spacing.xl,
+  },
+  inputGroup: {
+    marginBottom: theme.spacing.lg,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.neutral[50],
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[200],
+    paddingHorizontal: theme.spacing.md,
+  },
+  inputIcon: {
+    marginRight: theme.spacing.sm,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: theme.spacing.md,
+    fontSize: theme.typography.fontSizes.base,
+    fontFamily: 'ZenKaku-Regular',
+    color: theme.colors.secondary[900],
+  },
+  error: {
+    color: theme.colors.error[600],
+    fontSize: theme.typography.fontSizes.sm,
+    fontFamily: 'ZenKaku-Regular',
+    marginTop: theme.spacing.xs,
+    marginLeft: theme.spacing.sm,
+  },
+  primaryButton: {
+    backgroundColor: theme.colors.primary[600],
+    paddingVertical: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    alignItems: 'center',
+    marginTop: theme.spacing.lg,
+    ...theme.shadows.md,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  primaryButtonText: {
+    fontSize: theme.typography.fontSizes.lg,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.neutral.white,
+    fontFamily: 'ZenKaku-Bold',
+  },
+  signupContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: theme.spacing.xl,
+    gap: theme.spacing.sm,
+  },
+  signupText: {
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.secondary[500],
+    fontFamily: 'ZenKaku-Regular',
+  },
+  signupLink: {
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.primary[600],
+    fontFamily: 'ZenKaku-Bold',
+  },
 });
 
 export default Login;
