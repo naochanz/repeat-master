@@ -107,7 +107,7 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, onComplete, onReactivate, e
                   onPress={handleMenuPress}
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <MoreVertical size={16} color={theme.colors.neutral.white} />
+                  <MoreVertical size={16} color="#FFFFFF" />
                 </TouchableOpacity>
                 {isCompleted ? (
                   <View style={styles.trophyBadge}>
@@ -163,7 +163,6 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, onComplete, onReactivate, e
             </View>
           )}
         </TouchableOpacity>
-        {!hasThumbnail && <View style={styles.bookShadow} />}
       </View>
 
       <Modal
@@ -299,7 +298,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   thumbnailRoundText: {
     fontSize: theme.typography.fontSizes.xs,
     fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.neutral.white,
+    color: '#FFFFFF',
     fontFamily: 'ZenKaku-Bold',
   },
   trophyBadge: {

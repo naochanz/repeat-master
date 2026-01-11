@@ -156,12 +156,12 @@ const SectionList = () => {
                   <Text
                     numberOfLines={1}
                     ellipsizeMode="tail"
-                    style={{ fontSize: 16, fontWeight: "bold", textAlign: 'center' }}
+                    style={{ fontSize: 16, fontWeight: "bold", textAlign: 'center', color: theme.colors.secondary[900] }}
                   >
                     {book.title}
                   </Text>
 
-                  <Text style={{ fontSize: 14, textAlign: 'center' }}>
+                  <Text style={{ fontSize: 14, textAlign: 'center', color: theme.colors.secondary[700] }}>
                     {chapter.title?.trim()
                       ? `第${chapter.chapterNumber}章 ${chapter.title}`
                       : `第${chapter.chapterNumber}章`}
@@ -217,12 +217,12 @@ const SectionList = () => {
                 <Text
                   numberOfLines={1}
                   ellipsizeMode="tail"
-                  style={{ fontSize: 16, fontWeight: "bold", textAlign: 'center' }}
+                  style={{ fontSize: 16, fontWeight: "bold", textAlign: 'center', color: theme.colors.secondary[900] }}
                 >
                   {book.title}
                 </Text>
 
-                <Text style={{ fontSize: 14, textAlign: 'center' }}>
+                <Text style={{ fontSize: 14, textAlign: 'center', color: theme.colors.secondary[700] }}>
                   {chapter.title?.trim()
                     ? `第${chapter.chapterNumber}章 ${chapter.title}`
                     : `第${chapter.chapterNumber}章`}

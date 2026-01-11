@@ -221,7 +221,7 @@ const StudyHome = () => {
                             <Text
                                 numberOfLines={1}
                                 ellipsizeMode="tail"
-                                style={{ fontSize: 16, fontWeight: "bold", textAlign: 'center' }}
+                                style={{ fontSize: 16, fontWeight: "bold", textAlign: 'center', color: theme.colors.secondary[900] }}
                             >
                                 {quizBook.title}
                             </Text>
