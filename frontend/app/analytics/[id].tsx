@@ -494,7 +494,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   },
   // 章セクション
   chapterSection: {
-    marginTop: theme.spacing.lg,
+    marginTop: theme.spacing['2xl'],
   },
   chapterHeader: {
     paddingHorizontal: theme.spacing.lg,
