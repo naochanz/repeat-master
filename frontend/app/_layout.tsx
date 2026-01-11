@@ -13,9 +13,9 @@ import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useColorScheme } from '@/components/useColorScheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { ONBOARDING_COMPLETE_KEY } from './onboarding';
 
 export {
@@ -35,6 +35,7 @@ export default function RootLayout() {
   const initialize = useAuthStore(state => state.initialize);
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   const isLoading = useAuthStore(state => state.isLoading);
+  const initializeTheme = useThemeStore(state => state.initialize);
   const pathname = usePathname();
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
 
@@ -54,6 +55,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     initialize();
+    initializeTheme();
     checkOnboardingStatus();
   }, []);
 
@@ -107,10 +109,10 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const isDark = useThemeStore(state => state.isDark);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <Stack
         screenOptions={{
           headerShown: false,
