@@ -4,7 +4,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronRight, ChevronLeft } from 'lucide-react-native';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -99,6 +99,13 @@ export default function OnboardingScreen() {
     }
   };
 
+  const handlePrev = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+      setImageIndex(0);
+    }
+  };
+
   const handleSkip = async () => {
     await completeOnboarding();
   };
@@ -141,29 +148,31 @@ export default function OnboardingScreen() {
 
         {/* Screenshot with auto-switching */}
         <View style={styles.imageContainer}>
-          <Animated.Image
-            key={`${currentPage}-${imageIndex}`}
-            entering={FadeIn.duration(400)}
-            exiting={FadeOut.duration(200)}
-            source={page.images[imageIndex]}
-            style={styles.screenshot}
-            resizeMode="contain"
-          />
+          <View style={styles.imageWrapper}>
+            <Animated.Image
+              key={`${currentPage}-${imageIndex}`}
+              entering={FadeIn.duration(400)}
+              exiting={FadeOut.duration(200)}
+              source={page.images[imageIndex]}
+              style={styles.screenshot}
+              resizeMode="contain"
+            />
 
-          {/* Image indicators */}
-          {hasMultipleImages && (
-            <View style={styles.imageDots}>
-              {page.images.map((_, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.imageDot,
-                    idx === imageIndex && { backgroundColor: page.accentColor, width: 16 },
-                  ]}
-                />
-              ))}
-            </View>
-          )}
+            {/* Image indicators - overlay on image */}
+            {hasMultipleImages && (
+              <View style={styles.imageDots}>
+                {page.images.map((_, idx) => (
+                  <View
+                    key={idx}
+                    style={[
+                      styles.imageDot,
+                      idx === imageIndex && styles.imageDotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
         </View>
       </View>
 
@@ -184,17 +193,32 @@ export default function OnboardingScreen() {
           ))}
         </View>
 
-        {/* Next button */}
-        <TouchableOpacity
-          style={[styles.nextButton, { backgroundColor: page.accentColor }]}
-          onPress={handleNext}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.nextButtonText}>
-            {currentPage === pages.length - 1 ? 'はじめる' : '次へ'}
-          </Text>
-          <ChevronRight size={18} color={theme.colors.neutral.white} />
-        </TouchableOpacity>
+        {/* Navigation buttons */}
+        <View style={styles.buttonRow}>
+          {currentPage > 0 ? (
+            <TouchableOpacity
+              style={styles.prevButton}
+              onPress={handlePrev}
+              activeOpacity={0.7}
+            >
+              <ChevronLeft size={18} color={theme.colors.secondary[500]} />
+              <Text style={styles.prevButtonText}>戻る</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.prevButtonPlaceholder} />
+          )}
+
+          <TouchableOpacity
+            style={[styles.nextButton, { backgroundColor: page.accentColor }]}
+            onPress={handleNext}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.nextButtonText}>
+              {currentPage === pages.length - 1 ? 'はじめる' : '次へ'}
+            </Text>
+            <ChevronRight size={18} color={theme.colors.neutral.white} />
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -260,6 +284,9 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     alignItems: 'center',
     justifyContent: 'center',
   },
+  imageWrapper: {
+    position: 'relative',
+  },
   screenshot: {
     width: IMAGE_WIDTH,
     height: IMAGE_HEIGHT,
@@ -270,17 +297,24 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     shadowRadius: 12,
   },
   imageDots: {
+    position: 'absolute',
+    bottom: 12,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: theme.spacing.md,
     gap: theme.spacing.xs,
   },
   imageDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: theme.colors.secondary[200],
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  imageDotActive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    width: 16,
   },
   footer: {
     paddingHorizontal: theme.spacing.xl,
@@ -300,7 +334,27 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     borderRadius: 4,
     backgroundColor: theme.colors.secondary[200],
   },
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+  },
+  prevButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: theme.spacing.md,
+  },
+  prevButtonPlaceholder: {
+    width: 70,
+  },
+  prevButtonText: {
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.secondary[500],
+    fontFamily: 'ZenKaku-Medium',
+  },
   nextButton: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
