@@ -243,7 +243,8 @@ export default function AnalyticsScreen() {
                         onPress={() => router.push(`/analytics/${book.id}` as any)}
                       >
                         <TrendingDown size={20} color={theme.colors.neutral.white} />
-                        <Text style={styles.weaknessButtonText} numberOfLines={1} ellipsizeMode="tail">{book.title}の詳細分析へ</Text>
+                        <Text style={styles.weaknessButtonTextTitle} numberOfLines={1} ellipsizeMode="tail">{book.title}</Text>
+                        <Text style={styles.weaknessButtonText}>の詳細分析へ</Text>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -409,7 +410,12 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Bold',
     color: theme.colors.neutral.white,
-    flex: 1,
+  },
+  weaknessButtonTextTitle: {
+    fontSize: theme.typography.fontSizes.base,
+    fontFamily: 'ZenKaku-Bold',
+    color: theme.colors.neutral.white,
+    flexShrink: 1,
   },
   pagination: {
     flexDirection: 'row',
