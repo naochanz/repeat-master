@@ -21,6 +21,8 @@ interface QuizBookStore {
   addQuizBook: (title: string, categoryId: string, useSections: boolean, isbn?: string, thumbnailUrl?: string) => Promise<void>; // createQuizBookのエイリアス
   updateQuizBook: (id: string, updates: any) => Promise<void>;
   deleteQuizBook: (id: string) => Promise<void>;
+  completeQuizBook: (id: string) => Promise<void>;
+  reactivateQuizBook: (id: string) => Promise<void>;
 
   // Chapter操作
   addChapter: (quizBookId: string, chapterNumber: number, title?: string, questionCount?: number) => Promise<void>;
@@ -197,6 +199,48 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     } catch (error) {
       console.error('Failed to delete quiz book:', error);
       showErrorToast('問題集の削除に失敗しました。');
+      throw error;
+    }
+  },
+
+  completeQuizBook: async (id: string) => {
+    const previousQuizBooks = get().quizBooks;
+
+    // 楽観的更新
+    set({
+      quizBooks: previousQuizBooks.map((book) =>
+        book.id === id ? { ...book, completedAt: new Date().toISOString() } : book
+      ),
+    });
+
+    try {
+      await quizBookApi.complete(id);
+      await get().fetchQuizBooks();
+    } catch (error) {
+      console.error('Failed to complete quiz book:', error);
+      set({ quizBooks: previousQuizBooks });
+      showErrorToast('問題集の完了に失敗しました。');
+      throw error;
+    }
+  },
+
+  reactivateQuizBook: async (id: string) => {
+    const previousQuizBooks = get().quizBooks;
+
+    // 楽観的更新
+    set({
+      quizBooks: previousQuizBooks.map((book) =>
+        book.id === id ? { ...book, completedAt: null } : book
+      ),
+    });
+
+    try {
+      await quizBookApi.reactivate(id);
+      await get().fetchQuizBooks();
+    } catch (error) {
+      console.error('Failed to reactivate quiz book:', error);
+      set({ quizBooks: previousQuizBooks });
+      showErrorToast('問題集の再開に失敗しました。');
       throw error;
     }
   },

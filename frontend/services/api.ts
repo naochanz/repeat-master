@@ -72,6 +72,9 @@ export const quizBookApi = {
   update: (id: string, data: any) => api.patch(`/quiz-books/${id}`, data),
   delete: (id: string) => api.delete(`/quiz-books/${id}`),
   getAnalytics: (id: string) => api.get(`/quiz-books/${id}/analytics`),
+  complete: (id: string) => api.post(`/quiz-books/${id}/complete`),
+  reactivate: (id: string) => api.post(`/quiz-books/${id}/reactivate`),
+  getActiveCount: () => api.get('/quiz-books/stats/active-count'),
 };
 
 // Chapter API

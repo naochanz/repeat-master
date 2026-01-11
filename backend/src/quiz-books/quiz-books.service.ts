@@ -55,6 +55,7 @@ export interface QuizBook {
   title: string;
   isbn: string | null;
   thumbnailUrl: string | null;
+  completedAt: string | null;
   chapterCount: number;
   currentRate: number;
   useSections: boolean;
@@ -185,6 +186,55 @@ export class QuizBooksService {
     const supabase = this.supabaseService.getClient();
     const { error } = await supabase.from('quiz_books').delete().eq('id', id);
     if (error) throw error;
+  }
+
+  async complete(id: string, userId: string): Promise<QuizBook> {
+    await this.findOne(id, userId); // 権限チェック
+
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase
+      .from('quiz_books')
+      .update({ completed_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return this.findOne(id, userId);
+  }
+
+  async reactivate(id: string, userId: string): Promise<QuizBook> {
+    const quizBook = await this.findOne(id, userId);
+
+    if (!quizBook.completedAt) {
+      throw new Error('Quiz book is not completed');
+    }
+
+    // 無料ユーザーの場合、他にアクティブな問題集がないかチェック
+    // （この制限はフロントエンドまたはコントローラーで行う）
+
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase
+      .from('quiz_books')
+      .update({ completed_at: null })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return this.findOne(id, userId);
+  }
+
+  async countActiveQuizBooks(userId: string): Promise<number> {
+    const supabase = this.supabaseService.getClient();
+    const { count, error } = await supabase
+      .from('quiz_books')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .is('completed_at', null);
+
+    if (error) throw error;
+    return count || 0;
   }
 
   // ========== Chapter CRUD ==========
@@ -669,6 +719,7 @@ export class QuizBooksService {
       title: data.title,
       isbn: data.isbn,
       thumbnailUrl: data.thumbnail_url,
+      completedAt: data.completed_at,
       chapterCount: data.chapter_count,
       currentRate: data.current_rate,
       useSections: data.use_sections,
