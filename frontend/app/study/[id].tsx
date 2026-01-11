@@ -246,7 +246,7 @@ const StudyHome = () => {
                                         </View>
                                         <View style={styles.chapterStats}>
                                             <View style={styles.statItem}>
-                                                <Text style={styles.statLabel}>正答率</Text>
+                                                <Text style={styles.statLabel}>{(quizBook.currentRound || 0) + 1}周目 正答率</Text>
                                                 <Text style={[styles.statValue, {
                                                     color: chapter.chapterRate >= 80
                                                         ? theme.colors.success[600]

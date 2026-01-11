@@ -284,7 +284,7 @@ const SectionList = () => {
                     </View>
                     <View style={styles.sectionStats}>
                       <View style={styles.statItem}>
-                        <Text style={styles.statLabel}>正答率</Text>
+                        <Text style={styles.statLabel}>{displayRound}周目 正答率</Text>
                         <Text style={[styles.statValue, {
                           color: getSectionRate(section) >= 80
                             ? theme.colors.success[600]
