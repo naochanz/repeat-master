@@ -137,6 +137,7 @@ const QuestionList = () => {
   const chapterId = chapterData?.chapter.id || sectionData?.chapter.id || '';
   const sectionId = sectionData?.section.id || null;
   const bookId = chapterData?.book.id || sectionData?.book.id || '';
+  const isCompleted = !!(chapterData?.book.completedAt || sectionData?.book.completedAt);
 
   const displayInfo = chapterData
     ? {
@@ -356,12 +357,14 @@ const QuestionList = () => {
                     >
                       <Text style={styles.memoText}>MEMO</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.deleteButton}
-                      onPress={() => handleDeleteQuestion(num)}
-                    >
-                      <Trash2 size={16} color={theme.colors.error[600]} />
-                    </TouchableOpacity>
+                    {!isCompleted && (
+                      <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={() => handleDeleteQuestion(num)}
+                      >
+                        <Trash2 size={16} color={theme.colors.error[600]} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
 
@@ -390,8 +393,8 @@ const QuestionList = () => {
             </View>
           )}
 
-          {/* 1枚追加ボタン（回答モード + フィルターOFFのみ） */}
-          {mode === 'answer' && !filterBookmarked && (
+          {/* 1枚追加ボタン（回答モード + フィルターOFF + 完了していない場合のみ） */}
+          {mode === 'answer' && !filterBookmarked && !isCompleted && (
             <TouchableOpacity
               style={styles.addQuestionButton}
               onPress={handleAddQuestion}
@@ -411,6 +414,7 @@ const QuestionList = () => {
           onClose={() => setModalVisible(false)}
           onSave={handleSaveMemo}
           onChangeText={setMemoText}
+          readOnly={isCompleted}
         />
 
 {/* 削除オプション選択モーダル */}
@@ -655,7 +659,7 @@ const QuestionList = () => {
 
                   <View style={styles.menuDivider} />
 
-                  {mode === 'answer' && !filterBookmarked && (
+                  {mode === 'answer' && !filterBookmarked && !isCompleted && (
                     <View style={styles.menuSection}>
                       <Text style={styles.menuSectionTitle}>問題を追加</Text>
 
@@ -676,8 +680,8 @@ const QuestionList = () => {
           </Pressable>
         </Modal>
 
-        {/* FAB表示 */}
-        {mode === 'answer' && activeFabQuestion !== null && (
+        {/* FAB表示（完了していない場合のみ） */}
+        {mode === 'answer' && activeFabQuestion !== null && !isCompleted && (
           <AnswerFAB
             questionNumber={activeFabQuestion}
             onAnswer={handleAnswerFromFab}

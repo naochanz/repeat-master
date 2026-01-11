@@ -9,6 +9,7 @@ type MemoModalProps = {
     onClose: () => void;
     onSave: (text: string) => void;
     onChangeText: (text: string) => void;
+    readOnly?: boolean;
 };
 
 const MemoModal: React.FC<MemoModalProps> = ({
@@ -18,6 +19,7 @@ const MemoModal: React.FC<MemoModalProps> = ({
     onClose,
     onSave,
     onChangeText,
+    readOnly = false,
 }) => {
     const theme = useAppTheme();
     const styles = useMemo(() => createStyles(theme), [theme]);
@@ -52,29 +54,41 @@ const MemoModal: React.FC<MemoModalProps> = ({
                     </View>
                     
                     <TextInput
-                        style={styles.memoInput}
+                        style={[styles.memoInput, readOnly && styles.memoInputReadOnly]}
                         multiline
-                        placeholder="メモを入力してください..."
+                        placeholder={readOnly ? '' : 'メモを入力してください...'}
                         value={memoText}
                         onChangeText={onChangeText}
                         textAlignVertical="top"
+                        editable={!readOnly}
                     />
-                    
-                    <View style={styles.modalButtons}>
-                        <TouchableOpacity 
-                            style={[styles.modalButton, styles.cancelButton]}
-                            onPress={handleCancel}
-                        >
-                            <Text style={styles.cancelButtonText}>キャンセル</Text>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity 
-                            style={[styles.modalButton, styles.saveButton]}
-                            onPress={handleSave}
-                        >
-                            <Text style={styles.saveButtonText}>保存</Text>
-                        </TouchableOpacity>
-                    </View>
+
+                    {!readOnly ? (
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.cancelButton]}
+                                onPress={handleCancel}
+                            >
+                                <Text style={styles.cancelButtonText}>キャンセル</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.saveButton]}
+                                onPress={handleSave}
+                            >
+                                <Text style={styles.saveButtonText}>保存</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.closeButton]}
+                                onPress={onClose}
+                            >
+                                <Text style={styles.closeButtonText}>閉じる</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
             </View>
         </Modal>
@@ -159,6 +173,18 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+    },
+    closeButton: {
+        backgroundColor: theme.colors.secondary[200],
+    },
+    closeButtonText: {
+        color: theme.colors.secondary[700],
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    memoInputReadOnly: {
+        backgroundColor: '#f0f0f0',
+        color: '#333',
     },
 });
 

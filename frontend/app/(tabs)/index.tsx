@@ -3,8 +3,8 @@ import { useUserStore } from '@/stores/userStore';
 import { useAuthStore } from '@/stores/authStore';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { Edit3, Target } from 'lucide-react-native';
-import React, { useCallback, useState, useMemo } from 'react';
-import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useState, useMemo, useRef } from 'react';
+import { ActivityIndicator, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { CommonActions } from '@react-navigation/native';
 
@@ -24,6 +24,8 @@ export default function DashboardScreen() {
 
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [tempGoal, setTempGoal] = useState('');
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const hasLoadedOnce = useRef(false);
 
   const navigation = useNavigation();
   const opacity = useSharedValue(0);
@@ -48,8 +50,18 @@ export default function DashboardScreen() {
       opacity.value = 0;
 
       // データ取得
-      fetchUser();
-      fetchRecentStudyRecords();
+      const loadData = async () => {
+        if (!hasLoadedOnce.current) {
+          setIsInitialLoading(true);
+        }
+        try {
+          await Promise.all([fetchUser(), fetchRecentStudyRecords()]);
+        } finally {
+          setIsInitialLoading(false);
+          hasLoadedOnce.current = true;
+        }
+      };
+      loadData();
 
       // スタディスタックの履歴をリセット
       const rootState = navigation.getState();
@@ -107,6 +119,16 @@ export default function DashboardScreen() {
       router.push(`/study/question/${record.chapterId}` as any);
     }
   };
+
+  if (isInitialLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary[600]} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -239,6 +261,11 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   },
   scrollView: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollContent: {
     padding: theme.spacing.lg,

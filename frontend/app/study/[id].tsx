@@ -39,6 +39,7 @@ const StudyHome = () => {
 
     // ✅ 修正: quizBooks から直接検索
     const quizBook = quizBooks.find(book => book.id === id);
+    const isCompleted = !!quizBook?.completedAt;
 
     if (!quizBook) {
         return (
@@ -239,13 +240,15 @@ const StudyHome = () => {
             />
 
             <SafeAreaView style={styles.wrapper} edges={['left', 'right']}>
-                <TouchableOpacity
-                    style={styles.confirmRoundButton}
-                    onPress={handleConfirmRound}
-                    activeOpacity={0.7}
-                >
-                    <Text style={styles.confirmRoundButtonText}>周回を確定する</Text>
-                </TouchableOpacity>
+                {!isCompleted && (
+                    <TouchableOpacity
+                        style={styles.confirmRoundButton}
+                        onPress={handleConfirmRound}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.confirmRoundButtonText}>周回を確定する</Text>
+                    </TouchableOpacity>
+                )}
 
                 <ScrollView
                     style={styles.container}
@@ -267,14 +270,16 @@ const StudyHome = () => {
                                     activeOpacity={0.7}
                                 >
                                     <Card style={styles.chapterCard}>
-                                        <TouchableOpacity
-                                            style={styles.menuButton}
-                                            onPress={(e) => handleMenuPress(chapter, e)}
-                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                        >
-                                            {/* @ts-ignore */}
-                                            <MoreVertical size={20} color={theme.colors.secondary[600]} />
-                                        </TouchableOpacity>
+                                        {!isCompleted && (
+                                            <TouchableOpacity
+                                                style={styles.menuButton}
+                                                onPress={(e) => handleMenuPress(chapter, e)}
+                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                            >
+                                                {/* @ts-ignore */}
+                                                <MoreVertical size={20} color={theme.colors.secondary[600]} />
+                                            </TouchableOpacity>
+                                        )}
 
                                         <View style={styles.chapterHeader}>
                                             <Text style={styles.chapterNumber}>
@@ -313,15 +318,17 @@ const StudyHome = () => {
                         ))
                     )}
 
-                    <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={() => setShowAddModal(true)}
-                        activeOpacity={0.7}
-                    >
-                        {/* @ts-ignore */}
-                        <Plus size={24} color={theme.colors.primary[600]} strokeWidth={2.5} />
-                        <Text style={styles.addButtonText}>章を追加</Text>
-                    </TouchableOpacity>
+                    {!isCompleted && (
+                        <TouchableOpacity
+                            style={styles.addButton}
+                            onPress={() => setShowAddModal(true)}
+                            activeOpacity={0.7}
+                        >
+                            {/* @ts-ignore */}
+                            <Plus size={24} color={theme.colors.primary[600]} strokeWidth={2.5} />
+                            <Text style={styles.addButtonText}>章を追加</Text>
+                        </TouchableOpacity>
+                    )}
                 </ScrollView>
 
                 <Modal

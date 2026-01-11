@@ -51,6 +51,7 @@ const SectionList = () => {
   const { book, chapter } = chapterData;
   const sections = chapter.sections || [];
   const displayRound = (book.currentRound || 0) + 1;
+  const isCompleted = !!book.completedAt;
 
   // 節ごとの正答率を計算（現在の周回）
   const getSectionRate = (section: typeof sections[0]) => {
@@ -270,13 +271,15 @@ const SectionList = () => {
                   activeOpacity={0.7}
                 >
                   <Card style={styles.sectionCard}>
-                    <TouchableOpacity
-                      style={styles.menuButton}
-                      onPress={(e) => handleMenuPress(section, e)}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <MoreVertical size={20} color={theme.colors.secondary[600]} />
-                    </TouchableOpacity>
+                    {!isCompleted && (
+                      <TouchableOpacity
+                        style={styles.menuButton}
+                        onPress={(e) => handleMenuPress(section, e)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <MoreVertical size={20} color={theme.colors.secondary[600]} />
+                      </TouchableOpacity>
+                    )}
 
                     <View style={styles.sectionHeader}>
                       <Text style={styles.sectionNumber}>
@@ -315,14 +318,16 @@ const SectionList = () => {
             ))
           )}
 
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setShowAddModal(true)}
-            activeOpacity={0.7}
-          >
-            <Plus size={24} color={theme.colors.primary[600]} strokeWidth={2.5} />
-            <Text style={styles.addButtonText}>節を追加</Text>
-          </TouchableOpacity>
+          {!isCompleted && (
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => setShowAddModal(true)}
+              activeOpacity={0.7}
+            >
+              <Plus size={24} color={theme.colors.primary[600]} strokeWidth={2.5} />
+              <Text style={styles.addButtonText}>節を追加</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
 
         {/* モーダル等は同じ */}
