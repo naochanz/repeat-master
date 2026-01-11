@@ -294,26 +294,22 @@ export default function DetailedAnalyticsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.wrapper}>
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.colors.primary[600]} />
-            <Text style={styles.loadingText}>読み込み中...</Text>
-          </View>
-        </SafeAreaView>
-      </View>
+      <SafeAreaView style={styles.wrapper}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary[600]} />
+          <Text style={styles.loadingText}>読み込み中...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!quizBook || !analytics) {
     return (
-      <View style={styles.wrapper}>
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>データが見つかりません</Text>
-          </View>
-        </SafeAreaView>
-      </View>
+      <SafeAreaView style={styles.wrapper}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>データが見つかりません</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -342,7 +338,7 @@ export default function DetailedAnalyticsScreen() {
           ),
         }}
       />
-      <SafeAreaView style={styles.wrapper} edges={['left', 'right']}>
+      <SafeAreaView style={styles.wrapper} edges={['left', 'right', 'bottom']}>
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {chapterData.map((chapter) => (
             <View key={chapter.id} style={styles.chapterSection}>
