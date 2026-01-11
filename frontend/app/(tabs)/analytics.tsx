@@ -18,9 +18,8 @@ import { List, TrendingDown, X } from 'lucide-react-native';
 import { quizBookApi } from '@/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_MARGIN = 20;
-const CARD_WIDTH = SCREEN_WIDTH - (CARD_MARGIN * 2);
-const SNAP_INTERVAL = CARD_WIDTH + (CARD_MARGIN - 15) + CARD_MARGIN; // marginLeft(5) + marginRight(20)
+const CAROUSEL_ITEM_WIDTH = SCREEN_WIDTH - 60; // 両端に30pxずつ余白を残す
+const CARD_GAP = 10;
 
 interface RoundStats {
   round: number;
@@ -96,12 +95,12 @@ export default function AnalyticsScreen() {
 
   const handleScroll = (categoryId: string, event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / SNAP_INTERVAL);
+    const index = Math.round(offsetX / CAROUSEL_ITEM_WIDTH);
     setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
   };
 
   const scrollToIndex = (categoryId: string, index: number) => {
-    scrollRefs.current[categoryId]?.scrollTo({ x: index * SNAP_INTERVAL, animated: true });
+    scrollRefs.current[categoryId]?.scrollTo({ x: index * CAROUSEL_ITEM_WIDTH, animated: true });
     setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
   };
 
@@ -152,8 +151,8 @@ export default function AnalyticsScreen() {
     return (
       <LineChart
         data={chartData}
-        width={CARD_WIDTH - 40}
-        height={220}
+        width={CAROUSEL_ITEM_WIDTH - 40}
+        height={200}
         chartConfig={{
           backgroundColor: theme.colors.neutral.white,
           backgroundGradientFrom: theme.colors.neutral.white,
@@ -223,14 +222,15 @@ export default function AnalyticsScreen() {
                   }}
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  onScroll={(e) => handleScroll(categoryId, e)}
+                  onMomentumScrollEnd={(e) => handleScroll(categoryId, e)}
                   scrollEventThrottle={16}
-                  snapToInterval={SNAP_INTERVAL}
+                  snapToInterval={CAROUSEL_ITEM_WIDTH}
+                  snapToAlignment="start"
                   decelerationRate="fast"
-                  contentContainerStyle={{ paddingRight: CARD_MARGIN }}
+                  contentContainerStyle={styles.carouselContent}
                 >
                   {group.books.map((book) => (
-                    <View key={book.id} style={styles.card}>
+                    <View key={book.id} style={styles.carouselCard}>
                       <TouchableOpacity onPress={() => router.push(`/study/${book.id}` as any)}>
                         <Text style={styles.cardTitle}>{book.title}</Text>
                       </TouchableOpacity>
@@ -358,10 +358,12 @@ const styles = StyleSheet.create({
     fontFamily: 'ZenKaku-Medium',
     color: theme.colors.primary[600],
   },
-  card: {
-    width: CARD_WIDTH,
-    marginLeft: CARD_MARGIN - 15,
-    marginRight: CARD_MARGIN,
+  carouselContent: {
+    paddingHorizontal: 20,
+  },
+  carouselCard: {
+    width: CAROUSEL_ITEM_WIDTH,
+    marginRight: CARD_GAP,
     backgroundColor: theme.colors.neutral.white,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
@@ -381,11 +383,12 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.lg,
   },
   emptyChart: {
-    height: 220,
+    height: 200,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.colors.neutral[50],
     borderRadius: theme.borderRadius.lg,
+    width: CAROUSEL_ITEM_WIDTH - 40,
   },
   emptyChartText: {
     fontSize: theme.typography.fontSizes.base,
