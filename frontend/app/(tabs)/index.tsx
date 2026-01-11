@@ -151,9 +151,14 @@ export default function DashboardScreen() {
                     activeOpacity={0.7}
                   >
                     <View style={styles.recentCardTop}>
-                      <Text style={styles.recentCardPath} numberOfLines={1}>
-                        {record.quizBook.title} 第{record.chapterNumber}章{record.sectionNumber ? ` 第${record.sectionNumber}節` : ''} 問{record.questionNumber}
-                      </Text>
+                      <View style={styles.recentCardPathContainer}>
+                        <Text style={styles.recentCardBookTitle} numberOfLines={1} ellipsizeMode="tail">
+                          {record.quizBook.title}
+                        </Text>
+                        <Text style={styles.recentCardLocation}>
+                          {' '}第{record.chapterNumber}章{record.sectionNumber ? ` 第${record.sectionNumber}節` : ''} 問{record.questionNumber}
+                        </Text>
+                      </View>
                       <Text style={styles.recentCardQuestion}>
                         {record.result}
                       </Text>
@@ -409,12 +414,26 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     alignItems: 'center',
     marginBottom: theme.spacing.xs,
   },
-  recentCardPath: {
+  recentCardPathContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: theme.spacing.sm,
+  },
+  recentCardBookTitle: {
     fontSize: theme.typography.fontSizes.sm,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Bold',
-    flex: 1,
+    flexShrink: 1,
+    maxWidth: 100,
+  },
+  recentCardLocation: {
+    fontSize: theme.typography.fontSizes.sm,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+    flexShrink: 0,
   },
   recentCardDate: {
     fontSize: theme.typography.fontSizes.xs,

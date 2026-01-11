@@ -342,7 +342,7 @@ export default function DetailedAnalyticsScreen() {
           ),
         }}
       />
-      <View style={styles.wrapper}>
+      <SafeAreaView style={styles.wrapper} edges={['left', 'right']}>
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {chapterData.map((chapter) => (
             <View key={chapter.id} style={styles.chapterSection}>
@@ -471,7 +471,7 @@ export default function DetailedAnalyticsScreen() {
         </Modal>
 
         <CustomTabBar />
-      </View>
+      </SafeAreaView>
     </>
   );
 }

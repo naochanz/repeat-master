@@ -109,46 +109,6 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.content}>
-        {/* プロフィール */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>プロフィール</Text>
-
-          <TouchableOpacity
-            style={styles.profileCard}
-            onPress={handleEditName}
-            activeOpacity={0.7}
-          >
-            <View style={styles.profileIcon}>
-              <User size={24} color={theme.colors.primary[600]} />
-            </View>
-            <View style={styles.profileContent}>
-              <Text style={styles.profileLabel}>ユーザー名</Text>
-              <Text style={styles.profileValue}>{profile?.name || '未設定'}</Text>
-            </View>
-            <Edit3 size={20} color={theme.colors.secondary[400]} />
-          </TouchableOpacity>
-        </View>
-
-        {/* 外観 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>外観</Text>
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingLeft}>
-              <View style={styles.settingIcon}>
-                <Moon size={20} color={theme.colors.primary[600]} />
-              </View>
-              <Text style={styles.settingLabel}>ダークモード</Text>
-            </View>
-            <Switch
-              value={isDark}
-              onValueChange={handleToggleDarkMode}
-              trackColor={{ false: theme.colors.secondary[200], true: theme.colors.primary[400] }}
-              thumbColor={isDark ? theme.colors.primary[600] : theme.colors.neutral.white}
-            />
-          </View>
-        </View>
-
         {/* サブスクリプション状態 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>プラン</Text>
@@ -209,29 +169,68 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* プロフィール */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>プロフィール</Text>
+
+          <TouchableOpacity
+            style={styles.standardCard}
+            onPress={handleEditName}
+            activeOpacity={0.7}
+          >
+            <View style={styles.cardLeft}>
+              <User size={20} color={theme.colors.primary[600]} />
+              <Text style={styles.cardLabel}>{profile?.name || '未設定'}</Text>
+            </View>
+            <Edit3 size={20} color={theme.colors.secondary[400]} />
+          </TouchableOpacity>
+        </View>
+
+        {/* 外観 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>外観</Text>
+
+          <View style={styles.standardCard}>
+            <View style={styles.cardLeft}>
+              <Moon size={20} color={theme.colors.primary[600]} />
+              <Text style={styles.cardLabel}>ダークモード</Text>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={handleToggleDarkMode}
+              trackColor={{ false: theme.colors.secondary[200], true: theme.colors.primary[400] }}
+              thumbColor={isDark ? theme.colors.primary[600] : theme.colors.neutral.white}
+            />
+          </View>
+        </View>
+
         {/* アカウント */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>アカウント</Text>
 
           <TouchableOpacity
-            style={styles.logoutButton}
+            style={[styles.standardCard, { marginBottom: theme.spacing.sm }]}
             onPress={handleLogout}
             activeOpacity={0.7}
           >
-            <LogOut size={20} color={theme.colors.error[600]} />
-            <Text style={styles.logoutButtonText}>ログアウト</Text>
+            <View style={styles.cardLeft}>
+              <LogOut size={20} color={theme.colors.secondary[600]} />
+              <Text style={styles.cardLabel}>ログアウト</Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.deleteAccountButton}
+            style={[styles.standardCard, styles.dangerCard]}
             onPress={handleDeleteAccount}
             activeOpacity={0.7}
             disabled={isDeleting}
           >
-            <Trash2 size={20} color={theme.colors.error[600]} />
-            <Text style={styles.deleteAccountButtonText}>
-              {isDeleting ? '削除中...' : 'アカウントを削除'}
-            </Text>
+            <View style={styles.cardLeft}>
+              <Trash2 size={20} color={theme.colors.error[600]} />
+              <Text style={[styles.cardLabel, { color: theme.colors.error[600] }]}>
+                {isDeleting ? '削除中...' : 'アカウントを削除'}
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -240,20 +239,24 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>法的情報</Text>
 
           <TouchableOpacity
-            style={styles.linkButton}
+            style={[styles.standardCard, { marginBottom: theme.spacing.sm }]}
             onPress={() => router.push('/privacy-policy')}
             activeOpacity={0.7}
           >
-            <Text style={styles.linkButtonText}>プライバシーポリシー</Text>
+            <View style={styles.cardLeft}>
+              <Text style={styles.cardLabel}>プライバシーポリシー</Text>
+            </View>
             <ChevronRight size={20} color={theme.colors.secondary[400]} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.linkButton}
+            style={styles.standardCard}
             onPress={() => router.push('/terms')}
             activeOpacity={0.7}
           >
-            <Text style={styles.linkButtonText}>利用規約</Text>
+            <View style={styles.cardLeft}>
+              <Text style={styles.cardLabel}>利用規約</Text>
+            </View>
             <ChevronRight size={20} color={theme.colors.secondary[400]} />
           </TouchableOpacity>
         </View>
@@ -324,41 +327,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.neutral.white,
-    padding: theme.spacing.lg,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.secondary[200],
-    ...theme.shadows.sm,
-  },
-  profileIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: theme.colors.primary[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing.md,
-  },
-  profileContent: {
-    flex: 1,
-  },
-  profileLabel: {
-    fontSize: theme.typography.fontSizes.sm,
-    color: theme.colors.secondary[500],
-    fontFamily: 'ZenKaku-Regular',
-    marginBottom: 2,
-  },
-  profileValue: {
-    fontSize: theme.typography.fontSizes.base,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-  },
-  settingRow: {
+  standardCard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -369,20 +338,12 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     borderColor: theme.colors.secondary[200],
     ...theme.shadows.sm,
   },
-  settingLeft: {
+  cardLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: theme.spacing.md,
   },
-  settingIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.primary[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing.md,
-  },
-  settingLabel: {
+  cardLabel: {
     fontSize: theme.typography.fontSizes.base,
     color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Medium',
@@ -494,57 +455,8 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     color: theme.colors.primary[600],
     fontFamily: 'ZenKaku-Medium',
   },
-  logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-    backgroundColor: theme.colors.neutral.white,
-    padding: theme.spacing.lg,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.secondary[200],
-    marginBottom: theme.spacing.sm,
-    ...theme.shadows.sm,
-  },
-  logoutButtonText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontWeight: theme.typography.fontWeights.medium as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Medium',
-  },
-  deleteAccountButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-    backgroundColor: theme.colors.neutral.white,
-    padding: theme.spacing.lg,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
+  dangerCard: {
     borderColor: theme.colors.error[300],
-    ...theme.shadows.sm,
-  },
-  deleteAccountButtonText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontWeight: theme.typography.fontWeights.medium as any,
-    color: theme.colors.error[600],
-    fontFamily: 'ZenKaku-Medium',
-  },
-  linkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: theme.colors.neutral.white,
-    padding: theme.spacing.lg,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.secondary[200],
-    marginBottom: theme.spacing.sm,
-    ...theme.shadows.sm,
-  },
-  linkButtonText: {
-    fontSize: theme.typography.fontSizes.base,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Medium',
   },
   modalOverlay: {
     flex: 1,

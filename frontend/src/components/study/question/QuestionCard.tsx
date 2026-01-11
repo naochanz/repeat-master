@@ -529,12 +529,12 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   },
   historyDate: {
     fontSize: theme.typography.fontSizes.xs,
-    color: theme.colors.secondary[500],
+    color: '#4B5563',
   },
   questionNumber: {
     fontSize: theme.typography.fontSizes.xl,
     fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.secondary[900],
+    color: '#1F2937',
     fontFamily: 'ZenKaku-Bold',
   },
   answerMark: {
@@ -544,7 +544,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   attemptNumber: {
     fontSize: theme.typography.fontSizes.xs,
     fontWeight: theme.typography.fontWeights.semibold,
-    color: theme.colors.secondary[600],
+    color: '#374151',
     fontFamily: 'ZenKaku-Medium',
   },
   cardDate: {
@@ -552,7 +552,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     bottom: theme.spacing.sm,
     left: theme.spacing.sm,
     fontSize: theme.typography.fontSizes.xs,
-    color: theme.colors.secondary[500],
+    color: '#4B5563',
     fontFamily: 'ZenKaku-Regular',
   },
  // ✅ 連続バッジスタイル（展開時）
@@ -570,7 +570,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
 consecutiveText: {
   fontSize: theme.typography.fontSizes.xs,
   fontWeight: theme.typography.fontWeights.bold as any,
-  color: theme.colors.secondary[900],  // ← ダークグレー文字
+  color: '#1F2937',
   fontFamily: 'ZenKaku-Bold',
 },
 
@@ -581,12 +581,12 @@ consecutiveBadgeStack: {
   paddingVertical: 1,
   borderRadius: theme.borderRadius.xs,
   borderWidth: 1.5,
-  borderColor: theme.colors.secondary[400],  // ← グレー系の枠
+  borderColor: '#9CA3AF',
 },
 consecutiveTextStack: {
   fontSize: 10,
   fontWeight: theme.typography.fontWeights.bold as any,
-  color: theme.colors.secondary[900],  // ← ダークグレー文字
+  color: '#1F2937',
   fontFamily: 'ZenKaku-Bold',
 },
 });

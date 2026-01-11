@@ -387,9 +387,11 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   carouselCard: {
     width: CAROUSEL_ITEM_WIDTH,
     marginRight: CARD_GAP,
-    backgroundColor: theme.colors.neutral.white,
+    backgroundColor: theme.colors.neutral[50],
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[200],
     ...theme.shadows.md,
   },
   cardTitle: {
@@ -422,21 +424,24 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
     backgroundColor: theme.colors.error[600],
     paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
   },
   weaknessButtonText: {
     fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Bold',
     color: theme.colors.neutral.white,
+    flexShrink: 0,
   },
   weaknessButtonTextTitle: {
     fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Bold',
     color: theme.colors.neutral.white,
     flexShrink: 1,
+    maxWidth: 120,
   },
   pagination: {
     flexDirection: 'row',
