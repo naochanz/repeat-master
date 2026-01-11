@@ -84,12 +84,6 @@ export class StudyRecordsService {
           id,
           title,
           category:categories(name)
-        ),
-        chapter:chapters(
-          chapter_number
-        ),
-        section:sections(
-          section_number
         )
       `)
       .eq('user_id', userId)
@@ -110,10 +104,40 @@ export class StudyRecordsService {
       .sort((a, b) => new Date(b.answered_at).getTime() - new Date(a.answered_at).getTime())
       .slice(0, 10);
 
-    return records.map(this.mapToStudyRecord);
+    // chapter_idとsection_idから番号を取得
+    const chapterIds = [...new Set(records.map((r) => r.chapter_id))];
+    const sectionIds = [...new Set(records.map((r) => r.section_id).filter(Boolean))];
+
+    const [chaptersResult, sectionsResult] = await Promise.all([
+      chapterIds.length > 0
+        ? supabase
+            .from('chapters')
+            .select('id, chapter_number')
+            .in('id', chapterIds)
+        : { data: [] },
+      sectionIds.length > 0
+        ? supabase
+            .from('sections')
+            .select('id, section_number')
+            .in('id', sectionIds)
+        : { data: [] },
+    ]);
+
+    const chapterMap = new Map(
+      (chaptersResult.data || []).map((c) => [c.id, c.chapter_number]),
+    );
+    const sectionMap = new Map(
+      (sectionsResult.data || []).map((s) => [s.id, s.section_number]),
+    );
+
+    return records.map((record) => this.mapToStudyRecord(record, chapterMap, sectionMap));
   }
 
-  private mapToStudyRecord(data: any): StudyRecord {
+  private mapToStudyRecord(
+    data: any,
+    chapterMap: Map<string, number>,
+    sectionMap: Map<string, number>,
+  ): StudyRecord {
     return {
       id: data.id,
       userId: data.user_id,
@@ -124,8 +148,8 @@ export class StudyRecordsService {
       result: data.result,
       round: data.round,
       answeredAt: new Date(data.answered_at),
-      chapterNumber: data.chapter?.chapter_number,
-      sectionNumber: data.section?.section_number,
+      chapterNumber: chapterMap.get(data.chapter_id),
+      sectionNumber: data.section_id ? sectionMap.get(data.section_id) : undefined,
       quizBook: data.quiz_book
         ? {
             id: data.quiz_book.id,
