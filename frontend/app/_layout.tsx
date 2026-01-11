@@ -11,6 +11,7 @@ import { Stack, Redirect, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import Toast from 'react-native-toast-message';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -65,15 +66,15 @@ export default function RootLayout() {
     return null;
   }
 
-  const authRoutes = ['/login', '/signup'];
-  
+  const authRoutes = ['/login', '/signup', '/verify-email'];
+
   // ✅ 未認証の場合、認証画面以外ならログインへリダイレクト
   if (!isAuthenticated && !authRoutes.includes(pathname)) {
     return <Redirect href="/login" />;
   }
 
-  // ✅ 認証済みの場合、認証画面にいたらホームへリダイレクト
-  if (isAuthenticated && authRoutes.includes(pathname)) {
+  // ✅ 認証済みの場合、認証画面にいたらホームへリダイレクト（verify-emailは除外）
+  if (isAuthenticated && authRoutes.includes(pathname) && pathname !== '/verify-email') {
     return <Redirect href="/(tabs)" />;
   }
 
@@ -94,6 +95,7 @@ function RootLayoutNav() {
           animationDuration: 50,
         }}
       />
+      <Toast />
     </ThemeProvider>
   );
 }

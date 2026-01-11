@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native'
 import React from 'react'
 import AppName from '../_compornents/Header';
 import { z } from 'zod';
@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { useAuthStore } from '@/stores/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { showErrorToast } from '@/utils/toast';
 
 const signupSchema = z.object({
     name: z
@@ -54,12 +55,20 @@ const Signup = () => {
     const onSubmit = async (data: SignupFormData) => {
         try {
             await register(data.email, data.password, data.name);
-            router.replace('/(tabs)');
+            // Supabaseのメール認証が必要な場合、セッションがnullになる
+            const isAuthenticated = useAuthStore.getState().isAuthenticated;
+            if (isAuthenticated) {
+                router.replace('/(tabs)');
+            } else {
+                // メール認証が必要な場合は確認画面へ
+                router.replace({
+                    pathname: '/verify-email',
+                    params: { email: data.email }
+                });
+            }
         } catch (error: any) {
-            Alert.alert(
-                'エラー',
-                error.response?.data?.message || '登録に失敗しました'
-            );
+            const errorMessage = error.message || error.response?.data?.message || '登録に失敗しました';
+            showErrorToast(errorMessage, '登録エラー');
         }
     };
 

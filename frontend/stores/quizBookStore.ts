@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { QuizBook, Chapter, Section, QuestionAnswer, RecentStudyItem, Category } from '@/types/QuizBook';
 import { quizBookApi, chapterApi, sectionApi, answerApi, categoryApi } from '@/services/api';
-import { $ZodNullParams } from 'zod/v4/core';
+import { showErrorToast } from '@/utils/toast';
 
 interface QuizBookStore {
   quizBooks: QuizBook[];
@@ -64,6 +64,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       set({ categories: response.data });
     } catch (error) {
       console.error('Failed to fetch categories:', error);
+      showErrorToast('カテゴリの取得に失敗しました。');
     }
   },
 
@@ -74,6 +75,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       return response.data.id;
     } catch (error) {
       console.error('Failed to create category:', error);
+      showErrorToast('カテゴリの作成に失敗しました。');
       throw error;
     }
   },
@@ -84,6 +86,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       await get().fetchCategories();
     } catch (error) {
       console.error('Failed to update category:', error);
+      showErrorToast('カテゴリの更新に失敗しました。');
       throw error;
     }
   },
@@ -101,6 +104,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       await get().fetchCategories();
     } catch (error) {
       console.error('Failed to delete category:', error);
+      showErrorToast('カテゴリの削除に失敗しました。');
       throw error;
     }
   },
@@ -114,6 +118,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       set({ quizBooks: response.data, isLoading: false });
     } catch (error) {
       console.error('Failed to fetch quiz books:', error);
+      showErrorToast('問題集の取得に失敗しました。');
       set({ isLoading: false });
     }
   },
@@ -149,6 +154,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       .then(() => get().fetchQuizBooks())
       .catch(async (error) => {
         console.error('Failed to create quiz book:', error);
+        showErrorToast('問題集の作成に失敗しました。再度お試しください。');
         await get().fetchQuizBooks();
       });
   },
@@ -164,6 +170,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       await get().fetchQuizBooks();
     } catch (error) {
       console.error('Failed to update quiz book:', error);
+      showErrorToast('問題集の更新に失敗しました。');
       throw error;
     }
   },
@@ -174,6 +181,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       await get().fetchQuizBooks();
     } catch (error) {
       console.error('Failed to delete quiz book:', error);
+      showErrorToast('問題集の削除に失敗しました。');
       throw error;
     }
   },
@@ -211,6 +219,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       .then(() => get().fetchQuizBooks())
       .catch(async (error) => {
         console.error('Failed to add chapter:', error);
+        showErrorToast('章の追加に失敗しました。再度お試しください。');
         await get().fetchQuizBooks();
       });
   },
@@ -221,6 +230,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       await get().fetchQuizBooks();
     } catch (error) {
       console.error('Failed to update chapter:', error);
+      showErrorToast('章の更新に失敗しました。');
       throw error;
     }
   },
@@ -231,6 +241,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       await get().fetchQuizBooks();
     } catch (error) {
       console.error('Failed to delete chapter:', error);
+      showErrorToast('章の削除に失敗しました。');
       throw error;
     }
   },
@@ -271,6 +282,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       .then(() => get().fetchQuizBooks())
       .catch(async (error) => {
         console.error('Failed to add section:', error);
+        showErrorToast('節の追加に失敗しました。再度お試しください。');
         await get().fetchQuizBooks();
       });
   },
@@ -281,6 +293,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       await get().fetchQuizBooks();
     } catch (error) {
       console.error('Failed to update section:', error);
+      showErrorToast('節の更新に失敗しました。');
       throw error;
     }
   },
@@ -291,6 +304,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       await get().fetchQuizBooks();
     } catch (error) {
       console.error('Failed to delete section:', error);
+      showErrorToast('節の削除に失敗しました。');
       throw error;
     }
   },
@@ -375,6 +389,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     answerApi.create(quizBookId, questionNumber, result, chapterId, sectionId)
       .catch(async (error) => {
         console.error('Failed to save answer:', error);
+        showErrorToast('回答の保存に失敗しました。再度お試しください。');
         // 失敗したらデータを再取得して正しい状態に戻す
         await get().fetchQuizBooks();
       });
@@ -386,6 +401,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       await get().fetchQuizBooks();
     } catch (error) {
       console.error('Failed to update memo:', error);
+      showErrorToast('メモの更新に失敗しました。');
       throw error;
     }
   },
@@ -445,6 +461,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       answerApi.updateBookmark(bookId, answerId, newBookmarkStatus)
         .catch(async (error) => {
           console.error('Failed to toggle bookmark:', error);
+          showErrorToast('付箋の更新に失敗しました。再度お試しください。');
           await get().fetchQuizBooks();
         });
     }
@@ -624,6 +641,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 
       apiCall.catch(async (error) => {
         console.error('Failed to add question:', error);
+        showErrorToast('問題の追加に失敗しました。再度お試しください。');
         await get().fetchQuizBooks();
       });
     }

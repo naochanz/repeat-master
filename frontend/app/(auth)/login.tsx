@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native'
+import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native'
 import React from 'react'
 import AppName from '../_compornents/Header';
 import { z } from 'zod';
@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { theme } from '@/constants/theme';
 import { useAuthStore } from '@/stores/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { showErrorToast } from '@/utils/toast';
 
 const loginSchema = z.object({
     email: z
@@ -40,10 +41,8 @@ const Login = () => {
             await loginAction(data.email, data.password);
             router.replace('/(tabs)');
         } catch (error: any) {
-            Alert.alert(
-                'エラー',
-                error.message || error.response?.data?.message || 'ログインに失敗しました'
-            );
+            const errorMessage = error.message || error.response?.data?.message || 'ログインに失敗しました';
+            showErrorToast(errorMessage, 'ログインエラー');
         }
     };
 
