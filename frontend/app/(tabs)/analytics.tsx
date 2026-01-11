@@ -233,7 +233,7 @@ export default function AnalyticsScreen() {
                   {group.books.map((book) => (
                     <View key={book.id} style={styles.carouselCard}>
                       <TouchableOpacity onPress={() => router.push(`/study/${book.id}` as any)}>
-                        <Text style={styles.cardTitle}>{book.title}</Text>
+                        <Text style={styles.cardTitle} numberOfLines={1} ellipsizeMode="tail">{book.title}</Text>
                       </TouchableOpacity>
                       <View style={styles.chartContainer}>
                         {renderLineChart(book.id)}
@@ -243,7 +243,7 @@ export default function AnalyticsScreen() {
                         onPress={() => router.push(`/analytics/${book.id}` as any)}
                       >
                         <TrendingDown size={20} color={theme.colors.neutral.white} />
-                        <Text style={styles.weaknessButtonText}>{book.title}の詳細分析へ</Text>
+                        <Text style={styles.weaknessButtonText} numberOfLines={1} ellipsizeMode="tail">{book.title}の詳細分析へ</Text>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -409,6 +409,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Bold',
     color: theme.colors.neutral.white,
+    flex: 1,
   },
   pagination: {
     flexDirection: 'row',
