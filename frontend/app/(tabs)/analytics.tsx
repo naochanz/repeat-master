@@ -237,7 +237,10 @@ export default function AnalyticsScreen() {
                       <View style={styles.chartContainer}>
                         {renderLineChart(book.id)}
                       </View>
-                      <TouchableOpacity style={styles.weaknessButton}>
+                      <TouchableOpacity
+                        style={styles.weaknessButton}
+                        onPress={() => router.push(`/analytics/${book.id}` as any)}
+                      >
                         <TrendingDown size={20} color={theme.colors.neutral.white} />
                         <Text style={styles.weaknessButtonText}>{book.title}の詳細分析へ</Text>
                       </TouchableOpacity>
