@@ -39,7 +39,10 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
     set({ isLoading: true });
     try {
       await subscriptionService.initialize(userId);
-      await get().refreshStatus();
+      // APIキーが設定されている場合のみステータスを取得
+      if (subscriptionService.isInitialized) {
+        await get().refreshStatus();
+      }
       await get().fetchActiveQuizBookCount();
     } catch (error) {
       console.error('Failed to initialize subscription:', error);
@@ -91,6 +94,11 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
   },
 
   restorePurchases: async () => {
+    if (!subscriptionService.isInitialized) {
+      console.warn('RevenueCat not initialized, cannot restore purchases');
+      return false;
+    }
+
     set({ isLoading: true });
     try {
       const status = await subscriptionService.restorePurchases();

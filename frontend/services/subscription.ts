@@ -17,8 +17,23 @@ export interface SubscriptionStatus {
   willRenew: boolean;
 }
 
+const DEFAULT_STATUS: SubscriptionStatus = {
+  isPremium: false,
+  expirationDate: null,
+  willRenew: false,
+};
+
 class SubscriptionService {
   private initialized = false;
+
+  get isConfigured(): boolean {
+    const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY_IOS : REVENUECAT_API_KEY_ANDROID;
+    return !!apiKey;
+  }
+
+  get isInitialized(): boolean {
+    return this.initialized;
+  }
 
   async initialize(userId?: string): Promise<void> {
     if (this.initialized) return;
@@ -26,7 +41,7 @@ class SubscriptionService {
     const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY_IOS : REVENUECAT_API_KEY_ANDROID;
 
     if (!apiKey) {
-      console.warn('RevenueCat API key not configured');
+      console.warn('RevenueCat API key not configured - running in free mode');
       return;
     }
 
@@ -38,12 +53,18 @@ class SubscriptionService {
       }
 
       this.initialized = true;
+      console.log('RevenueCat initialized successfully');
     } catch (error) {
       console.error('Failed to initialize RevenueCat:', error);
     }
   }
 
   async login(userId: string): Promise<void> {
+    if (!this.initialized) {
+      console.warn('RevenueCat not initialized, skipping login');
+      return;
+    }
+
     try {
       await Purchases.logIn(userId);
     } catch (error) {
@@ -52,6 +73,10 @@ class SubscriptionService {
   }
 
   async logout(): Promise<void> {
+    if (!this.initialized) {
+      return;
+    }
+
     try {
       await Purchases.logOut();
     } catch (error) {
@@ -60,16 +85,25 @@ class SubscriptionService {
   }
 
   async getSubscriptionStatus(): Promise<SubscriptionStatus> {
+    // SDK未初期化の場合はデフォルト値を返す（無料扱い）
+    if (!this.initialized) {
+      return DEFAULT_STATUS;
+    }
+
     try {
       const customerInfo = await Purchases.getCustomerInfo();
       return this.parseCustomerInfo(customerInfo);
     } catch (error) {
       console.error('Failed to get subscription status:', error);
-      return { isPremium: false, expirationDate: null, willRenew: false };
+      return DEFAULT_STATUS;
     }
   }
 
   async getOfferings(): Promise<PurchasesPackage[]> {
+    if (!this.initialized) {
+      return [];
+    }
+
     try {
       const offerings = await Purchases.getOfferings();
       if (offerings.current?.availablePackages) {
@@ -83,6 +117,10 @@ class SubscriptionService {
   }
 
   async purchasePackage(pkg: PurchasesPackage): Promise<SubscriptionStatus> {
+    if (!this.initialized) {
+      throw new Error('RevenueCat not initialized');
+    }
+
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       return this.parseCustomerInfo(customerInfo);
@@ -96,6 +134,10 @@ class SubscriptionService {
   }
 
   async restorePurchases(): Promise<SubscriptionStatus> {
+    if (!this.initialized) {
+      return DEFAULT_STATUS;
+    }
+
     try {
       const customerInfo = await Purchases.restorePurchases();
       return this.parseCustomerInfo(customerInfo);
@@ -116,15 +158,16 @@ class SubscriptionService {
       };
     }
 
-    return {
-      isPremium: false,
-      expirationDate: null,
-      willRenew: false,
-    };
+    return DEFAULT_STATUS;
   }
 
   // リスナーを追加（購入状態の変更を監視）
   addCustomerInfoUpdateListener(callback: (status: SubscriptionStatus) => void): () => void {
+    if (!this.initialized) {
+      // 未初期化の場合は何もしないリムーバーを返す
+      return () => {};
+    }
+
     const listener = (customerInfo: CustomerInfo) => {
       callback(this.parseCustomerInfo(customerInfo));
     };
