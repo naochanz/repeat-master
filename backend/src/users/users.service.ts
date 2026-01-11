@@ -57,6 +57,94 @@ export class UsersService {
     return this.mapToUserProfile(data);
   }
 
+  async deleteAccount(userId: string): Promise<void> {
+    const supabase = this.supabaseService.getClient();
+
+    // 1. 問題集に関連するデータを削除（カスケードで削除されるが念のため）
+    // study_records → question_answers → sections → chapters → quiz_books → categories
+
+    // study_recordsを削除
+    await supabase
+      .from('study_records')
+      .delete()
+      .eq('user_id', userId);
+
+    // quiz_booksを取得して関連データを削除
+    const { data: quizBooks } = await supabase
+      .from('quiz_books')
+      .select('id')
+      .eq('user_id', userId);
+
+    if (quizBooks && quizBooks.length > 0) {
+      const quizBookIds = quizBooks.map(qb => qb.id);
+
+      // chaptersを取得
+      const { data: chapters } = await supabase
+        .from('chapters')
+        .select('id')
+        .in('quiz_book_id', quizBookIds);
+
+      if (chapters && chapters.length > 0) {
+        const chapterIds = chapters.map(c => c.id);
+
+        // sectionsを取得
+        const { data: sections } = await supabase
+          .from('sections')
+          .select('id')
+          .in('chapter_id', chapterIds);
+
+        if (sections && sections.length > 0) {
+          const sectionIds = sections.map(s => s.id);
+
+          // question_answers（section経由）を削除
+          await supabase
+            .from('question_answers')
+            .delete()
+            .in('section_id', sectionIds);
+        }
+
+        // question_answers（chapter経由）を削除
+        await supabase
+          .from('question_answers')
+          .delete()
+          .in('chapter_id', chapterIds);
+
+        // sectionsを削除
+        await supabase
+          .from('sections')
+          .delete()
+          .in('chapter_id', chapterIds);
+
+        // chaptersを削除
+        await supabase
+          .from('chapters')
+          .delete()
+          .in('quiz_book_id', quizBookIds);
+      }
+
+      // quiz_booksを削除
+      await supabase
+        .from('quiz_books')
+        .delete()
+        .eq('user_id', userId);
+    }
+
+    // 2. categoriesを削除
+    await supabase
+      .from('categories')
+      .delete()
+      .eq('user_id', userId);
+
+    // 3. profilesを削除
+    await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    // 4. Supabase Authのユーザー削除はクライアント側で行う
+    // （サービスロールキーがないためサーバー側からは削除できない）
+  }
+
   private mapToUserProfile(data: any): UserProfile {
     return {
       id: data.id,

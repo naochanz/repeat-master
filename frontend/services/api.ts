@@ -115,6 +115,7 @@ export const answerApi = {
 export const userApi = {
   getMe: () => api.get('/users/me'),
   updateGoal: (goal: string) => api.patch('/users/goal', { goal }),
+  deleteAccount: () => api.delete('/users/me'),
 };
 
 // Study Record API

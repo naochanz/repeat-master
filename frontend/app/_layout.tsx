@@ -9,12 +9,14 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack, Redirect, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { useAuthStore } from '@/stores/authStore';
+import { ONBOARDING_COMPLETE_KEY } from './onboarding';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -34,6 +36,7 @@ export default function RootLayout() {
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   const isLoading = useAuthStore(state => state.isLoading);
   const pathname = usePathname();
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
 
   const [loaded, error] = useFonts({
     'ZenKaku-Regular': ZenKakuGothicNew_400Regular,
@@ -51,25 +54,42 @@ export default function RootLayout() {
 
   useEffect(() => {
     initialize();
+    checkOnboardingStatus();
   }, []);
 
+  const checkOnboardingStatus = async () => {
+    try {
+      const value = await AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY);
+      setHasSeenOnboarding(value === 'true');
+    } catch (error) {
+      console.error('Failed to check onboarding status:', error);
+      setHasSeenOnboarding(true); // エラー時はスキップ
+    }
+  };
+
   useEffect(() => {
-    if (loaded && !isLoading) {
+    if (loaded && !isLoading && hasSeenOnboarding !== null) {
       SplashScreen.hideAsync();
       if (isAuthenticated) {
         fetchQuizBooks();
       }
     }
-  }, [loaded, isLoading, isAuthenticated]);
+  }, [loaded, isLoading, isAuthenticated, hasSeenOnboarding]);
 
-  if (!loaded || isLoading) {
+  if (!loaded || isLoading || hasSeenOnboarding === null) {
     return null;
   }
 
   const authRoutes = ['/login', '/signup', '/verify-email'];
+  const onboardingRoute = '/onboarding';
 
-  // ✅ 未認証の場合、認証画面以外ならログインへリダイレクト
-  if (!isAuthenticated && !authRoutes.includes(pathname)) {
+  // ✅ オンボーディング未完了かつ認証済みでない場合、オンボーディングへリダイレクト
+  if (!hasSeenOnboarding && !isAuthenticated && pathname !== onboardingRoute) {
+    return <Redirect href="/onboarding" />;
+  }
+
+  // ✅ 未認証の場合、認証画面・オンボーディング画面以外ならログインへリダイレクト
+  if (!isAuthenticated && !authRoutes.includes(pathname) && pathname !== onboardingRoute) {
     return <Redirect href="/login" />;
   }
 
@@ -78,6 +98,10 @@ export default function RootLayout() {
     return <Redirect href="/(tabs)" />;
   }
 
+  // ✅ 認証済みの場合、オンボーディング画面にいたらホームへリダイレクト
+  if (isAuthenticated && pathname === onboardingRoute) {
+    return <Redirect href="/(tabs)" />;
+  }
 
   return <RootLayoutNav />;
 }

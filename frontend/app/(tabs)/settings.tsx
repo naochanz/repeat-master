@@ -1,15 +1,18 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
 import { theme } from '@/constants/theme';
 import { router } from 'expo-router';
-import { LogOut, Crown, ChevronRight, RefreshCw } from 'lucide-react-native';
+import { LogOut, Crown, ChevronRight, RefreshCw, Trash2 } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import { userApi } from '@/services/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { showSuccessToast, showErrorToast } from '@/utils/toast';
 
 export default function SettingsScreen() {
   const logout = useAuthStore(state => state.logout);
   const { isPremium, expirationDate, willRenew, refreshStatus, restorePurchases, isLoading } = useSubscriptionStore();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     refreshStatus();
@@ -28,6 +31,36 @@ export default function SettingsScreen() {
     await restorePurchases();
   };
 
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'アカウントを削除',
+      'アカウントを削除すると、すべてのデータが完全に削除されます。この操作は取り消せません。\n\n本当に削除しますか？',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '削除する',
+          style: 'destructive',
+          onPress: confirmDeleteAccount,
+        },
+      ]
+    );
+  };
+
+  const confirmDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await userApi.deleteAccount();
+      showSuccessToast('アカウントを削除しました');
+      await logout();
+      router.replace('/login');
+    } catch (error) {
+      console.error('Failed to delete account:', error);
+      showErrorToast('アカウントの削除に失敗しました');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -35,11 +68,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>設定</Text>
-      </View>
-
+    <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.content}>
         {/* サブスクリプション状態 */}
         <View style={styles.section}>
@@ -113,6 +142,41 @@ export default function SettingsScreen() {
             <LogOut size={20} color={theme.colors.error[600]} />
             <Text style={styles.logoutButtonText}>ログアウト</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.deleteAccountButton}
+            onPress={handleDeleteAccount}
+            activeOpacity={0.7}
+            disabled={isDeleting}
+          >
+            <Trash2 size={20} color={theme.colors.error[600]} />
+            <Text style={styles.deleteAccountButtonText}>
+              {isDeleting ? '削除中...' : 'アカウントを削除'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 法的情報 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>法的情報</Text>
+
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={() => router.push('/privacy-policy')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.linkButtonText}>プライバシーポリシー</Text>
+            <ChevronRight size={20} color={theme.colors.secondary[400]} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={() => router.push('/terms')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.linkButtonText}>利用規約</Text>
+            <ChevronRight size={20} color={theme.colors.secondary[400]} />
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -123,21 +187,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],
-  },
-  header: {
-    backgroundColor: theme.colors.neutral.white,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.secondary[200],
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: theme.typography.fontSizes.lg,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-    textAlign: 'center',
   },
   content: {
     flex: 1,
@@ -270,13 +319,48 @@ const styles = StyleSheet.create({
     padding: theme.spacing.lg,
     borderRadius: theme.borderRadius.lg,
     borderWidth: 1,
-    borderColor: theme.colors.error[200],
+    borderColor: theme.colors.secondary[200],
+    marginBottom: theme.spacing.sm,
     ...theme.shadows.sm,
   },
   logoutButtonText: {
     fontSize: theme.typography.fontSizes.base,
-    fontWeight: theme.typography.fontWeights.bold as any,
+    fontWeight: theme.typography.fontWeights.medium as any,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Medium',
+  },
+  deleteAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    backgroundColor: theme.colors.neutral.white,
+    padding: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.error[200],
+    ...theme.shadows.sm,
+  },
+  deleteAccountButtonText: {
+    fontSize: theme.typography.fontSizes.base,
+    fontWeight: theme.typography.fontWeights.medium as any,
     color: theme.colors.error[600],
-    fontFamily: 'ZenKaku-Bold',
+    fontFamily: 'ZenKaku-Medium',
+  },
+  linkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.colors.neutral.white,
+    padding: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[200],
+    marginBottom: theme.spacing.sm,
+    ...theme.shadows.sm,
+  },
+  linkButtonText: {
+    fontSize: theme.typography.fontSizes.base,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Medium',
   },
 });
