@@ -1,5 +1,5 @@
 import { theme } from '@/constants/theme';
-import { BookOpen, FolderPlus, X } from 'lucide-react-native';
+import { BookOpen, FolderPlus, ScanBarcode, X } from 'lucide-react-native';
 import React from 'react';
 import {
   Modal,
@@ -15,6 +15,7 @@ interface AddItemModalProps {
   visible: boolean;
   onAddCategory: () => void;
   onAddQuizBook: () => void;
+  onScanBarcode: () => void;
   onClose: () => void;
 }
 
@@ -22,6 +23,7 @@ const AddItemModal = ({
   visible,
   onAddCategory,
   onAddQuizBook,
+  onScanBarcode,
   onClose,
 }: AddItemModalProps) => {
   return (
@@ -69,6 +71,22 @@ const AddItemModal = ({
                 <View style={styles.optionContent}>
                   <Text style={styles.optionTitle}>問題集を追加</Text>
                   <Text style={styles.optionDescription}>既存の資格に問題集を追加します</Text>
+                </View>
+              </TouchableOpacity>
+
+              <View style={styles.divider} />
+
+              <TouchableOpacity
+                style={styles.optionButton}
+                onPress={onScanBarcode}
+                activeOpacity={0.7}
+              >
+                <View style={styles.optionIcon}>
+                  <ScanBarcode size={32} color={theme.colors.primary[600]} />
+                </View>
+                <View style={styles.optionContent}>
+                  <Text style={styles.optionTitle}>バーコードで追加</Text>
+                  <Text style={styles.optionDescription}>本のバーコードをスキャンして追加します</Text>
                 </View>
               </TouchableOpacity>
             </View>

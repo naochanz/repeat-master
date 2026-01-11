@@ -17,6 +17,7 @@ import {
 interface QuizBookTitleModalProps {
   visible: boolean;
   categoryName: string;
+  initialTitle?: string;
   onConfirm: (title: string) => void;
   onCancel: () => void;
 }
@@ -24,6 +25,7 @@ interface QuizBookTitleModalProps {
 const QuizBookTitleModal = ({
   visible,
   categoryName,
+  initialTitle = '',
   onConfirm,
   onCancel,
 }: QuizBookTitleModalProps) => {
@@ -31,9 +33,9 @@ const QuizBookTitleModal = ({
 
   useEffect(() => {
     if (visible) {
-      setTitle('');
+      setTitle(initialTitle);
     }
-  }, [visible]);
+  }, [visible, initialTitle]);
 
   const handleConfirm = () => {
     if (title.trim()) {
