@@ -181,7 +181,7 @@ const SectionList = () => {
             <Text style={styles.selectionTitle}>節を使用しますか？</Text>
             <Text style={styles.selectionDescription}>
               この問題集で節を使用するかどうかを選択してください。{'\n'}
-              後から設定で変更することもできます。
+              ※ 問題集編集モーダルから後で変更できます
             </Text>
             <View style={styles.selectionButtons}>
               <TouchableOpacity

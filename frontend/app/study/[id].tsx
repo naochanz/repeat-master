@@ -275,11 +275,14 @@ const StudyHome = () => {
                                         </TouchableOpacity>
 
                                         <View style={styles.chapterHeader}>
-                                            <Text style={styles.chapterTitle}>
-                                                {chapter.title?.trim()
-                                                    ? `第${chapter.chapterNumber}章 ${chapter.title}`
-                                                    : `第${chapter.chapterNumber}章`}
+                                            <Text style={styles.chapterNumber}>
+                                                第{chapter.chapterNumber}章
                                             </Text>
+                                            {chapter.title?.trim() && (
+                                                <Text style={styles.chapterTitle}>
+                                                    {chapter.title}
+                                                </Text>
+                                            )}
                                         </View>
                                         <View style={styles.chapterStats}>
                                             <View style={styles.statItem}>
@@ -496,10 +499,18 @@ const styles = StyleSheet.create({
     chapterHeader: {
         marginBottom: theme.spacing.sm,
     },
+    chapterNumber: {
+        fontSize: theme.typography.fontSizes.sm,
+        fontWeight: theme.typography.fontWeights.bold as any,
+        color: theme.colors.primary[600],
+        marginBottom: 4,
+        fontFamily: 'ZenKaku-Bold',
+    },
     chapterTitle: {
-        fontSize: theme.typography.fontSizes.base,
+        fontSize: theme.typography.fontSizes.lg,
         fontWeight: theme.typography.fontWeights.bold as any,
         color: theme.colors.secondary[900],
+        marginBottom: theme.spacing.xs,
         fontFamily: 'ZenKaku-Bold',
     },
     chapterStats: {

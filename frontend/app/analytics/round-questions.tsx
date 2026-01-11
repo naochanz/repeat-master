@@ -128,29 +128,35 @@ export default function RoundQuestionsScreen() {
   }
 
   return (
-    <View style={styles.wrapper}>
-      <SafeAreaView style={styles.safeArea}>
-        <Stack.Screen options={{ headerShown: false }} />
-
-        {/* ヘッダー */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-            <ArrowLeft size={24} color={theme.colors.secondary[900]} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {round}周目の問題一覧
-          </Text>
-          <View style={styles.headerButton} />
-        </View>
-
+    <>
+      <Stack.Screen
+        options={{
+          headerTitle: () => (
+            <View style={{ maxWidth: 280 }}>
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center' }}
+              >
+                {round}周目の問題一覧
+              </Text>
+              <Text style={{ fontSize: 14, textAlign: 'center' }}>
+                {targetData.title}
+              </Text>
+            </View>
+          ),
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{ marginLeft: 8 }}
+            >
+              <ArrowLeft size={24} color={theme.colors.secondary[900]} />
+            </TouchableOpacity>
+          ),
+        }}
+      />
+      <View style={styles.wrapper}>
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {/* ターゲット情報 */}
-          <View style={styles.targetInfo}>
-            <Text style={styles.targetTitle}>{targetData.title}</Text>
-            {targetData.type === 'section' && (
-              <Text style={styles.targetSubtitle}>{targetData.chapterTitle}</Text>
-            )}
-          </View>
 
           {/* 統計カード */}
           <View style={styles.statsCard}>
@@ -217,9 +223,9 @@ export default function RoundQuestionsScreen() {
 
           <View style={styles.bottomSpacer} />
         </ScrollView>
-      </SafeAreaView>
-      <CustomTabBar />
-    </View>
+        <CustomTabBar />
+      </View>
+    </>
   );
 }
 
@@ -227,10 +233,6 @@ const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: theme.colors.neutral.white,
   },
   loadingContainer: {
     flex: 1,
@@ -242,47 +244,9 @@ const styles = StyleSheet.create({
     fontFamily: 'ZenKaku-Medium',
     color: theme.colors.secondary[600],
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    backgroundColor: theme.colors.neutral.white,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.secondary[200],
-  },
-  headerButton: {
-    padding: theme.spacing.sm,
-    width: 44,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: theme.typography.fontSizes.base,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    textAlign: 'center',
-    fontFamily: 'ZenKaku-Bold',
-  },
   scrollView: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],
-  },
-  targetInfo: {
-    backgroundColor: theme.colors.primary[50],
-    padding: theme.spacing.lg,
-    alignItems: 'center',
-  },
-  targetTitle: {
-    fontSize: theme.typography.fontSizes.xl,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.secondary[900],
-  },
-  targetSubtitle: {
-    fontSize: theme.typography.fontSizes.sm,
-    fontFamily: 'ZenKaku-Regular',
-    color: theme.colors.secondary[600],
-    marginTop: theme.spacing.xs,
   },
   statsCard: {
     flexDirection: 'row',

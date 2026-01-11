@@ -128,7 +128,7 @@ export default function DashboardScreen() {
                   >
                     <View style={styles.recentCardTop}>
                       <Text style={styles.recentCardPath} numberOfLines={1}>
-                        {record.quizBook.title} 問題{record.questionNumber}
+                        {record.quizBook.title} 第{record.chapterNumber}章{record.sectionNumber ? ` 第${record.sectionNumber}節` : ''} 問{record.questionNumber}
                       </Text>
                       <Text style={styles.recentCardQuestion}>
                         {record.result}

@@ -114,7 +114,7 @@ export default function DetailedAnalyticsScreen() {
           id: section.id,
           chapterId: chapter.id,
           sectionNumber: section.sectionNumber,
-          title: section.title || `${section.sectionNumber}節`,
+          title: section.title || '',
           stats: sectionStats,
         };
       }).sort((a, b) => a.sectionNumber - b.sectionNumber);
@@ -315,21 +315,31 @@ export default function DetailedAnalyticsScreen() {
   }
 
   return (
-    <View style={styles.wrapper}>
-      <SafeAreaView style={styles.safeArea}>
-        <Stack.Screen options={{ headerShown: false }} />
-
-        {/* ヘッダー */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-            <ArrowLeft size={24} color={theme.colors.secondary[900]} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {quizBook.title}の詳細分析
-          </Text>
-          <View style={styles.headerButton} />
-        </View>
-
+    <>
+      <Stack.Screen
+        options={{
+          headerTitle: () => (
+            <View style={{ maxWidth: 280 }}>
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center' }}
+              >
+                {quizBook.title}の詳細分析
+              </Text>
+            </View>
+          ),
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{ marginLeft: 8 }}
+            >
+              <ArrowLeft size={24} color={theme.colors.secondary[900]} />
+            </TouchableOpacity>
+          ),
+        }}
+      />
+      <View style={styles.wrapper}>
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {chapterData.map((chapter) => (
             <View key={chapter.id} style={styles.chapterSection}>
@@ -456,18 +466,15 @@ export default function DetailedAnalyticsScreen() {
             </Pressable>
           </Pressable>
         </Modal>
-      </SafeAreaView>
-      <CustomTabBar />
-    </View>
+
+        <CustomTabBar />
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: {
-    flex: 1,
-    backgroundColor: theme.colors.neutral[50],
-  },
-  safeArea: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],
   },
@@ -481,28 +488,6 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Medium',
     color: theme.colors.secondary[600],
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    backgroundColor: theme.colors.neutral.white,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.secondary[200],
-  },
-  headerButton: {
-    padding: theme.spacing.sm,
-    width: 44,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: theme.typography.fontSizes.base,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    textAlign: 'center',
-    fontFamily: 'ZenKaku-Bold',
   },
   scrollView: {
     flex: 1,

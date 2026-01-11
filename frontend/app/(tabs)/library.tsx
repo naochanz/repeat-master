@@ -176,7 +176,7 @@ export default function LibraryScreen() {
 
   const handleTitleConfirm = async (title: string) => {
     try {
-      await addQuizBook(title, selectedCategoryId, false);
+      await addQuizBook(title, selectedCategoryId, true);
       setTitleModalVisible(false);
       setSelectedCategoryId('');
     } catch (error) {

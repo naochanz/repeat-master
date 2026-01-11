@@ -11,6 +11,8 @@ export interface StudyRecord {
   result: '○' | '×';
   round: number;
   answeredAt: Date;
+  chapterNumber?: number;
+  sectionNumber?: number;
   quizBook?: {
     id: string;
     title: string;
@@ -82,6 +84,12 @@ export class StudyRecordsService {
           id,
           title,
           category:categories(name)
+        ),
+        chapter:chapters(
+          chapter_number
+        ),
+        section:sections(
+          section_number
         )
       `)
       .eq('user_id', userId)
@@ -116,6 +124,8 @@ export class StudyRecordsService {
       result: data.result,
       round: data.round,
       answeredAt: new Date(data.answered_at),
+      chapterNumber: data.chapter?.chapter_number,
+      sectionNumber: data.section?.section_number,
       quizBook: data.quiz_book
         ? {
             id: data.quiz_book.id,
