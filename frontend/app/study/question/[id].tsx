@@ -737,7 +737,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     backgroundColor: theme.colors.neutral[50],
   },
   viewModeBackground: {
-    backgroundColor: '#E0E0E0',
+    backgroundColor: theme.colors.secondary[100],
   },
   questionGroup: {
     marginTop: theme.spacing.lg,
