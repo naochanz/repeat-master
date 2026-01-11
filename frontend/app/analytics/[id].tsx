@@ -24,6 +24,8 @@ import CustomTabBar from '@/components/CustomTabBar';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 40;
 const CAROUSEL_ITEM_WIDTH = SCREEN_WIDTH - 60;
+const CARD_GAP = 10;
+const SNAP_INTERVAL = CAROUSEL_ITEM_WIDTH + CARD_GAP;
 
 interface ChapterStats {
   round: number;
@@ -60,7 +62,6 @@ export default function DetailedAnalyticsScreen() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [sectionIndices, setSectionIndices] = useState<{ [chapterId: string]: number }>({});
-  const [chapterCarouselIndex, setChapterCarouselIndex] = useState(0);
   const [selectedPlot, setSelectedPlot] = useState<{
     round: number;
     correctRate: number;
@@ -74,6 +75,9 @@ export default function DetailedAnalyticsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
 
   const quizBook = quizBooks.find(b => b.id === id);
+
+  // 現在の周回数（表示用）
+  const displayRound = (quizBook?.currentRound || 0) + 1;
 
   useFocusEffect(
     useCallback(() => {
@@ -106,10 +110,18 @@ export default function DetailedAnalyticsScreen() {
         .filter(s => s.chapterId === chapter.id)
         .sort((a, b) => a.round - b.round);
 
+      // 現在の周回の正答率を取得
+      const currentRoundStats = stats.find(s => s.round === displayRound);
+      const currentRate = currentRoundStats?.correctRate ?? null;
+
       const sections = (chapter.sections || []).map(section => {
         const sectionStats = analytics.sectionStats
           .filter(s => s.sectionId === section.id)
           .sort((a, b) => a.round - b.round);
+
+        // 節の現在周回の正答率
+        const sectionCurrentStats = sectionStats.find(s => s.round === displayRound);
+        const sectionCurrentRate = sectionCurrentStats?.correctRate ?? null;
 
         return {
           id: section.id,
@@ -117,6 +129,7 @@ export default function DetailedAnalyticsScreen() {
           sectionNumber: section.sectionNumber,
           title: section.title || `${section.sectionNumber}節`,
           stats: sectionStats,
+          currentRate: sectionCurrentRate,
         };
       }).sort((a, b) => a.sectionNumber - b.sectionNumber);
 
@@ -125,11 +138,12 @@ export default function DetailedAnalyticsScreen() {
         chapterNumber: chapter.chapterNumber,
         title: chapter.title || `第${chapter.chapterNumber}章`,
         stats,
+        currentRate,
         hasSections: quizBook.useSections && (chapter.sections?.length ?? 0) > 0,
         sections,
       };
     });
-  }, [analytics, quizBook]);
+  }, [analytics, quizBook, displayRound]);
 
   // 問題集が節を使用しているかどうか
   const useSections = quizBook?.useSections && chapterData.some(c => c.hasSections);
@@ -162,7 +176,6 @@ export default function DetailedAnalyticsScreen() {
 
     setModalVisible(false);
 
-    // 周回別問題リスト画面へ遷移
     router.push({
       pathname: '/analytics/round-questions',
       params: {
@@ -180,14 +193,8 @@ export default function DetailedAnalyticsScreen() {
 
   const handleSectionScroll = (chapterId: string) => (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / CAROUSEL_ITEM_WIDTH);
+    const index = Math.round(offsetX / SNAP_INTERVAL);
     setSectionIndices(prev => ({ ...prev, [chapterId]: index }));
-  };
-
-  const handleChapterCarouselScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / CAROUSEL_ITEM_WIDTH);
-    setChapterCarouselIndex(index);
   };
 
   const renderChart = (
@@ -297,23 +304,6 @@ export default function DetailedAnalyticsScreen() {
     );
   };
 
-  // 章カルーセルのインジケーター（節がない場合）
-  const renderChapterCarouselIndicator = () => {
-    return (
-      <View style={styles.carouselIndicatorContainer}>
-        {chapterData.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.carouselIndicator,
-              index === chapterCarouselIndex && styles.carouselIndicatorActive,
-            ]}
-          />
-        ))}
-      </View>
-    );
-  };
-
   if (loading) {
     return (
       <View style={styles.wrapper}>
@@ -355,123 +345,90 @@ export default function DetailedAnalyticsScreen() {
           <View style={styles.headerButton} />
         </View>
 
-        {useSections ? (
-          // 節がある場合: 章リスト + 節カルーセル
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-            {chapterData.map((chapter) => (
-              <View key={chapter.id} style={styles.chapterSection}>
-                {/* 章ヘッダー */}
-                <View style={styles.chapterHeader}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {chapterData.map((chapter) => (
+            <View key={chapter.id} style={styles.chapterSection}>
+              {/* 章ヘッダー */}
+              <View style={styles.chapterHeader}>
+                <View style={styles.chapterHeaderTop}>
                   <Text style={styles.chapterTitle}>
                     第{chapter.chapterNumber}章
                   </Text>
-                  {chapter.title && chapter.title !== `第${chapter.chapterNumber}章` && (
-                    <Text style={styles.chapterSubtitle} numberOfLines={1}>
-                      {chapter.title}
-                    </Text>
+                  {chapter.currentRate !== null && (
+                    <View style={styles.currentRateBadge}>
+                      <Text style={styles.currentRateLabel}>{displayRound}周目</Text>
+                      <Text style={styles.currentRateValue}>{chapter.currentRate}%</Text>
+                    </View>
                   )}
                 </View>
+                {chapter.title && chapter.title !== `第${chapter.chapterNumber}章` && (
+                  <Text style={styles.chapterSubtitle} numberOfLines={1}>
+                    {chapter.title}
+                  </Text>
+                )}
+              </View>
 
-                {chapter.hasSections && chapter.sections.length > 0 ? (
-                  // 節カルーセル
-                  <View>
-                    <ScrollView
-                      horizontal
-                      pagingEnabled={false}
-                      snapToInterval={CAROUSEL_ITEM_WIDTH}
-                      snapToAlignment="start"
-                      decelerationRate="fast"
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.carouselContent}
-                      onMomentumScrollEnd={handleSectionScroll(chapter.id)}
-                    >
-                      {chapter.sections.map((section) => (
-                        <View key={section.id} style={styles.carouselCard}>
+              {useSections && chapter.hasSections && chapter.sections.length > 0 ? (
+                // 節カルーセル
+                <View>
+                  <ScrollView
+                    horizontal
+                    pagingEnabled={false}
+                    snapToInterval={SNAP_INTERVAL}
+                    snapToAlignment="start"
+                    decelerationRate="fast"
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.carouselContent}
+                    onMomentumScrollEnd={handleSectionScroll(chapter.id)}
+                  >
+                    {chapter.sections.map((section) => (
+                      <View key={section.id} style={styles.carouselCard}>
+                        <View style={styles.sectionCardHeader}>
                           <Text style={styles.carouselCardTitle}>
                             {section.sectionNumber}. {section.title}
                           </Text>
-                          <View style={styles.chartContainer}>
-                            {renderChart(
-                              section.stats,
-                              section.id,
-                              'section',
-                              chapter.id,
-                              chapter.chapterNumber,
-                              section.id,
-                              section.sectionNumber,
-                              CAROUSEL_ITEM_WIDTH - 40
-                            )}
-                          </View>
+                          {section.currentRate !== null && (
+                            <Text style={styles.sectionCurrentRate}>{section.currentRate}%</Text>
+                          )}
                         </View>
-                      ))}
-                    </ScrollView>
-                    {renderSectionIndicator(chapter)}
-                  </View>
-                ) : (
-                  // 節がない章はグラフを直接表示
-                  <View style={styles.chartCard}>
-                    <Text style={styles.chartCardTitle}>
-                      正答率推移
-                    </Text>
-                    <View style={styles.chartContainer}>
-                      {renderChart(
-                        chapter.stats,
-                        chapter.id,
-                        'chapter',
-                        chapter.id,
-                        chapter.chapterNumber
-                      )}
-                    </View>
-                  </View>
-                )}
-              </View>
-            ))}
-            <View style={styles.bottomSpacer} />
-          </ScrollView>
-        ) : (
-          // 節がない場合: 章カルーセル
-          <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-            <View style={styles.chapterCarouselWrapper}>
-              <ScrollView
-                horizontal
-                pagingEnabled={false}
-                snapToInterval={CAROUSEL_ITEM_WIDTH}
-                snapToAlignment="start"
-                decelerationRate="fast"
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chapterCarouselContent}
-                onMomentumScrollEnd={handleChapterCarouselScroll}
-              >
-                {chapterData.map((chapter) => (
-                  <View key={chapter.id} style={styles.chapterCarouselCard}>
-                    <Text style={styles.chapterCarouselTitle}>
-                      第{chapter.chapterNumber}章
-                    </Text>
-                    {chapter.title && chapter.title !== `第${chapter.chapterNumber}章` && (
-                      <Text style={styles.chapterCarouselSubtitle} numberOfLines={2}>
-                        {chapter.title}
-                      </Text>
+                        <View style={styles.chartContainer}>
+                          {renderChart(
+                            section.stats,
+                            section.id,
+                            'section',
+                            chapter.id,
+                            chapter.chapterNumber,
+                            section.id,
+                            section.sectionNumber,
+                            CAROUSEL_ITEM_WIDTH - 40
+                          )}
+                        </View>
+                      </View>
+                    ))}
+                  </ScrollView>
+                  {renderSectionIndicator(chapter)}
+                </View>
+              ) : (
+                // 章のグラフを直接表示（節がない場合、または節を使用しない問題集）
+                <View style={styles.chartCard}>
+                  <Text style={styles.chartCardTitle}>
+                    正答率推移
+                  </Text>
+                  <View style={styles.chartContainer}>
+                    {renderChart(
+                      chapter.stats,
+                      chapter.id,
+                      'chapter',
+                      chapter.id,
+                      chapter.chapterNumber
                     )}
-                    <View style={styles.chartContainer}>
-                      {renderChart(
-                        chapter.stats,
-                        chapter.id,
-                        'chapter',
-                        chapter.id,
-                        chapter.chapterNumber,
-                        undefined,
-                        undefined,
-                        CAROUSEL_ITEM_WIDTH - 40
-                      )}
-                    </View>
                   </View>
-                ))}
-              </ScrollView>
-              {renderChapterCarouselIndicator()}
+                </View>
+              )}
             </View>
-            <View style={styles.bottomSpacer} />
-          </ScrollView>
-        )}
+          ))}
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
 
         {/* プロット選択モーダル */}
         <Modal
@@ -577,13 +534,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.neutral[50],
   },
-  // 章セクション（節がある場合）
+  // 章セクション
   chapterSection: {
     marginTop: theme.spacing.lg,
   },
   chapterHeader: {
     paddingHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.md,
+  },
+  chapterHeaderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   chapterTitle: {
     fontSize: theme.typography.fontSizes.xl,
@@ -596,23 +558,53 @@ const styles = StyleSheet.create({
     color: theme.colors.secondary[600],
     marginTop: theme.spacing.xs,
   },
-  // カルーセル共通
+  currentRateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    backgroundColor: theme.colors.primary[50],
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.md,
+  },
+  currentRateLabel: {
+    fontSize: theme.typography.fontSizes.xs,
+    fontFamily: 'ZenKaku-Regular',
+    color: theme.colors.primary[600],
+  },
+  currentRateValue: {
+    fontSize: theme.typography.fontSizes.base,
+    fontFamily: 'ZenKaku-Bold',
+    color: theme.colors.primary[600],
+  },
+  // カルーセル
   carouselContent: {
     paddingHorizontal: 20,
   },
   carouselCard: {
     width: CAROUSEL_ITEM_WIDTH,
-    marginRight: 10,
+    marginRight: CARD_GAP,
     backgroundColor: theme.colors.neutral.white,
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
     ...theme.shadows.md,
   },
+  sectionCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
   carouselCardTitle: {
     fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Bold',
     color: theme.colors.secondary[900],
-    marginBottom: theme.spacing.md,
+    flex: 1,
+  },
+  sectionCurrentRate: {
+    fontSize: theme.typography.fontSizes.lg,
+    fontFamily: 'ZenKaku-Bold',
+    color: theme.colors.primary[600],
   },
   carouselIndicatorContainer: {
     flexDirection: 'row',
@@ -631,35 +623,6 @@ const styles = StyleSheet.create({
   carouselIndicatorActive: {
     width: 20,
     backgroundColor: theme.colors.primary[600],
-  },
-  // 章カルーセル（節がない場合）
-  chapterCarouselWrapper: {
-    paddingTop: theme.spacing.lg,
-  },
-  chapterCarouselContent: {
-    paddingHorizontal: 20,
-  },
-  chapterCarouselCard: {
-    width: CAROUSEL_ITEM_WIDTH,
-    marginRight: 10,
-    backgroundColor: theme.colors.neutral.white,
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
-    ...theme.shadows.md,
-  },
-  chapterCarouselTitle: {
-    fontSize: theme.typography.fontSizes.xl,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.secondary[900],
-    textAlign: 'center',
-  },
-  chapterCarouselSubtitle: {
-    fontSize: theme.typography.fontSizes.sm,
-    fontFamily: 'ZenKaku-Regular',
-    color: theme.colors.secondary[600],
-    textAlign: 'center',
-    marginTop: theme.spacing.xs,
-    marginBottom: theme.spacing.md,
   },
   // 通常チャートカード
   chartCard: {

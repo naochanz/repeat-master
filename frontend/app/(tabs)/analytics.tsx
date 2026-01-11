@@ -20,6 +20,7 @@ import { quizBookApi } from '@/services/api';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CAROUSEL_ITEM_WIDTH = SCREEN_WIDTH - 60; // 両端に30pxずつ余白を残す
 const CARD_GAP = 10;
+const SNAP_INTERVAL = CAROUSEL_ITEM_WIDTH + CARD_GAP; // カード幅 + ギャップ
 
 interface RoundStats {
   round: number;
@@ -95,12 +96,12 @@ export default function AnalyticsScreen() {
 
   const handleScroll = (categoryId: string, event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / CAROUSEL_ITEM_WIDTH);
+    const index = Math.round(offsetX / SNAP_INTERVAL);
     setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
   };
 
   const scrollToIndex = (categoryId: string, index: number) => {
-    scrollRefs.current[categoryId]?.scrollTo({ x: index * CAROUSEL_ITEM_WIDTH, animated: true });
+    scrollRefs.current[categoryId]?.scrollTo({ x: index * SNAP_INTERVAL, animated: true });
     setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
   };
 
@@ -224,7 +225,7 @@ export default function AnalyticsScreen() {
                   showsHorizontalScrollIndicator={false}
                   onMomentumScrollEnd={(e) => handleScroll(categoryId, e)}
                   scrollEventThrottle={16}
-                  snapToInterval={CAROUSEL_ITEM_WIDTH}
+                  snapToInterval={SNAP_INTERVAL}
                   snapToAlignment="start"
                   decelerationRate="fast"
                   contentContainerStyle={styles.carouselContent}

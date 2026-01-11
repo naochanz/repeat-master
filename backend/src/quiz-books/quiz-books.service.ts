@@ -80,8 +80,8 @@ export class QuizBooksService {
         category:categories(*),
         chapters(
           *,
-          sections(*, question_answers:question_answers(*)),
-          question_answers:question_answers(*)
+          sections(*, question_answers!section_id(*)),
+          question_answers!chapter_id(*)
         )
       `)
       .eq('user_id', userId)
@@ -112,8 +112,8 @@ export class QuizBooksService {
         category:categories(*),
         chapters(
           *,
-          sections(*, question_answers:question_answers(*)),
-          question_answers:question_answers(*)
+          sections(*, question_answers!section_id(*)),
+          question_answers!chapter_id(*)
         )
       `)
       .eq('id', id)
