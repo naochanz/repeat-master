@@ -58,7 +58,7 @@ export default function RootLayout() {
   useEffect(() => {
     initialize();
     initializeTheme();
-    // initializeSubscription(); // 一時的に無効化（クラッシュ切り分け）
+    initializeSubscription();
     checkOnboardingStatus();
   }, []);
 
