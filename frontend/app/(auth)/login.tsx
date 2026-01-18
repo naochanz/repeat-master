@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showErrorToast } from '@/utils/toast';
 import { Mail, Lock } from 'lucide-react-native';
-// import * as AppleAuthentication from 'expo-apple-authentication';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 const loginSchema = z.object({
   email: z
