@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showErrorToast } from '@/utils/toast';
 import { Mail, Lock, User } from 'lucide-react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 const signupSchema = z
   .object({
@@ -33,9 +34,19 @@ type SignupFormData = z.infer<typeof signupSchema>;
 const Signup = () => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const [isAppleAuthAvailable, setIsAppleAuthAvailable] = useState(false);
 
   const register = useAuthStore((state) => state.register);
+  const signInWithApple = useAuthStore((state) => state.signInWithApple);
   const isLoading = useAuthStore((state) => state.isLoading);
+
+  useEffect(() => {
+    const checkAppleAuth = async () => {
+      const available = await AppleAuthentication.isAvailableAsync();
+      setIsAppleAuthAvailable(available);
+    };
+    checkAppleAuth();
+  }, []);
 
   const {
     control,
@@ -66,6 +77,18 @@ const Signup = () => {
     } catch (error: any) {
       const errorMessage = error.message || error.response?.data?.message || '登録に失敗しました';
       showErrorToast(errorMessage, '登録エラー');
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      await signInWithApple();
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      if (error.code !== 'ERR_REQUEST_CANCELED') {
+        const errorMessage = error.message || 'Appleでの登録に失敗しました';
+        showErrorToast(errorMessage, '登録エラー');
+      }
     }
   };
 
@@ -197,6 +220,26 @@ const Signup = () => {
               <Text style={styles.primaryButtonText}>{isLoading ? '登録中...' : '新規登録'}</Text>
             </TouchableOpacity>
 
+            {/* Divider */}
+            {isAppleAuthAvailable && (
+              <View style={styles.dividerContainer}>
+                <View style={styles.divider} />
+                <Text style={styles.dividerText}>または</Text>
+                <View style={styles.divider} />
+              </View>
+            )}
+
+            {/* Apple Sign In */}
+            {isAppleAuthAvailable && (
+              <AppleAuthentication.AppleAuthenticationButton
+                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                cornerRadius={theme.borderRadius.lg}
+                style={styles.appleButton}
+                onPress={handleAppleSignIn}
+              />
+            )}
+
             {/* Login Link */}
             <View style={styles.loginContainer}>
               <Text style={styles.loginText}>すでにアカウントをお持ちの方</Text>
@@ -306,6 +349,27 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     fontSize: theme.typography.fontSizes.sm,
     color: theme.colors.primary[600],
     fontFamily: 'ZenKaku-Bold',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: theme.colors.secondary[200],
+  },
+  dividerText: {
+    marginHorizontal: theme.spacing.md,
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.secondary[400],
+    fontFamily: 'ZenKaku-Regular',
+  },
+  appleButton: {
+    width: '100%',
+    height: 50,
   },
 });
 

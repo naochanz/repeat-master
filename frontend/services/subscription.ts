@@ -6,10 +6,12 @@ const REVENUECAT_API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS ||
 const REVENUECAT_API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || '';
 
 // Entitlement ID (RevenueCat ダッシュボードで設定)
-export const ENTITLEMENT_ID = 'premium';
+export const ENTITLEMENT_ID = 'DORILOOP Pro';
 
-// 製品ID
-export const PRODUCT_ID_MONTHLY = 'repeat_master_premium_monthly';
+// 製品ID (App Store Connect)
+export const PRODUCT_ID_MONTHLY = 'com.DORILOOP.premium.monthly';
+export const PRODUCT_ID_YEARLY = 'com.DORILOOP.premium.yearly';
+export const PRODUCT_ID_ADD_QUIZBOOK = 'add_quizbook';
 
 export interface SubscriptionStatus {
   isPremium: boolean;

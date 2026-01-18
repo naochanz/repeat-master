@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { ONBOARDING_COMPLETE_KEY } from './onboarding';
 
 export {
@@ -48,6 +49,7 @@ export default function RootLayout() {
   });
 
   const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
+  const initializeSubscription = useSubscriptionStore(state => state.initialize);
 
   useEffect(() => {
     if (error) throw error;
@@ -56,6 +58,7 @@ export default function RootLayout() {
   useEffect(() => {
     initialize();
     initializeTheme();
+    initializeSubscription();
     checkOnboardingStatus();
   }, []);
 

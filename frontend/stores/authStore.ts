@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { Profile } from '@/types/database';
+import * as AppleAuthentication from 'expo-apple-authentication';
 
 interface AuthState {
   user: User | null;
@@ -13,6 +14,7 @@ interface AuthState {
   // アクション
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<void>;
+  signInWithApple: () => Promise<void>;
   logout: () => Promise<void>;
   initialize: () => Promise<void>;
   fetchProfile: () => Promise<void>;
@@ -143,6 +145,51 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (data.session) {
         await get().fetchProfile();
       }
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  signInWithApple: async () => {
+    set({ isLoading: true });
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        throw new Error('Apple Sign In failed - no identity token');
+      }
+
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: credential.identityToken,
+      });
+
+      if (error) throw error;
+
+      // Appleから名前を取得できた場合、プロファイルを更新
+      if (credential.fullName?.givenName && data.user) {
+        const fullName = [credential.fullName.givenName, credential.fullName.familyName]
+          .filter(Boolean)
+          .join(' ');
+
+        await supabase
+          .from('profiles')
+          .update({ name: fullName })
+          .eq('id', data.user.id);
+      }
+
+      set({
+        user: data.user,
+        session: data.session,
+        isAuthenticated: true,
+      });
+
+      await get().fetchProfile();
     } finally {
       set({ isLoading: false });
     }
