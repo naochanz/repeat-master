@@ -1,0 +1,9 @@
+{
+    "build": {
+      "builder": "NIXPACKS",
+      "watchPatterns": ["backend/**"]
+    },
+    "deploy": {
+      "startCommand": "cd backend && npm run start:prod"
+    }
+  }
