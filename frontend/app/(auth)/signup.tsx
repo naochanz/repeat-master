@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import React, { useMemo } from 'react';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
@@ -8,7 +8,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAuthStore } from '@/stores/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showErrorToast } from '@/utils/toast';
-import { BookOpen, Mail, Lock, User } from 'lucide-react-native';
+import { Mail, Lock, User } from 'lucide-react-native';
 
 const signupSchema = z
   .object({
@@ -82,10 +82,11 @@ const Signup = () => {
         >
           {/* Logo */}
           <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <BookOpen size={40} color={theme.colors.primary[600]} strokeWidth={1.5} />
-            </View>
-            <Text style={styles.appName}>DoriLoop</Text>
+            <Image
+              source={require('@/assets/images/logo/ロゴ.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
 
           {/* Form */}
@@ -228,20 +229,10 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.xl,
   },
-  logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: theme.colors.primary[100],
-    justifyContent: 'center',
-    alignItems: 'center',
+  logoImage: {
+    width: 120,
+    height: 120,
     marginBottom: theme.spacing.md,
-  },
-  appName: {
-    fontSize: theme.typography.fontSizes.xl,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
   },
   formContainer: {
     flex: 1,

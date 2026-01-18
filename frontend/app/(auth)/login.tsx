@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import React, { useMemo } from 'react';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
@@ -8,7 +8,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAuthStore } from '@/stores/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showErrorToast } from '@/utils/toast';
-import { BookOpen, Mail, Lock } from 'lucide-react-native';
+import { Mail, Lock } from 'lucide-react-native';
 
 const loginSchema = z.object({
   email: z
@@ -61,10 +61,11 @@ const Login = () => {
         >
           {/* Logo */}
           <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <BookOpen size={48} color={theme.colors.primary[600]} strokeWidth={1.5} />
-            </View>
-            <Text style={styles.appName}>DoriLoop</Text>
+            <Image
+              source={require('@/assets/images/logo/ロゴ.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
             <Text style={styles.tagline}>反復学習で確実にマスター</Text>
           </View>
 
@@ -161,21 +162,10 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     marginTop: theme.spacing.xl,
     marginBottom: theme.spacing.xl * 2,
   },
-  logoCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: theme.colors.primary[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: theme.spacing.lg,
-  },
-  appName: {
-    fontSize: theme.typography.fontSizes['2xl'],
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-    marginBottom: theme.spacing.xs,
+  logoImage: {
+    width: 140,
+    height: 140,
+    marginBottom: theme.spacing.md,
   },
   tagline: {
     fontSize: theme.typography.fontSizes.base,
