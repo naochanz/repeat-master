@@ -4,17 +4,21 @@
     "slug": "doriloop",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo/ロゴ.png",
+    "icon": "./assets/images/logo/logo.png",
     "scheme": "doriloop",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.naochanz.doriloop",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/images/logo/ロゴ.png"
+        "foregroundImage": "./assets/images/logo/logo.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
@@ -28,7 +32,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logo/ロゴ.png",
+          "image": "./assets/images/logo/logo.png",
           "imageWidth": 280,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
@@ -38,6 +42,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "be6a051b-23de-4b38-b0b6-718d7fc2ae25"
+      }
     }
   }
 }

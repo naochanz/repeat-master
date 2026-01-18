@@ -62,7 +62,7 @@ const Login = () => {
           {/* Logo */}
           <View style={styles.logoContainer}>
             <Image
-              source={require('@/assets/images/logo/ロゴ.png')}
+              source={require('@/assets/images/logo/logo.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
