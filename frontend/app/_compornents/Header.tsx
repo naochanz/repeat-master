@@ -1,8 +1,11 @@
-import { theme } from '@/constants/theme';
-import React from 'react';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import React, { useMemo } from 'react';
 import { Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
 
 const Header = () => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -14,7 +17,7 @@ const Header = () => {
   )
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     backgroundColor: theme.colors.neutral.white,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,

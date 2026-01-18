@@ -1,9 +1,9 @@
 import CustomTabBar from '@/components/CustomTabBar';
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Plus, Trash2, Bookmark, Menu, ArrowLeft } from 'lucide-react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View, SafeAreaView } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Picker } from '@react-native-picker/picker';
@@ -15,6 +15,8 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const MENU_WIDTH = SCREEN_WIDTH * 0.8;
 
 const QuestionList = () => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { id } = useLocalSearchParams();
 
   const quizBooks = useQuizBookStore(state => state.quizBooks);
@@ -135,6 +137,7 @@ const QuestionList = () => {
   const chapterId = chapterData?.chapter.id || sectionData?.chapter.id || '';
   const sectionId = sectionData?.section.id || null;
   const bookId = chapterData?.book.id || sectionData?.book.id || '';
+  const isCompleted = !!(chapterData?.book.completedAt || sectionData?.book.completedAt);
 
   const displayInfo = chapterData
     ? {
@@ -293,8 +296,12 @@ const QuestionList = () => {
 
           <Text style={styles.headerTitle} numberOfLines={1}>
             {displayInfo.type === 'chapter'
-              ? `第${displayInfo.chapterNumber}章`
-              : `${displayInfo.sectionNumber}. ${displayInfo.title}`}
+              ? displayInfo.title?.trim()
+                ? `第${displayInfo.chapterNumber}章 ${displayInfo.title}`
+                : `第${displayInfo.chapterNumber}章`
+              : displayInfo.title?.trim()
+                ? `第${displayInfo.sectionNumber}節 ${displayInfo.title}`
+                : `第${displayInfo.sectionNumber}節`}
           </Text>
 
           <TouchableOpacity onPress={openMenu} style={styles.headerButton}>
@@ -350,12 +357,14 @@ const QuestionList = () => {
                     >
                       <Text style={styles.memoText}>MEMO</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.deleteButton}
-                      onPress={() => handleDeleteQuestion(num)}
-                    >
-                      <Trash2 size={16} color={theme.colors.error[600]} />
-                    </TouchableOpacity>
+                    {!isCompleted && (
+                      <TouchableOpacity
+                        style={styles.deleteButton}
+                        onPress={() => handleDeleteQuestion(num)}
+                      >
+                        <Trash2 size={16} color={theme.colors.error[600]} />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
 
@@ -384,8 +393,8 @@ const QuestionList = () => {
             </View>
           )}
 
-          {/* 1枚追加ボタン（回答モード + フィルターOFFのみ） */}
-          {mode === 'answer' && !filterBookmarked && (
+          {/* 1枚追加ボタン（回答モード + フィルターOFF + 完了していない場合のみ） */}
+          {mode === 'answer' && !filterBookmarked && !isCompleted && (
             <TouchableOpacity
               style={styles.addQuestionButton}
               onPress={handleAddQuestion}
@@ -405,6 +414,7 @@ const QuestionList = () => {
           onClose={() => setModalVisible(false)}
           onSave={handleSaveMemo}
           onChangeText={setMemoText}
+          readOnly={isCompleted}
         />
 
 {/* 削除オプション選択モーダル */}
@@ -649,7 +659,7 @@ const QuestionList = () => {
 
                   <View style={styles.menuDivider} />
 
-                  {mode === 'answer' && !filterBookmarked && (
+                  {mode === 'answer' && !filterBookmarked && !isCompleted && (
                     <View style={styles.menuSection}>
                       <Text style={styles.menuSectionTitle}>問題を追加</Text>
 
@@ -670,8 +680,8 @@ const QuestionList = () => {
           </Pressable>
         </Modal>
 
-        {/* FAB表示 */}
-        {mode === 'answer' && activeFabQuestion !== null && (
+        {/* FAB表示（完了していない場合のみ） */}
+        {mode === 'answer' && activeFabQuestion !== null && !isCompleted && (
           <AnswerFAB
             questionNumber={activeFabQuestion}
             onAnswer={handleAnswerFromFab}
@@ -696,7 +706,7 @@ const QuestionList = () => {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   wrapper: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],
@@ -731,7 +741,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.neutral[50],
   },
   viewModeBackground: {
-    backgroundColor: '#E0E0E0',
+    backgroundColor: theme.colors.secondary[100],
   },
   questionGroup: {
     marginTop: theme.spacing.lg,
@@ -1030,6 +1040,7 @@ const styles = StyleSheet.create({
   pickerItem: {
     fontSize: theme.typography.fontSizes['2xl'],
     fontFamily: 'ZenKaku-Regular',
+    color: theme.colors.secondary[900],
   },
   addMultipleActions: {
     flexDirection: 'row',

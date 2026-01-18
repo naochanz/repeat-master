@@ -1,6 +1,6 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { BookOpen } from 'lucide-react-native';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Modal,
   Pressable,
@@ -17,6 +17,7 @@ import {
 interface QuizBookTitleModalProps {
   visible: boolean;
   categoryName: string;
+  initialTitle?: string;
   onConfirm: (title: string) => void;
   onCancel: () => void;
 }
@@ -24,16 +25,19 @@ interface QuizBookTitleModalProps {
 const QuizBookTitleModal = ({
   visible,
   categoryName,
+  initialTitle = '',
   onConfirm,
   onCancel,
 }: QuizBookTitleModalProps) => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [title, setTitle] = useState('');
 
   useEffect(() => {
     if (visible) {
-      setTitle('');
+      setTitle(initialTitle);
     }
-  }, [visible]);
+  }, [visible, initialTitle]);
 
   const handleConfirm = () => {
     if (title.trim()) {
@@ -112,7 +116,7 @@ const QuizBookTitleModal = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

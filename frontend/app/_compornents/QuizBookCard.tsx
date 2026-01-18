@@ -1,8 +1,8 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
-import { ChevronDown, MoreVertical, Trash2 } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ChevronDown, MoreVertical, Trash2, Trophy, RotateCcw, CheckCircle } from 'lucide-react-native';
+import React, { useState, useMemo } from 'react';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import { Category } from '@/types/QuizBook';
 
@@ -15,16 +15,22 @@ interface QuizBook {
   useSections?: boolean;
   correctRate?: number;
   currentRound?: number;
+  thumbnailUrl?: string | null;
+  completedAt?: string | null;
 }
 
 interface QuizBookCardProps {
   quizBook: QuizBook;
   onPress: () => void;
   onDelete: () => void;
+  onComplete?: () => void;
+  onReactivate?: () => void;
   existingCategories: string[];
 }
 
-const QuizBookCard = ({ quizBook, onPress, onDelete, existingCategories }: QuizBookCardProps) => {
+const QuizBookCard = ({ quizBook, onPress, onDelete, onComplete, onReactivate, existingCategories }: QuizBookCardProps) => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const updateQuizBook = useQuizBookStore(state => state.updateQuizBook);
   const [showMenu, setShowMenu] = useState(false);
   const [editedTitle, setEditedTitle] = useState(quizBook.title);
@@ -66,6 +72,19 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, existingCategories }: QuizB
     await updateQuizBook(quizBook.id, { useSections: value });
   };
 
+  const handleComplete = () => {
+    setShowMenu(false);
+    onComplete?.();
+  };
+
+  const handleReactivate = () => {
+    setShowMenu(false);
+    onReactivate?.();
+  };
+
+  const hasThumbnail = !!quizBook.thumbnailUrl;
+  const isCompleted = !!quizBook.completedAt;
+
   return (
     <>
       <View style={styles.bookContainer}>
@@ -74,37 +93,76 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, existingCategories }: QuizB
           onPress={onPress}
           activeOpacity={0.8}
         >
-          <View style={styles.bookSpine}>
-            <View style={styles.bookTop} />
-            <View style={styles.bookMain}>
-              <TouchableOpacity
-                style={styles.menuButton}
-                onPress={handleMenuPress}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <MoreVertical size={16} color={theme.colors.secondary[600]} />
-              </TouchableOpacity>
-
-              <View style={styles.bookContent}>
-                <Text style={styles.bookTitle} numberOfLines={6}>
-                  {quizBook.title || '未設定'}
-                </Text>
-
-                <View style={styles.bookStats}>
-                  <View style={styles.bookStatItem}>
-                    <Text style={styles.bookStatLabel}>現在</Text>
-                    <Text style={[styles.bookStatValue, { color: theme.colors.primary[600] }]}>
-                    {(quizBook.currentRound || 0) + 1}
-                    </Text>
-                    <Text style={styles.bookStatLabel}>周目</Text>
+          {hasThumbnail ? (
+            // サムネイルありのカード（バーコードスキャンで登録）
+            <View style={[styles.thumbnailCard, isCompleted && styles.completedCard]}>
+              <Image
+                source={{ uri: quizBook.thumbnailUrl! }}
+                style={[styles.thumbnailImage, isCompleted && styles.completedImage]}
+                resizeMode="cover"
+              />
+              <View style={styles.thumbnailOverlay}>
+                <TouchableOpacity
+                  style={styles.thumbnailMenuButton}
+                  onPress={handleMenuPress}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <MoreVertical size={16} color="#FFFFFF" />
+                </TouchableOpacity>
+                {isCompleted ? (
+                  <View style={styles.trophyBadge}>
+                    <Trophy size={14} color={theme.colors.warning[500]} />
+                    <Text style={styles.trophyBadgeText}>完了</Text>
                   </View>
-                </View>
+                ) : (
+                  <View style={styles.thumbnailRoundBadge}>
+                    <Text style={styles.thumbnailRoundText}>
+                      現在{(quizBook.currentRound || 0) + 1}周目
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
-            <View style={styles.bookBottom} />
-          </View>
+          ) : (
+            // サムネイルなしの従来のカード
+            <View style={[styles.bookSpine, isCompleted && styles.completedBookSpine]}>
+              <View style={[styles.bookTop, isCompleted && styles.completedBookTopBottom]} />
+              <View style={styles.bookMain}>
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={handleMenuPress}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <MoreVertical size={16} color={theme.colors.secondary[600]} />
+                </TouchableOpacity>
+
+                <View style={styles.bookContent}>
+                  <Text style={[styles.bookTitle, isCompleted && styles.completedBookTitle]} numberOfLines={3} ellipsizeMode="tail">
+                    {quizBook.title || '未設定'}
+                  </Text>
+
+                  {isCompleted ? (
+                    <View style={styles.trophyStats}>
+                      <Trophy size={20} color={theme.colors.warning[500]} />
+                      <Text style={styles.trophyStatsText}>完了</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.bookStats}>
+                      <View style={styles.bookStatItem}>
+                        <Text style={styles.bookStatLabel}>現在</Text>
+                        <Text style={[styles.bookStatValue, { color: theme.colors.primary[600] }]}>
+                        {(quizBook.currentRound || 0) + 1}
+                        </Text>
+                        <Text style={styles.bookStatLabel}>周目</Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </View>
+              <View style={[styles.bookBottom, isCompleted && styles.completedBookTopBottom]} />
+            </View>
+          )}
         </TouchableOpacity>
-        <View style={styles.bookShadow} />
       </View>
 
       <Modal
@@ -157,6 +215,20 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, existingCategories }: QuizB
 
               <View style={styles.menuDivider} />
 
+              {isCompleted ? (
+                <TouchableOpacity style={styles.reactivateButton} onPress={handleReactivate}>
+                  <RotateCcw size={20} color={theme.colors.primary[600]} />
+                  <Text style={styles.reactivateButtonText}>問題集を再開する</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.completeButton} onPress={handleComplete}>
+                  <CheckCircle size={20} color={theme.colors.success[600]} />
+                  <Text style={styles.completeButtonText}>問題集を完了にする</Text>
+                </TouchableOpacity>
+              )}
+
+              <View style={styles.menuDivider} />
+
               <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
                 <Trash2 size={20} color={theme.colors.error[600]} />
                 <Text style={styles.deleteButtonText}>問題集を削除</Text>
@@ -184,7 +256,7 @@ const QuizBookCard = ({ quizBook, onPress, onDelete, existingCategories }: QuizB
   )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   bookContainer: {
     position: 'relative',
     aspectRatio: 0.7,
@@ -194,6 +266,64 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 2,
   },
+  // サムネイルカードスタイル
+  thumbnailCard: {
+    flex: 1,
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+    ...theme.shadows.md,
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  thumbnailOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
+    padding: theme.spacing.sm,
+  },
+  thumbnailMenuButton: {
+    alignSelf: 'flex-end',
+    padding: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: theme.borderRadius.sm,
+  },
+  thumbnailRoundBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+  },
+  thumbnailRoundText: {
+    fontSize: theme.typography.fontSizes.xs,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: '#FFFFFF',
+    fontFamily: 'ZenKaku-Bold',
+  },
+  trophyBadge: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.sm,
+  },
+  trophyBadgeText: {
+    fontSize: theme.typography.fontSizes.xs,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.warning[600],
+    fontFamily: 'ZenKaku-Bold',
+  },
+  completedCard: {
+    opacity: 0.85,
+  },
+  completedImage: {
+    opacity: 0.7,
+  },
+  // 従来のブックスタイル
   bookSpine: {
     flex: 1,
     backgroundColor: theme.colors.neutral.white,
@@ -274,6 +404,34 @@ const styles = StyleSheet.create({
   bookStatDivider: {
     height: 1,
     backgroundColor: theme.colors.secondary[200],
+  },
+  // 完了状態のスタイル
+  completedBookSpine: {
+    borderColor: theme.colors.warning[400],
+    opacity: 0.85,
+  },
+  completedBookTopBottom: {
+    backgroundColor: theme.colors.warning[400],
+  },
+  completedBookTitle: {
+    color: theme.colors.secondary[600],
+  },
+  trophyStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: theme.colors.warning[50],
+    borderRadius: theme.borderRadius.sm,
+    padding: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.warning[200],
+  },
+  trophyStatsText: {
+    fontSize: theme.typography.fontSizes.sm,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    fontFamily: 'ZenKaku-Bold',
+    color: theme.colors.warning[600],
   },
   modalOverlay: {
     flex: 1,
@@ -376,6 +534,30 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Medium',
     color: theme.colors.secondary[900],
+  },
+  completeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.md,
+  },
+  completeButtonText: {
+    fontSize: theme.typography.fontSizes.base,
+    fontFamily: 'ZenKaku-Medium',
+    color: theme.colors.success[600],
+  },
+  reactivateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.md,
+  },
+  reactivateButtonText: {
+    fontSize: theme.typography.fontSizes.base,
+    fontFamily: 'ZenKaku-Medium',
+    color: theme.colors.primary[600],
   },
   deleteButton: {
     flexDirection: 'row',

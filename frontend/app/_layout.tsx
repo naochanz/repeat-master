@@ -9,11 +9,14 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack, Redirect, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
-import { useColorScheme } from '@/components/useColorScheme';
+import Toast from 'react-native-toast-message';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useThemeStore } from '@/stores/themeStore';
+import { ONBOARDING_COMPLETE_KEY } from './onboarding';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -29,10 +32,13 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const loadToken = useAuthStore(state => state.loadToken);
+  const initialize = useAuthStore(state => state.initialize);
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
+  const isLoading = useAuthStore(state => state.isLoading);
+  const initializeTheme = useThemeStore(state => state.initialize);
   const pathname = usePathname();
-  
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean | null>(null);
+
   const [loaded, error] = useFonts({
     'ZenKaku-Regular': ZenKakuGothicNew_400Regular,
     'ZenKaku-Medium': ZenKakuGothicNew_500Medium,
@@ -48,43 +54,65 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    loadToken();
+    initialize();
+    initializeTheme();
+    checkOnboardingStatus();
   }, []);
 
+  const checkOnboardingStatus = async () => {
+    try {
+      const value = await AsyncStorage.getItem(ONBOARDING_COMPLETE_KEY);
+      setHasSeenOnboarding(value === 'true');
+    } catch (error) {
+      console.error('Failed to check onboarding status:', error);
+      setHasSeenOnboarding(true); // エラー時はスキップ
+    }
+  };
+
   useEffect(() => {
-    if (loaded) {
+    if (loaded && !isLoading && hasSeenOnboarding !== null) {
       SplashScreen.hideAsync();
       if (isAuthenticated) {
-        fetchQuizBooks(); // ✅ 認証済みの場合のみデータ取得
+        fetchQuizBooks();
       }
     }
-  }, [loaded, isAuthenticated]); // ✅ isAuthenticated を依存配列に追加
+  }, [loaded, isLoading, isAuthenticated, hasSeenOnboarding]);
 
-  if (!loaded) {
+  if (!loaded || isLoading || hasSeenOnboarding === null) {
     return null;
   }
 
-  const authRoutes = ['/login', '/signup'];
-  
-  // ✅ 未認証の場合、認証画面以外ならログインへリダイレクト
-  if (!isAuthenticated && !authRoutes.includes(pathname)) {
+  const authRoutes = ['/login', '/signup', '/verify-email'];
+  const onboardingRoute = '/onboarding';
+
+  // ✅ オンボーディング未完了かつ認証済みでない場合、オンボーディングへリダイレクト
+  if (!hasSeenOnboarding && !isAuthenticated && pathname !== onboardingRoute) {
+    return <Redirect href="/onboarding" />;
+  }
+
+  // ✅ 未認証の場合、認証画面・オンボーディング画面以外ならログインへリダイレクト
+  if (!isAuthenticated && !authRoutes.includes(pathname) && pathname !== onboardingRoute) {
     return <Redirect href="/login" />;
   }
 
-  // ✅ 認証済みの場合、認証画面にいたらホームへリダイレクト
-  if (isAuthenticated && authRoutes.includes(pathname)) {
+  // ✅ 認証済みの場合、認証画面にいたらホームへリダイレクト（verify-emailは除外）
+  if (isAuthenticated && authRoutes.includes(pathname) && pathname !== '/verify-email') {
     return <Redirect href="/(tabs)" />;
   }
 
+  // ✅ 認証済みの場合、オンボーディング画面にいたらホームへリダイレクト
+  if (isAuthenticated && pathname === onboardingRoute) {
+    return <Redirect href="/(tabs)" />;
+  }
 
   return <RootLayoutNav />;
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const isDark = useThemeStore(state => state.isDark);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -93,6 +121,7 @@ function RootLayoutNav() {
           animationDuration: 50,
         }}
       />
+      <Toast />
     </ThemeProvider>
   );
 }

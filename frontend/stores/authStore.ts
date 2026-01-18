@@ -1,16 +1,12 @@
 import { create } from 'zustand';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authApi, setAuthToken } from '@/services/api';
-
-interface User {
-  id: string;
-  email: string;
-  name: string | null;
-}
+import { supabase } from '@/lib/supabase';
+import { Session, User } from '@supabase/supabase-js';
+import { Profile } from '@/types/database';
 
 interface AuthState {
   user: User | null;
-  token: string | null;
+  profile: Profile | null;
+  session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
 
@@ -18,82 +14,147 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
-  loadToken: () => Promise<void>; // アプリ起動時にトークン読み込み
+  initialize: () => Promise<void>;
+  fetchProfile: () => Promise<void>;
+  updateProfile: (data: Partial<Profile>) => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  token: null,
-  isLoading: false,
+  profile: null,
+  session: null,
+  isLoading: true,
   isAuthenticated: false,
+
+  initialize: async () => {
+    try {
+      // 現在のセッションを取得
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        set({
+          user: session.user,
+          session,
+          isAuthenticated: true,
+        });
+        // プロファイルを取得
+        await get().fetchProfile();
+      }
+
+      // 認証状態の変化をリッスン
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        set({
+          user: session?.user ?? null,
+          session,
+          isAuthenticated: !!session,
+        });
+
+        if (session) {
+          await get().fetchProfile();
+        } else {
+          set({ profile: null });
+        }
+      });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  fetchProfile: async () => {
+    const { user } = get();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (!error && data) {
+      set({ profile: data });
+    }
+  },
+
+  updateProfile: async (data: Partial<Profile>) => {
+    const { user } = get();
+    if (!user) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(data)
+      .eq('id', user.id);
+
+    if (error) throw error;
+
+    await get().fetchProfile();
+  },
 
   login: async (email: string, password: string) => {
     set({ isLoading: true });
     try {
-      const response = await authApi.login(email, password);
-      const { access_token, user } = response.data;
-  
-      // トークンを保存
-      await AsyncStorage.setItem('token', access_token);
-      setAuthToken(access_token);
-  
-      set({
-        user,
-        token: access_token,
-        isAuthenticated: true,
-        isLoading: false,
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
-    } catch (error) {
+
+      if (error) throw error;
+
+      set({
+        user: data.user,
+        session: data.session,
+        isAuthenticated: true,
+      });
+
+      await get().fetchProfile();
+    } finally {
       set({ isLoading: false });
-      throw error;
     }
   },
 
   register: async (email: string, password: string, name?: string) => {
     set({ isLoading: true });
     try {
-      const response = await authApi.register(email, password, name);
-      const { access_token, user } = response.data;
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
 
-      // トークンを保存
-      await AsyncStorage.setItem('token', access_token);
-      setAuthToken(access_token);
+      if (error) throw error;
+
+      // 登録後、プロファイルに名前を設定
+      if (data.user && name) {
+        await supabase
+          .from('profiles')
+          .update({ name })
+          .eq('id', data.user.id);
+      }
 
       set({
-        user,
-        token: access_token,
-        isAuthenticated: true,
-        isLoading: false,
+        user: data.user,
+        session: data.session,
+        isAuthenticated: !!data.session,
       });
-    } catch (error) {
+
+      if (data.session) {
+        await get().fetchProfile();
+      }
+    } finally {
       set({ isLoading: false });
-      throw error;
     }
   },
 
   logout: async () => {
-    await AsyncStorage.removeItem('token');
-    setAuthToken('');
+    await supabase.auth.signOut();
     set({
       user: null,
-      token: null,
+      profile: null,
+      session: null,
       isAuthenticated: false,
     });
-  },
-
-  loadToken: async () => {
-    try {
-      const token = await AsyncStorage.getItem('token');
-      if (token) {
-        setAuthToken(token);
-        // TODO: トークンからユーザー情報を取得するAPIを後で実装
-        set({
-          token,
-          isAuthenticated: true,
-        });
-      }
-    } catch (error) {
-      console.error('Failed to load token:', error);
-    }
   },
 }));

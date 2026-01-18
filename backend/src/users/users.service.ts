@@ -1,61 +1,158 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from './entities/user.entity';
-import * as bcrypt from 'bcrypt';
+import { SupabaseService } from '../supabase/supabase.service';
 import { UpdateUserGoalDto } from './dto/update-user-goal.dto';
+
+export interface UserProfile {
+  id: string;
+  email: string | null;
+  name: string | null;
+  goal: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 @Injectable()
 export class UsersService {
-  constructor(
-    @InjectRepository(User)
-    private usersRepository: Repository<User>,
-  ) { }
+  constructor(private supabaseService: SupabaseService) {}
 
-  async create(email: string, password: string, name?: string): Promise<User> {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = this.usersRepository.create({
-      email,
-      password: hashedPassword,
-      name,
-    });
-    return this.usersRepository.save(user);
+  async findById(id: string): Promise<UserProfile | null> {
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return this.mapToUserProfile(data);
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email } });
-  }
-
-  async findById(id: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { id } });
-  }
-
-  async findOne(userId: string): Promise<User> {
+  async findOne(userId: string): Promise<UserProfile> {
     const user = await this.findById(userId);
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    //パスワードは返さない
-    const { password, ...userWithoutPassword } = user;
-
-    return userWithoutPassword as User;
+    return user;
   }
 
-  async updateGoal(userId: string, updateUserGoalDto: UpdateUserGoalDto): Promise<User> {
-    const user = await this.findById(userId);
-    if (!user) {
+  async updateGoal(userId: string, updateUserGoalDto: UpdateUserGoalDto): Promise<UserProfile> {
+    const supabase = this.supabaseService.getClient();
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ goal: updateUserGoalDto.goal })
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error || !data) {
       throw new NotFoundException('User not found');
     }
 
-    user.goal = updateUserGoalDto.goal;
+    return this.mapToUserProfile(data);
+  }
 
-    const savedUser = await this.usersRepository.save(user);
+  async deleteAccount(userId: string): Promise<void> {
+    const supabase = this.supabaseService.getClient();
 
-    //パスワードは返さない
-    const { password, ...userWithoutPassword } = savedUser;
+    // 1. 問題集に関連するデータを削除（カスケードで削除されるが念のため）
+    // study_records → question_answers → sections → chapters → quiz_books → categories
 
-    return userWithoutPassword as User;
+    // study_recordsを削除
+    await supabase
+      .from('study_records')
+      .delete()
+      .eq('user_id', userId);
+
+    // quiz_booksを取得して関連データを削除
+    const { data: quizBooks } = await supabase
+      .from('quiz_books')
+      .select('id')
+      .eq('user_id', userId);
+
+    if (quizBooks && quizBooks.length > 0) {
+      const quizBookIds = quizBooks.map(qb => qb.id);
+
+      // chaptersを取得
+      const { data: chapters } = await supabase
+        .from('chapters')
+        .select('id')
+        .in('quiz_book_id', quizBookIds);
+
+      if (chapters && chapters.length > 0) {
+        const chapterIds = chapters.map(c => c.id);
+
+        // sectionsを取得
+        const { data: sections } = await supabase
+          .from('sections')
+          .select('id')
+          .in('chapter_id', chapterIds);
+
+        if (sections && sections.length > 0) {
+          const sectionIds = sections.map(s => s.id);
+
+          // question_answers（section経由）を削除
+          await supabase
+            .from('question_answers')
+            .delete()
+            .in('section_id', sectionIds);
+        }
+
+        // question_answers（chapter経由）を削除
+        await supabase
+          .from('question_answers')
+          .delete()
+          .in('chapter_id', chapterIds);
+
+        // sectionsを削除
+        await supabase
+          .from('sections')
+          .delete()
+          .in('chapter_id', chapterIds);
+
+        // chaptersを削除
+        await supabase
+          .from('chapters')
+          .delete()
+          .in('quiz_book_id', quizBookIds);
+      }
+
+      // quiz_booksを削除
+      await supabase
+        .from('quiz_books')
+        .delete()
+        .eq('user_id', userId);
+    }
+
+    // 2. categoriesを削除
+    await supabase
+      .from('categories')
+      .delete()
+      .eq('user_id', userId);
+
+    // 3. profilesを削除
+    await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    // 4. Supabase Authのユーザー削除はクライアント側で行う
+    // （サービスロールキーがないためサーバー側からは削除できない）
+  }
+
+  private mapToUserProfile(data: any): UserProfile {
+    return {
+      id: data.id,
+      email: data.email,
+      name: data.name,
+      goal: data.goal,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
   }
 }

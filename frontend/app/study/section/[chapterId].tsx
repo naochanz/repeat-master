@@ -1,15 +1,17 @@
 import EditDeleteModal from '@/app/_compornents/EditDeleteModal';
 import CustomTabBar from '@/components/CustomTabBar';
 import Card from '@/components/ui/Card';
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, ArrowLeft, MoreVertical, Plus } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SectionList = () => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { chapterId } = useLocalSearchParams();
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
@@ -48,6 +50,33 @@ const SectionList = () => {
 
   const { book, chapter } = chapterData;
   const sections = chapter.sections || [];
+  const displayRound = (book.currentRound || 0) + 1;
+  const isCompleted = !!book.completedAt;
+
+  // 節ごとの正答率を計算（現在の周回）
+  const getSectionRate = (section: typeof sections[0]) => {
+    if (!section.questionAnswers || section.questionAnswers.length === 0) {
+      return 0;
+    }
+
+    let totalQuestions = 0;
+    let correctAnswers = 0;
+
+    section.questionAnswers.forEach((qa) => {
+      const roundAttempt = qa.attempts?.find(
+        (a: any) => a.round === displayRound && a.resultConfirmFlg
+      );
+      if (roundAttempt) {
+        totalQuestions++;
+        if (roundAttempt.result === '○') {
+          correctAnswers++;
+        }
+      }
+    });
+
+    if (totalQuestions === 0) return 0;
+    return Math.round((correctAnswers / totalQuestions) * 100);
+  };
 
   const handleSelectUseSections = async (useSections: boolean) => {
     await updateQuizBook(book.id, { useSections });
@@ -70,7 +99,9 @@ const SectionList = () => {
     });
   };
 
-  const handleChapterPress = () => {
+  const handleChapterPress = async () => {
+    // 節を利用しないを選択したのでuseSectionsをfalseに設定
+    await updateQuizBook(book.id, { useSections: false });
     router.push({
       pathname: '/study/question/[id]',
       params: { id: chapter.id }
@@ -128,12 +159,12 @@ const SectionList = () => {
                   <Text
                     numberOfLines={1}
                     ellipsizeMode="tail"
-                    style={{ fontSize: 16, fontWeight: "bold", textAlign: 'center' }}
+                    style={{ fontSize: 16, fontWeight: "bold", textAlign: 'center', color: theme.colors.secondary[900] }}
                   >
                     {book.title}
                   </Text>
 
-                  <Text style={{ fontSize: 14, textAlign: 'center' }}>
+                  <Text style={{ fontSize: 14, textAlign: 'center', color: theme.colors.secondary[700] }}>
                     {chapter.title?.trim()
                       ? `第${chapter.chapterNumber}章 ${chapter.title}`
                       : `第${chapter.chapterNumber}章`}
@@ -155,7 +186,7 @@ const SectionList = () => {
             <Text style={styles.selectionTitle}>節を使用しますか？</Text>
             <Text style={styles.selectionDescription}>
               この問題集で節を使用するかどうかを選択してください。{'\n'}
-              後から設定で変更することもできます。
+              ※ 問題集編集モーダルから後で変更できます
             </Text>
             <View style={styles.selectionButtons}>
               <TouchableOpacity
@@ -189,13 +220,15 @@ const SectionList = () => {
                 <Text
                   numberOfLines={1}
                   ellipsizeMode="tail"
-                  style={{ fontSize: 16, fontWeight: "bold", textAlign: 'center' }}
+                  style={{ fontSize: 16, fontWeight: "bold", textAlign: 'center', color: theme.colors.secondary[900] }}
                 >
                   {book.title}
                 </Text>
 
-                <Text style={{ fontSize: 14, textAlign: 'center' }}>
-                  {`第${chapter.chapterNumber}章 ${chapter.title}`}
+                <Text style={{ fontSize: 14, textAlign: 'center', color: theme.colors.secondary[700] }}>
+                  {chapter.title?.trim()
+                    ? `第${chapter.chapterNumber}章 ${chapter.title}`
+                    : `第${chapter.chapterNumber}章`}
                 </Text>
               </View>
             ),
@@ -238,13 +271,15 @@ const SectionList = () => {
                   activeOpacity={0.7}
                 >
                   <Card style={styles.sectionCard}>
-                    <TouchableOpacity
-                      style={styles.menuButton}
-                      onPress={(e) => handleMenuPress(section, e)}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                      <MoreVertical size={20} color={theme.colors.secondary[600]} />
-                    </TouchableOpacity>
+                    {!isCompleted && (
+                      <TouchableOpacity
+                        style={styles.menuButton}
+                        onPress={(e) => handleMenuPress(section, e)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <MoreVertical size={20} color={theme.colors.secondary[600]} />
+                      </TouchableOpacity>
+                    )}
 
                     <View style={styles.sectionHeader}>
                       <Text style={styles.sectionNumber}>
@@ -257,9 +292,25 @@ const SectionList = () => {
                       )}
                     </View>
                     <View style={styles.sectionStats}>
-                      <Text style={styles.questionCount}>
-                        {section.questionCount}問
-                      </Text>
+                      <View style={styles.statItem}>
+                        <Text style={styles.statLabel}>{displayRound}周目 正答率</Text>
+                        <Text style={[styles.statValue, {
+                          color: getSectionRate(section) >= 80
+                            ? theme.colors.success[600]
+                            : getSectionRate(section) >= 60
+                              ? theme.colors.warning[600]
+                              : theme.colors.error[600]
+                        }]}>
+                          {getSectionRate(section)}%
+                        </Text>
+                      </View>
+                      <View style={styles.divider} />
+                      <View style={styles.statItem}>
+                        <Text style={styles.statLabel}>問題数</Text>
+                        <Text style={styles.statValue}>
+                          {section.questionCount}問
+                        </Text>
+                      </View>
                     </View>
                   </Card>
                 </TouchableOpacity>
@@ -267,14 +318,16 @@ const SectionList = () => {
             ))
           )}
 
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setShowAddModal(true)}
-            activeOpacity={0.7}
-          >
-            <Plus size={24} color={theme.colors.primary[600]} strokeWidth={2.5} />
-            <Text style={styles.addButtonText}>節を追加</Text>
-          </TouchableOpacity>
+          {!isCompleted && (
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => setShowAddModal(true)}
+              activeOpacity={0.7}
+            >
+              <Plus size={24} color={theme.colors.primary[600]} strokeWidth={2.5} />
+              <Text style={styles.addButtonText}>節を追加</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
 
         {/* モーダル等は同じ */}
@@ -335,7 +388,7 @@ const SectionList = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   wrapper: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],
@@ -476,9 +529,32 @@ const styles = StyleSheet.create({
     fontFamily: 'ZenKaku-Bold',
   },
   sectionStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingTop: theme.spacing.sm,
     borderTopWidth: 1,
     borderTopColor: theme.colors.secondary[200],
-    paddingTop: theme.spacing.sm,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statLabel: {
+    fontSize: theme.typography.fontSizes.xs,
+    color: theme.colors.secondary[600],
+    marginBottom: 2,
+    fontFamily: 'ZenKaku-Regular',
+  },
+  statValue: {
+    fontSize: theme.typography.fontSizes.lg,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+  },
+  divider: {
+    width: 1,
+    height: 24,
+    backgroundColor: theme.colors.secondary[200],
   },
   questionCount: {
     fontSize: theme.typography.fontSizes.sm,

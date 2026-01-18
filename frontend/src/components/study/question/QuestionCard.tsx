@@ -1,7 +1,7 @@
 // frontend/src/components/study/question/QuestionCard.tsx
 
-import { theme } from '@/constants/theme';
-import React, { useEffect, useRef, useState } from 'react';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getCardColors, questionColors, QuestionColor } from '@/src/utils/questionHelpers';
@@ -63,6 +63,9 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   history,
   onPress
 }) => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const confirmedHistory = history.filter(a => a.resultConfirmFlg === true);
 
   // ✅ 各カードの色を取得（ヘルパー関数を呼ぶだけ）
@@ -480,7 +483,7 @@ const QuestionCard: React.FC<QuestionCardProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   stackContainer: {
     position: 'relative',
     marginHorizontal: theme.spacing.md,
@@ -526,12 +529,12 @@ const styles = StyleSheet.create({
   },
   historyDate: {
     fontSize: theme.typography.fontSizes.xs,
-    color: theme.colors.secondary[500],
+    color: '#4B5563',
   },
   questionNumber: {
     fontSize: theme.typography.fontSizes.xl,
     fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.secondary[900],
+    color: '#1F2937',
     fontFamily: 'ZenKaku-Bold',
   },
   answerMark: {
@@ -541,7 +544,7 @@ const styles = StyleSheet.create({
   attemptNumber: {
     fontSize: theme.typography.fontSizes.xs,
     fontWeight: theme.typography.fontWeights.semibold,
-    color: theme.colors.secondary[600],
+    color: '#374151',
     fontFamily: 'ZenKaku-Medium',
   },
   cardDate: {
@@ -549,7 +552,7 @@ const styles = StyleSheet.create({
     bottom: theme.spacing.sm,
     left: theme.spacing.sm,
     fontSize: theme.typography.fontSizes.xs,
-    color: theme.colors.secondary[500],
+    color: '#4B5563',
     fontFamily: 'ZenKaku-Regular',
   },
  // ✅ 連続バッジスタイル（展開時）
@@ -567,7 +570,7 @@ const styles = StyleSheet.create({
 consecutiveText: {
   fontSize: theme.typography.fontSizes.xs,
   fontWeight: theme.typography.fontWeights.bold as any,
-  color: theme.colors.secondary[900],  // ← ダークグレー文字
+  color: '#1F2937',
   fontFamily: 'ZenKaku-Bold',
 },
 
@@ -578,12 +581,12 @@ consecutiveBadgeStack: {
   paddingVertical: 1,
   borderRadius: theme.borderRadius.xs,
   borderWidth: 1.5,
-  borderColor: theme.colors.secondary[400],  // ← グレー系の枠
+  borderColor: '#9CA3AF',
 },
 consecutiveTextStack: {
   fontSize: 10,
   fontWeight: theme.typography.fontWeights.bold as any,
-  color: theme.colors.secondary[900],  // ← ダークグレー文字
+  color: '#1F2937',
   fontFamily: 'ZenKaku-Bold',
 },
 });

@@ -1,6 +1,7 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
-import { router, useFocusEffect, useNavigation } from 'expo-router';
+import { useSubscriptionStore } from '@/stores/subscriptionStore';
+import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { AlertCircle, Edit, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
@@ -12,8 +13,19 @@ import ConfirmDialog from '../_compornents/ConfirmDialog';
 import QuizBookCard from '../_compornents/QuizBookCard';
 import QuizBookTitleModal from '../_compornents/QuizBookTitleModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { showSuccessToast, showErrorToast, showWarningToast } from '@/utils/toast';
 
 export default function LibraryScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  const { scannedBookTitle, scannedBookIsbn, scannedBookThumbnail, openCategoryModal } = useLocalSearchParams<{
+    scannedBookTitle?: string;
+    scannedBookIsbn?: string;
+    scannedBookThumbnail?: string;
+    openCategoryModal?: string;
+  }>();
+
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const categories = useQuizBookStore(state => state.categories);
   const fetchCategories = useQuizBookStore(state => state.fetchCategories);
@@ -22,7 +34,11 @@ export default function LibraryScreen() {
   const deleteCategory = useQuizBookStore(state => state.deleteCategory);
   const addQuizBook = useQuizBookStore(state => state.addQuizBook);
   const deleteQuizBook = useQuizBookStore(state => state.deleteQuizBook);
-  
+  const completeQuizBook = useQuizBookStore(state => state.completeQuizBook);
+  const reactivateQuizBook = useQuizBookStore(state => state.reactivateQuizBook);
+
+  const { isPremium, canCreateQuizBook, fetchActiveQuizBookCount } = useSubscriptionStore();
+
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [addItemModalVisible, setAddItemModalVisible] = useState(false);
@@ -30,6 +46,9 @@ export default function LibraryScreen() {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [titleModalVisible, setTitleModalVisible] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
+  const [scannedTitle, setScannedTitle] = useState<string>('');
+  const [scannedIsbn, setScannedIsbn] = useState<string>('');
+  const [scannedThumbnail, setScannedThumbnail] = useState<string>('');
 
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -45,6 +64,19 @@ export default function LibraryScreen() {
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  // バーコードスキャンから戻ってきた場合の処理
+  useEffect(() => {
+    if (scannedBookTitle && openCategoryModal === 'true') {
+      setScannedTitle(scannedBookTitle);
+      setScannedIsbn(scannedBookIsbn || '');
+      setScannedThumbnail(scannedBookThumbnail || '');
+      setIsAddingCategory(false);
+      setCategoryModalVisible(true);
+      // パラメータをクリア
+      router.setParams({ scannedBookTitle: undefined, scannedBookIsbn: undefined, scannedBookThumbnail: undefined, openCategoryModal: undefined });
+    }
+  }, [scannedBookTitle, scannedBookIsbn, scannedBookThumbnail, openCategoryModal]);
 
   useFocusEffect(
     useCallback(() => {
@@ -116,6 +148,13 @@ export default function LibraryScreen() {
   };
 
   const handleAddQuizBook = () => {
+    // 無料ユーザーで既にアクティブな問題集がある場合はペイウォールを表示
+    if (!canCreateQuizBook()) {
+      setAddItemModalVisible(false);
+      router.push('/paywall?source=add_quiz_book');
+      return;
+    }
+
     if (categories.length === 0) {
       setAddItemModalVisible(false);
       setIsAddingCategory(true);
@@ -125,6 +164,18 @@ export default function LibraryScreen() {
     setAddItemModalVisible(false);
     setIsAddingCategory(false);
     setCategoryModalVisible(true);
+  };
+
+  const handleScanBarcode = () => {
+    // 無料ユーザーで既にアクティブな問題集がある場合はペイウォールを表示
+    if (!canCreateQuizBook()) {
+      setAddItemModalVisible(false);
+      router.push('/paywall?source=add_quiz_book');
+      return;
+    }
+
+    setAddItemModalVisible(false);
+    router.push('/barcode-scanner');
   };
 
   const handleCategorySelect = async (categoryNameOrId: string) => {
@@ -176,9 +227,12 @@ export default function LibraryScreen() {
 
   const handleTitleConfirm = async (title: string) => {
     try {
-      await addQuizBook(title, selectedCategoryId, false);
+      await addQuizBook(title, selectedCategoryId, true, scannedIsbn || undefined, scannedThumbnail || undefined);
       setTitleModalVisible(false);
       setSelectedCategoryId('');
+      setScannedTitle('');
+      setScannedIsbn('');
+      setScannedThumbnail('');
     } catch (error) {
       console.error('Failed to confirm Title:', error);
     }
@@ -187,6 +241,9 @@ export default function LibraryScreen() {
   const handleTitleCancel = () => {
     setTitleModalVisible(false);
     setSelectedCategoryId('');
+    setScannedTitle('');
+    setScannedIsbn('');
+    setScannedThumbnail('');
   };
 
   const handleCardPress = (quizBookId: string) => {
@@ -196,6 +253,35 @@ export default function LibraryScreen() {
   const handleDelete = async (quizBookId: string) => {
     setDeleteTargetId(quizBookId);
     setDeleteDialogVisible(true);
+  };
+
+  const handleComplete = async (quizBookId: string) => {
+    try {
+      await completeQuizBook(quizBookId);
+      await fetchActiveQuizBookCount();
+      showSuccessToast('問題集を完了しました！');
+      // ペイウォールを表示
+      router.push('/paywall?source=complete');
+    } catch (error) {
+      // エラーはストアで処理される
+    }
+  };
+
+  const handleReactivate = async (quizBookId: string) => {
+    // 無料ユーザーで他にアクティブな問題集がある場合は再開できない
+    if (!isPremium && !canCreateQuizBook()) {
+      showWarningToast('プレミアムプランにアップグレードすると、複数の問題集を同時に使用できます');
+      router.push('/paywall?source=reactivate');
+      return;
+    }
+
+    try {
+      await reactivateQuizBook(quizBookId);
+      await fetchActiveQuizBookCount();
+      showSuccessToast('問題集を再開しました');
+    } catch (error) {
+      // エラーはストアで処理される
+    }
   };
 
   const confirmDelete = async () => {
@@ -266,10 +352,6 @@ export default function LibraryScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Animated.View style={[{ flex: 1 }, animatedStyle]}>
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>登録済み問題集</Text>
-        </View>
-
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -315,6 +397,8 @@ export default function LibraryScreen() {
                             quizBook={book}
                             onPress={() => handleCardPress(book.id)}
                             onDelete={() => handleDelete(book.id)}
+                            onComplete={() => handleComplete(book.id)}
+                            onReactivate={() => handleReactivate(book.id)}
                             existingCategories={categories.map(c => c.name)}
                           />
                         </View>
@@ -341,6 +425,7 @@ export default function LibraryScreen() {
         visible={addItemModalVisible}
         onAddCategory={handleAddCategory}
         onAddQuizBook={handleAddQuizBook}
+        onScanBarcode={handleScanBarcode}
         onClose={() => setAddItemModalVisible(false)}
       />
 
@@ -363,6 +448,7 @@ export default function LibraryScreen() {
       <QuizBookTitleModal
         visible={titleModalVisible}
         categoryName={categories.find(c => c.id === selectedCategoryId)?.name || ''}
+        initialTitle={scannedTitle}
         onConfirm={handleTitleConfirm}
         onCancel={handleTitleCancel}
       />
@@ -456,24 +542,10 @@ export default function LibraryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.neutral.white,
-  },
-  sectionContainer: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    backgroundColor: theme.colors.neutral.white,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.secondary[200],
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: theme.typography.fontSizes.lg,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'Zenkaku',
   },
   scrollView: {
     flex: 1,

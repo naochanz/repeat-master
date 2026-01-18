@@ -1,13 +1,17 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUserStore } from '@/stores/userStore';
+import { useAuthStore } from '@/stores/authStore';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { Edit3, Target } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
-import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useState, useMemo, useRef } from 'react';
+import { ActivityIndicator, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { CommonActions } from '@react-navigation/native';
 
 export default function DashboardScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   // ✅ バックエンドから取得
   const user = useUserStore(state => state.user);
   const recentStudyRecords = useUserStore(state => state.recentStudyRecords);
@@ -15,11 +19,30 @@ export default function DashboardScreen() {
   const fetchRecentStudyRecords = useUserStore(state => state.fetchRecentStudyRecords);
   const updateUserGoal = useUserStore(state => state.updateUserGoal);
 
+  // ユーザープロファイル
+  const profile = useAuthStore(state => state.profile);
+
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [tempGoal, setTempGoal] = useState('');
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const hasLoadedOnce = useRef(false);
 
   const navigation = useNavigation();
   const opacity = useSharedValue(0);
+
+  // 時間帯による挨拶
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    const name = profile?.name || 'ゲスト';
+
+    if (hour >= 5 && hour < 12) {
+      return `おはようございます、${name}さん`;
+    } else if (hour >= 12 && hour < 18) {
+      return `こんにちは、${name}さん`;
+    } else {
+      return `おかえりなさい、${name}さん`;
+    }
+  }, [profile?.name]);
 
   // ✅ 画面フォーカス時にデータを取得
   useFocusEffect(
@@ -27,8 +50,18 @@ export default function DashboardScreen() {
       opacity.value = 0;
 
       // データ取得
-      fetchUser();
-      fetchRecentStudyRecords();
+      const loadData = async () => {
+        if (!hasLoadedOnce.current) {
+          setIsInitialLoading(true);
+        }
+        try {
+          await Promise.all([fetchUser(), fetchRecentStudyRecords()]);
+        } finally {
+          setIsInitialLoading(false);
+          hasLoadedOnce.current = true;
+        }
+      };
+      loadData();
 
       // スタディスタックの履歴をリセット
       const rootState = navigation.getState();
@@ -87,6 +120,16 @@ export default function DashboardScreen() {
     }
   };
 
+  if (isInitialLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary[600]} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <Animated.View style={[{ flex: 1 }, animatedStyle]}>
@@ -95,6 +138,9 @@ export default function DashboardScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {/* 挨拶 */}
+          <Text style={styles.greeting}>{greeting}</Text>
+
           <TouchableOpacity
             style={styles.goalCard}
             onPress={handleEditGoal}
@@ -110,7 +156,7 @@ export default function DashboardScreen() {
               <Edit3 size={20} color={theme.colors.secondary[100]} />
             </View>
             <Text style={styles.goalText}>
-              {user?.goal || '目標を設定してください'}
+              {user?.goal || '目標を設定しましょう'}
             </Text>
           </TouchableOpacity>
 
@@ -127,9 +173,14 @@ export default function DashboardScreen() {
                     activeOpacity={0.7}
                   >
                     <View style={styles.recentCardTop}>
-                      <Text style={styles.recentCardPath} numberOfLines={1}>
-                        {record.quizBook.title} 問題{record.questionNumber}
-                      </Text>
+                      <View style={styles.recentCardPathContainer}>
+                        <Text style={styles.recentCardBookTitle} numberOfLines={1} ellipsizeMode="tail">
+                          {record.quizBook.title}
+                        </Text>
+                        <Text style={styles.recentCardLocation}>
+                          {' '}第{record.chapterNumber}章{record.sectionNumber ? ` 第${record.sectionNumber}節` : ''} 問{record.questionNumber}
+                        </Text>
+                      </View>
                       <Text style={styles.recentCardQuestion}>
                         {record.result}
                       </Text>
@@ -203,7 +254,7 @@ export default function DashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],
@@ -211,9 +262,22 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   scrollContent: {
     padding: theme.spacing.lg,
     paddingTop: theme.spacing.md,
+  },
+  greeting: {
+    fontSize: theme.typography.fontSizes.xl,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   goalCard: {
     backgroundColor: theme.colors.primary[600],
@@ -377,12 +441,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing.xs,
   },
-  recentCardPath: {
+  recentCardPathContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: theme.spacing.sm,
+  },
+  recentCardBookTitle: {
     fontSize: theme.typography.fontSizes.sm,
     fontWeight: theme.typography.fontWeights.bold,
     color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Bold',
-    flex: 1,
+    flexShrink: 1,
+    maxWidth: 100,
+  },
+  recentCardLocation: {
+    fontSize: theme.typography.fontSizes.sm,
+    fontWeight: theme.typography.fontWeights.bold,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+    flexShrink: 0,
   },
   recentCardDate: {
     fontSize: theme.typography.fontSizes.xs,

@@ -1,6 +1,6 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { AlertTriangle } from 'lucide-react-native';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface ConfirmDialogProps {
@@ -18,6 +18,9 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   return (
     <Modal
       visible={visible}
@@ -60,7 +63,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

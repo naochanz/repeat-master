@@ -21,6 +21,8 @@ export interface StudyRecord {
     };
     chapterId: string;
     sectionId?: string;
+    chapterNumber?: number;
+    sectionNumber?: number;
     questionNumber: number;
     result: '○' | '×';
     round: number;

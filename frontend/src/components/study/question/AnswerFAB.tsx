@@ -1,5 +1,5 @@
-import { theme } from '@/constants/theme';
-import React from 'react';
+import { useAppTheme } from '@/hooks/useAppTheme';
+import React, { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface AnswerFABProps {
@@ -9,6 +9,9 @@ interface AnswerFABProps {
 }
 
 const AnswerFAB: React.FC<AnswerFABProps> = ({ questionNumber, onAnswer, isLoading = false }) => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   // CustomTabBarの高さ(60) + パディング(5)
   const CUSTOM_TAB_BAR_HEIGHT = 15;
   const PADDING_ABOVE_TAB = 5;
@@ -49,7 +52,7 @@ const AnswerFAB: React.FC<AnswerFABProps> = ({ questionNumber, onAnswer, isLoadi
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   fabContainer: {
     position: 'absolute',
     left: 0,

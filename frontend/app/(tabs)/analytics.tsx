@@ -1,4 +1,4 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -14,13 +14,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LineChart } from 'react-native-chart-kit';
 import { router, useFocusEffect } from 'expo-router';
-import { List, TrendingDown, X } from 'lucide-react-native';
+import { List, TrendingDown, X, AlertCircle } from 'lucide-react-native';
 import { quizBookApi } from '@/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_MARGIN = 20;
-const CARD_WIDTH = SCREEN_WIDTH - (CARD_MARGIN * 2);
-const SNAP_INTERVAL = CARD_WIDTH + (CARD_MARGIN - 15) + CARD_MARGIN; // marginLeft(5) + marginRight(20)
+const CAROUSEL_ITEM_WIDTH = SCREEN_WIDTH - 60; // 両端に30pxずつ余白を残す
+const CARD_GAP = 10;
+const SNAP_INTERVAL = CAROUSEL_ITEM_WIDTH + CARD_GAP; // カード幅 + ギャップ
 
 interface RoundStats {
   round: number;
@@ -36,6 +36,9 @@ interface QuizBookAnalytics {
 }
 
 export default function AnalyticsScreen() {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const categories = useQuizBookStore(state => state.categories);
   const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
@@ -57,20 +60,35 @@ export default function AnalyticsScreen() {
 
   const loadData = async () => {
     setLoading(true);
-    await Promise.all([fetchQuizBooks(), fetchCategories()]);
+    try {
+      await Promise.all([fetchQuizBooks(), fetchCategories()]);
 
-    // すべての問題集の分析データを取得
-    const analyticsData: { [quizBookId: string]: QuizBookAnalytics } = {};
-    for (const book of quizBooks) {
-      try {
-        const response = await quizBookApi.getAnalytics(book.id);
-        analyticsData[book.id] = response.data;
-      } catch (error) {
-        console.error(`Failed to fetch analytics for ${book.id}:`, error);
+      // ストアから最新のquizBooksを取得
+      const currentQuizBooks = useQuizBookStore.getState().quizBooks;
+
+      // 問題集がない場合は早期リターン
+      if (currentQuizBooks.length === 0) {
+        setAnalytics({});
+        setLoading(false);
+        return;
       }
+
+      // すべての問題集の分析データを取得
+      const analyticsData: { [quizBookId: string]: QuizBookAnalytics } = {};
+      for (const book of currentQuizBooks) {
+        try {
+          const response = await quizBookApi.getAnalytics(book.id);
+          analyticsData[book.id] = response.data;
+        } catch (error) {
+          console.error(`Failed to fetch analytics for ${book.id}:`, error);
+        }
+      }
+      setAnalytics(analyticsData);
+    } catch (error) {
+      console.error('Failed to load analytics data:', error);
+    } finally {
+      setLoading(false);
     }
-    setAnalytics(analyticsData);
-    setLoading(false);
   };
 
   // 資格グループごとに問題集をグループ化（全カテゴリを表示）
@@ -152,8 +170,8 @@ export default function AnalyticsScreen() {
     return (
       <LineChart
         data={chartData}
-        width={CARD_WIDTH - 40}
-        height={220}
+        width={CAROUSEL_ITEM_WIDTH - 40}
+        height={200}
         chartConfig={{
           backgroundColor: theme.colors.neutral.white,
           backgroundGradientFrom: theme.colors.neutral.white,
@@ -223,23 +241,28 @@ export default function AnalyticsScreen() {
                   }}
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  onScroll={(e) => handleScroll(categoryId, e)}
+                  onMomentumScrollEnd={(e) => handleScroll(categoryId, e)}
                   scrollEventThrottle={16}
                   snapToInterval={SNAP_INTERVAL}
+                  snapToAlignment="start"
                   decelerationRate="fast"
-                  contentContainerStyle={{ paddingRight: CARD_MARGIN }}
+                  contentContainerStyle={styles.carouselContent}
                 >
                   {group.books.map((book) => (
-                    <View key={book.id} style={styles.card}>
+                    <View key={book.id} style={styles.carouselCard}>
                       <TouchableOpacity onPress={() => router.push(`/study/${book.id}` as any)}>
-                        <Text style={styles.cardTitle}>{book.title}</Text>
+                        <Text style={styles.cardTitle} numberOfLines={1} ellipsizeMode="tail">{book.title}</Text>
                       </TouchableOpacity>
                       <View style={styles.chartContainer}>
                         {renderLineChart(book.id)}
                       </View>
-                      <TouchableOpacity style={styles.weaknessButton}>
+                      <TouchableOpacity
+                        style={styles.weaknessButton}
+                        onPress={() => router.push(`/analytics/${book.id}` as any)}
+                      >
                         <TrendingDown size={20} color={theme.colors.neutral.white} />
-                        <Text style={styles.weaknessButtonText}>{book.title}の詳細分析へ</Text>
+                        <Text style={styles.weaknessButtonTextTitle} numberOfLines={1} ellipsizeMode="tail">{book.title}</Text>
+                        <Text style={styles.weaknessButtonText}>の詳細分析へ</Text>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -266,7 +289,10 @@ export default function AnalyticsScreen() {
 
         {Object.keys(groupedQuizBooks).length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>問題集がありません</Text>
+            <View style={styles.emptyContent}>
+              <AlertCircle size={20} color={theme.colors.warning[600]} />
+              <Text style={styles.emptyStateText}>分析可能な問題集がありません</Text>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -306,7 +332,7 @@ export default function AnalyticsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral.white,
@@ -355,13 +381,17 @@ const styles = StyleSheet.create({
     fontFamily: 'ZenKaku-Medium',
     color: theme.colors.primary[600],
   },
-  card: {
-    width: CARD_WIDTH,
-    marginLeft: CARD_MARGIN - 15,
-    marginRight: CARD_MARGIN,
-    backgroundColor: theme.colors.neutral.white,
+  carouselContent: {
+    paddingHorizontal: 20,
+  },
+  carouselCard: {
+    width: CAROUSEL_ITEM_WIDTH,
+    marginRight: CARD_GAP,
+    backgroundColor: theme.colors.neutral[50],
     borderRadius: theme.borderRadius.xl,
     padding: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[200],
     ...theme.shadows.md,
   },
   cardTitle: {
@@ -378,11 +408,12 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.lg,
   },
   emptyChart: {
-    height: 220,
+    height: 200,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.colors.neutral[50],
     borderRadius: theme.borderRadius.lg,
+    width: CAROUSEL_ITEM_WIDTH - 40,
   },
   emptyChartText: {
     fontSize: theme.typography.fontSizes.base,
@@ -393,15 +424,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
     backgroundColor: theme.colors.error[600],
     paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
     borderRadius: theme.borderRadius.md,
   },
   weaknessButtonText: {
     fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Bold',
     color: theme.colors.neutral.white,
+    flexShrink: 0,
+  },
+  weaknessButtonTextTitle: {
+    fontSize: theme.typography.fontSizes.base,
+    fontFamily: 'ZenKaku-Bold',
+    color: theme.colors.neutral.white,
+    flexShrink: 1,
+    maxWidth: 120,
   },
   pagination: {
     flexDirection: 'row',
@@ -434,15 +474,20 @@ const styles = StyleSheet.create({
     color: theme.colors.secondary[500],
   },
   emptyState: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: theme.spacing['4xl'],
+    padding: theme.spacing.xl,
+  },
+  emptyContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyStateText: {
-    fontSize: theme.typography.fontSizes.lg,
+    marginLeft: theme.spacing.sm,
+    fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Medium',
-    color: theme.colors.secondary[500],
+    color: theme.colors.secondary[600],
   },
   modalOverlay: {
     flex: 1,

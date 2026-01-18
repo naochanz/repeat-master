@@ -1,9 +1,11 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { Tabs } from 'expo-router';
 import { Home, Library, Settings, LineChart } from 'lucide-react-native';
 import React from 'react';
 
 export default function TabLayout() {
+  const theme = useAppTheme();
+
   return (
     <Tabs
       screenOptions={{

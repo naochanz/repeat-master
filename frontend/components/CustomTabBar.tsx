@@ -1,11 +1,13 @@
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { usePathname, useRouter } from 'expo-router';
 import { Home, Library, Settings, LineChart } from 'lucide-react-native';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CustomTabBar = () => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -99,7 +101,7 @@ const CustomTabBar = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: theme.colors.neutral.white,

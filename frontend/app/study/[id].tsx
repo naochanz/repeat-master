@@ -1,17 +1,19 @@
 import EditDeleteModal from '@/app/_compornents/EditDeleteModal';
 import CustomTabBar from '@/components/CustomTabBar';
 import Card from '@/components/ui/Card';
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, MoreVertical, Plus, ArrowLeft } from 'lucide-react-native';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 
 const StudyHome = () => {
+    const theme = useAppTheme();
+    const styles = useMemo(() => createStyles(theme), [theme]);
     const { id } = useLocalSearchParams();
 
     const quizBooks = useQuizBookStore(state => state.quizBooks);
@@ -37,6 +39,7 @@ const StudyHome = () => {
 
     // ✅ 修正: quizBooks から直接検索
     const quizBook = quizBooks.find(book => book.id === id);
+    const isCompleted = !!quizBook?.completedAt;
 
     if (!quizBook) {
         return (
@@ -46,6 +49,8 @@ const StudyHome = () => {
         )
     }
 
+    const displayRound = (quizBook.currentRound || 0) + 1;
+
     const getChapterTotalQuestions = (chapter: typeof quizBook.chapters[0]) => {
         if (chapter.sections && chapter.sections.length > 0) {
             return chapter.sections.reduce((sum, section) => {
@@ -54,6 +59,39 @@ const StudyHome = () => {
         } else {
             return chapter.questionCount || 0;
         };
+    }
+
+    // フロントエンドで章の正答率を計算（現在の周回用）
+    const getChapterRate = (chapter: typeof quizBook.chapters[0]) => {
+        let totalQuestions = 0;
+        let correctAnswers = 0;
+
+        const processAnswers = (answers: any[]) => {
+            answers.forEach((qa) => {
+                const roundAttempt = qa.attempts?.find(
+                    (a: any) => a.round === displayRound && a.resultConfirmFlg
+                );
+                if (roundAttempt) {
+                    totalQuestions++;
+                    if (roundAttempt.result === '○') {
+                        correctAnswers++;
+                    }
+                }
+            });
+        };
+
+        if (chapter.sections && chapter.sections.length > 0) {
+            chapter.sections.forEach((section) => {
+                if (section.questionAnswers) {
+                    processAnswers(section.questionAnswers);
+                }
+            });
+        } else if (chapter.questionAnswers) {
+            processAnswers(chapter.questionAnswers);
+        }
+
+        if (totalQuestions === 0) return 0;
+        return Math.round((correctAnswers / totalQuestions) * 100);
     }
 
     const handleChapterPress = (chapter: typeof quizBook.chapters[0]) => {
@@ -184,7 +222,7 @@ const StudyHome = () => {
                             <Text
                                 numberOfLines={1}
                                 ellipsizeMode="tail"
-                                style={{ fontSize: 16, fontWeight: "bold", textAlign: 'center' }}
+                                style={{ fontSize: 16, fontWeight: "bold", textAlign: 'center', color: theme.colors.secondary[900] }}
                             >
                                 {quizBook.title}
                             </Text>
@@ -202,13 +240,15 @@ const StudyHome = () => {
             />
 
             <SafeAreaView style={styles.wrapper} edges={['left', 'right']}>
-                <TouchableOpacity
-                    style={styles.confirmRoundButton}
-                    onPress={handleConfirmRound}
-                    activeOpacity={0.7}
-                >
-                    <Text style={styles.confirmRoundButtonText}>周回を確定する</Text>
-                </TouchableOpacity>
+                {!isCompleted && (
+                    <TouchableOpacity
+                        style={styles.confirmRoundButton}
+                        onPress={handleConfirmRound}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={styles.confirmRoundButtonText}>周回を確定する</Text>
+                    </TouchableOpacity>
+                )}
 
                 <ScrollView
                     style={styles.container}
@@ -230,31 +270,38 @@ const StudyHome = () => {
                                     activeOpacity={0.7}
                                 >
                                     <Card style={styles.chapterCard}>
-                                        <TouchableOpacity
-                                            style={styles.menuButton}
-                                            onPress={(e) => handleMenuPress(chapter, e)}
-                                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                        >
-                                            {/* @ts-ignore */}
-                                            <MoreVertical size={20} color={theme.colors.secondary[600]} />
-                                        </TouchableOpacity>
+                                        {!isCompleted && (
+                                            <TouchableOpacity
+                                                style={styles.menuButton}
+                                                onPress={(e) => handleMenuPress(chapter, e)}
+                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                            >
+                                                {/* @ts-ignore */}
+                                                <MoreVertical size={20} color={theme.colors.secondary[600]} />
+                                            </TouchableOpacity>
+                                        )}
 
                                         <View style={styles.chapterHeader}>
-                                            <Text style={styles.chapterTitle}>
-                                                第{chapter.chapterNumber}章 {chapter.title}
+                                            <Text style={styles.chapterNumber}>
+                                                第{chapter.chapterNumber}章
                                             </Text>
+                                            {chapter.title?.trim() && (
+                                                <Text style={styles.chapterTitle}>
+                                                    {chapter.title}
+                                                </Text>
+                                            )}
                                         </View>
                                         <View style={styles.chapterStats}>
                                             <View style={styles.statItem}>
-                                                <Text style={styles.statLabel}>正答率</Text>
+                                                <Text style={styles.statLabel}>{displayRound}周目 正答率</Text>
                                                 <Text style={[styles.statValue, {
-                                                    color: chapter.chapterRate >= 80
+                                                    color: getChapterRate(chapter) >= 80
                                                         ? theme.colors.success[600]
-                                                        : chapter.chapterRate >= 60
+                                                        : getChapterRate(chapter) >= 60
                                                             ? theme.colors.warning[600]
                                                             : theme.colors.error[600]
                                                 }]}>
-                                                    {chapter.chapterRate}%
+                                                    {getChapterRate(chapter)}%
                                                 </Text>
                                             </View>
                                             <View style={styles.divider} />
@@ -271,15 +318,17 @@ const StudyHome = () => {
                         ))
                     )}
 
-                    <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={() => setShowAddModal(true)}
-                        activeOpacity={0.7}
-                    >
-                        {/* @ts-ignore */}
-                        <Plus size={24} color={theme.colors.primary[600]} strokeWidth={2.5} />
-                        <Text style={styles.addButtonText}>章を追加</Text>
-                    </TouchableOpacity>
+                    {!isCompleted && (
+                        <TouchableOpacity
+                            style={styles.addButton}
+                            onPress={() => setShowAddModal(true)}
+                            activeOpacity={0.7}
+                        >
+                            {/* @ts-ignore */}
+                            <Plus size={24} color={theme.colors.primary[600]} strokeWidth={2.5} />
+                            <Text style={styles.addButtonText}>章を追加</Text>
+                        </TouchableOpacity>
+                    )}
                 </ScrollView>
 
                 <Modal
@@ -343,7 +392,7 @@ const StudyHome = () => {
                         <View style={styles.modalContent}>
                             <Text style={styles.modalTitle}>周回確定</Text>
                             <Text style={styles.modalMessage}>
-                                {quizBook.title}の第{(quizBook.currentRound || 0) + 1}周を確定しますか？
+                                {quizBook.title}の第{displayRound}周を確定しますか？
                             </Text>
                             {unansweredQuestionsWarning && (
                                 <View style={styles.warningContainer}>
@@ -378,7 +427,7 @@ const StudyHome = () => {
     )
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
     wrapper: {
         flex: 1,
         backgroundColor: theme.colors.neutral[50],
@@ -459,10 +508,18 @@ const styles = StyleSheet.create({
     chapterHeader: {
         marginBottom: theme.spacing.sm,
     },
+    chapterNumber: {
+        fontSize: theme.typography.fontSizes.sm,
+        fontWeight: theme.typography.fontWeights.bold as any,
+        color: theme.colors.primary[600],
+        marginBottom: 4,
+        fontFamily: 'ZenKaku-Bold',
+    },
     chapterTitle: {
-        fontSize: theme.typography.fontSizes.base,
+        fontSize: theme.typography.fontSizes.lg,
         fontWeight: theme.typography.fontWeights.bold as any,
         color: theme.colors.secondary[900],
+        marginBottom: theme.spacing.xs,
         fontFamily: 'ZenKaku-Bold',
     },
     chapterStats: {

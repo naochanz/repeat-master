@@ -1,20 +1,12 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
+import { Controller, Get } from '@nestjs/common';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  // 認証はフロントエンドでSupabase Authを直接使用
+  // このコントローラーは将来の拡張用に残す
 
-  @Post('register')
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
-  }
-
-  @Post('login')
-  @HttpCode(HttpStatus.OK)
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  @Get('health')
+  healthCheck() {
+    return { status: 'ok', message: 'Auth is handled by Supabase Auth' };
   }
 }

@@ -1,11 +1,7 @@
 import axios from 'axios';
+import { supabase } from '@/lib/supabase';
 
-const isDevelopment = __DEV__;
-const LOCAL_IP = '100.64.1.37';
-
-const API_URL = isDevelopment
-  ? `http://${LOCAL_IP}:3000`
-  : 'http://localhost:3000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -14,20 +10,50 @@ export const api = axios.create({
   },
 });
 
-// トークンをセット
+// リクエストインターセプター: Supabaseトークンを自動的に付与
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  return config;
+});
+
+// 後方互換性のため（不要だが残す）
 export const setAuthToken = (token: string) => {
-  api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  // Supabaseセッションから自動取得するため不要
 };
 
-// 認証API
+// 認証API（Supabase Authを使用）
 export const authApi = {
-  register: (email: string, password: string, name?: string) =>
-    api.post('/auth/register', { email, password, name }),
+  register: async (email: string, password: string, name?: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { name },
+      },
+    });
+    if (error) throw error;
+    return { data };
+  },
 
-  login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
+  login: async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
+    return { data };
+  },
+
+  logout: async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  },
 };
 
+// カテゴリAPI
 export const categoryApi = {
   getAll: () => api.get('/categories'),
   create: (name: string, description?: string) =>
@@ -37,14 +63,18 @@ export const categoryApi = {
   delete: (id: string) => api.delete(`/categories/${id}`),
 };
 
+// QuizBook API
 export const quizBookApi = {
   getAll: () => api.get('/quiz-books'),
   getOne: (id: string) => api.get(`/quiz-books/${id}`),
-  create: (title: string, categoryId: string, useSections: boolean) =>
-    api.post('/quiz-books', { title, categoryId, useSections }),
+  create: (title: string, categoryId: string, useSections: boolean, isbn?: string, thumbnailUrl?: string) =>
+    api.post('/quiz-books', { title, categoryId, useSections, isbn, thumbnailUrl }),
   update: (id: string, data: any) => api.patch(`/quiz-books/${id}`, data),
   delete: (id: string) => api.delete(`/quiz-books/${id}`),
   getAnalytics: (id: string) => api.get(`/quiz-books/${id}/analytics`),
+  complete: (id: string) => api.post(`/quiz-books/${id}/complete`),
+  reactivate: (id: string) => api.post(`/quiz-books/${id}/reactivate`),
+  getActiveCount: () => api.get('/quiz-books/stats/active-count'),
 };
 
 // Chapter API
@@ -74,19 +104,21 @@ export const answerApi = {
   updateMemo: (quizBookId: string, answerId: string, memo: string) =>
     api.patch(`/quiz-books/${quizBookId}/answers/${answerId}`, { memo }),
   updateBookmark: async (quizBookId: string, answerId: string, isBookmarked: boolean) =>
-    api.patch(`/quiz-books/${quizBookId}/answers/${answerId}`, {isBookmarked}),
+    api.patch(`/quiz-books/${quizBookId}/answers/${answerId}`, { isBookmarked }),
   delete: (quizBookId: string, answerId: string) =>
     api.delete(`/quiz-books/${quizBookId}/answers/${answerId}`),
   deleteLatest: (quizBookId: string, answerId: string) =>
     api.delete(`/quiz-books/${quizBookId}/answers/${answerId}/latest`),
 };
 
-
+// User API
 export const userApi = {
   getMe: () => api.get('/users/me'),
   updateGoal: (goal: string) => api.patch('/users/goal', { goal }),
+  deleteAccount: () => api.delete('/users/me'),
 };
 
+// Study Record API
 export const studyRecordApi = {
   getRecent: () => api.get('/study-records/recent'),
-}
+};
