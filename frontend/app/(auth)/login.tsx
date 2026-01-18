@@ -64,7 +64,7 @@ const Login = () => {
             <View style={styles.logoCircle}>
               <BookOpen size={48} color={theme.colors.primary[600]} strokeWidth={1.5} />
             </View>
-            <Text style={styles.appName}>Repeat Master</Text>
+            <Text style={styles.appName}>DoriLoop</Text>
             <Text style={styles.tagline}>反復学習で確実にマスター</Text>
           </View>
 

@@ -1,5 +1,5 @@
 -- =============================================
--- Repeat Master - Supabase Migration
+-- DoriLoop - Supabase Migration
 -- =============================================
 
 -- 1. Profiles テーブル (auth.usersを拡張)

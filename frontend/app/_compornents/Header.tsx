@@ -10,7 +10,7 @@ const Header = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <Text style={styles.appTitle} numberOfLines={1}>RepeatMaster</Text>
+          <Text style={styles.appTitle} numberOfLines={1}>DoriLoop</Text>
         </View>
       </View>
     </View>

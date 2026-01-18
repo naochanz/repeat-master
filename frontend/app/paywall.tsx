@@ -116,7 +116,7 @@ export default function PaywallScreen() {
           <View style={styles.crownContainer}>
             <Crown size={48} color={theme.colors.warning[500]} fill={theme.colors.warning[500]} />
           </View>
-          <Text style={styles.title}>Repeat Master Premium</Text>
+          <Text style={styles.title}>DoriLoop Premium</Text>
           <Text style={styles.subtitle}>学習を加速させよう</Text>
         </View>
 

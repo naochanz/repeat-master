@@ -85,7 +85,7 @@ const Signup = () => {
             <View style={styles.logoCircle}>
               <BookOpen size={40} color={theme.colors.primary[600]} strokeWidth={1.5} />
             </View>
-            <Text style={styles.appName}>Repeat Master</Text>
+            <Text style={styles.appName}>DoriLoop</Text>
           </View>
 
           {/* Form */}
