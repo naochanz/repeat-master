@@ -110,6 +110,7 @@ const Signup = () => {
               style={styles.logoImage}
               resizeMode="contain"
             />
+            <Text style={styles.tagline}>学習スタイルを変えず、効率を最大化する</Text>
           </View>
 
           {/* Form */}
@@ -269,13 +270,18 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
   },
   logoImage: {
-    width: 120,
-    height: 120,
-    marginBottom: theme.spacing.md,
+    width: 100,
+    height: 100,
+    marginBottom: theme.spacing.xs,
+  },
+  tagline: {
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.secondary[500],
+    fontFamily: 'ZenKaku-Regular',
   },
   formContainer: {
     flex: 1,
@@ -285,10 +291,10 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Bold',
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   inputGroup: {
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -318,10 +324,10 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   },
   primaryButton: {
     backgroundColor: theme.colors.primary[600],
-    paddingVertical: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
     alignItems: 'center',
-    marginTop: theme.spacing.lg,
+    marginTop: theme.spacing.md,
     ...theme.shadows.md,
   },
   buttonDisabled: {
@@ -337,7 +343,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: theme.spacing.xl,
+    marginTop: theme.spacing.md,
     gap: theme.spacing.sm,
   },
   loginText: {
@@ -353,8 +359,8 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: theme.spacing.xl,
-    marginBottom: theme.spacing.lg,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
   },
   divider: {
     flex: 1,

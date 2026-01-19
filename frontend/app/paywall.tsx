@@ -31,10 +31,19 @@ export default function PaywallScreen() {
 
   const [selectedPackage, setSelectedPackage] = useState<PurchasesPackage | null>(null);
   const [purchasing, setPurchasing] = useState(false);
+  const [fetchingPackages, setFetchingPackages] = useState(false);
 
   useEffect(() => {
-    fetchPackages();
-  }, []);
+    // isLoadingがfalseになった（初期化完了）後にパッケージを取得
+    const loadPackages = async () => {
+      if (!isLoading) {
+        setFetchingPackages(true);
+        await fetchPackages();
+        setFetchingPackages(false);
+      }
+    };
+    loadPackages();
+  }, [isLoading]);
 
   useEffect(() => {
     if (packages.length > 0 && !selectedPackage) {
@@ -124,11 +133,11 @@ export default function PaywallScreen() {
           <Text style={styles.sectionTitle}>プラン比較</Text>
 
           <View style={styles.planHeader}>
-            <View style={styles.planHeaderItem} />
-            <View style={styles.planHeaderItem}>
+            <View style={styles.planHeaderItemText} />
+            <View style={styles.planHeaderItemCheck}>
               <Text style={styles.planHeaderText}>無料</Text>
             </View>
-            <View style={[styles.planHeaderItem, styles.premiumHeader]}>
+            <View style={[styles.planHeaderItemCheck, styles.premiumHeader]}>
               <Text style={styles.planHeaderTextPremium}>Premium</Text>
             </View>
           </View>
@@ -179,9 +188,19 @@ export default function PaywallScreen() {
 
           {packages.length === 0 && (
             <View style={styles.noPackagesMessage}>
-              <Text style={styles.noPackagesText}>
-                現在プランを取得中です...
-              </Text>
+              {fetchingPackages ? (
+                <>
+                  <ActivityIndicator size="small" color={theme.colors.primary[600]} style={{ marginBottom: theme.spacing.sm }} />
+                  <Text style={styles.noPackagesText}>
+                    プランを取得中です...
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.noPackagesText}>
+                  現在利用可能なプランがありません。{'\n'}
+                  RevenueCatでOfferingsを設定してください。
+                </Text>
+              )}
             </View>
           )}
         </View>
@@ -271,7 +290,10 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     flexDirection: 'row',
     marginBottom: theme.spacing.sm,
   },
-  planHeaderItem: {
+  planHeaderItemText: {
+    flex: 2,
+  },
+  planHeaderItemCheck: {
     flex: 1,
     alignItems: 'center',
     paddingVertical: theme.spacing.sm,

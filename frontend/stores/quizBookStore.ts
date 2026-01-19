@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { QuizBook, Chapter, Section, QuestionAnswer, RecentStudyItem, Category } from '@/types/QuizBook';
 import { quizBookApi, chapterApi, sectionApi, answerApi, categoryApi } from '@/services/api';
 import { showErrorToast } from '@/utils/toast';
+import { useAnalyticsStore } from './analyticsStore';
 
 interface QuizBookStore {
   quizBooks: QuizBook[];
@@ -108,6 +109,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
     categoryApi.delete(id)
       .then(() => {
         // 成功時は最新データを取得
+        useAnalyticsStore.getState().setNeedsRefresh(true);
         get().fetchCategories();
         get().fetchQuizBooks();
       })
@@ -163,7 +165,10 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 
     // バックグラウンドでAPI呼び出し
     quizBookApi.create(title, categoryId, useSections, isbn, thumbnailUrl)
-      .then(() => get().fetchQuizBooks())
+      .then(() => {
+        useAnalyticsStore.getState().setNeedsRefresh(true);
+        get().fetchQuizBooks();
+      })
       .catch(async (error) => {
         console.error('Failed to create quiz book:', error);
         showErrorToast('問題集の作成に失敗しました。再度お試しください。');
@@ -209,7 +214,10 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 
     // バックグラウンドでAPI呼び出し
     quizBookApi.delete(id)
-      .then(() => get().fetchQuizBooks())
+      .then(() => {
+        useAnalyticsStore.getState().setNeedsRefresh(true);
+        get().fetchQuizBooks();
+      })
       .catch(async (error) => {
         console.error('Failed to delete quiz book:', error);
         // 失敗時はロールバック
@@ -230,6 +238,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 
     try {
       await quizBookApi.complete(id);
+      useAnalyticsStore.getState().setNeedsRefresh(true);
       await get().fetchQuizBooks();
     } catch (error) {
       console.error('Failed to complete quiz book:', error);
@@ -251,6 +260,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 
     try {
       await quizBookApi.reactivate(id);
+      useAnalyticsStore.getState().setNeedsRefresh(true);
       await get().fetchQuizBooks();
     } catch (error) {
       console.error('Failed to reactivate quiz book:', error);
@@ -290,7 +300,10 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 
     // バックグラウンドでAPI呼び出し
     chapterApi.create(quizBookId, chapterNumber, title, questionCount)
-      .then(() => get().fetchQuizBooks())
+      .then(() => {
+        useAnalyticsStore.getState().setNeedsRefresh(true);
+        get().fetchQuizBooks();
+      })
       .catch(async (error) => {
         console.error('Failed to add chapter:', error);
         showErrorToast('章の追加に失敗しました。再度お試しください。');
@@ -344,7 +357,10 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 
     // バックグラウンドでAPI呼び出し
     chapterApi.delete(quizBookId, chapterId)
-      .then(() => get().fetchQuizBooks())
+      .then(() => {
+        useAnalyticsStore.getState().setNeedsRefresh(true);
+        get().fetchQuizBooks();
+      })
       .catch(async (error) => {
         console.error('Failed to delete chapter:', error);
         // 失敗時はロールバック
@@ -386,7 +402,10 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 
     // バックグラウンドでAPI呼び出し
     sectionApi.create(quizBookId, chapterId, sectionNumber, title, questionCount)
-      .then(() => get().fetchQuizBooks())
+      .then(() => {
+        useAnalyticsStore.getState().setNeedsRefresh(true);
+        get().fetchQuizBooks();
+      })
       .catch(async (error) => {
         console.error('Failed to add section:', error);
         showErrorToast('節の追加に失敗しました。再度お試しください。');
@@ -451,7 +470,10 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 
     // バックグラウンドでAPI呼び出し
     sectionApi.delete(quizBookId, chapterId, sectionId)
-      .then(() => get().fetchQuizBooks())
+      .then(() => {
+        useAnalyticsStore.getState().setNeedsRefresh(true);
+        get().fetchQuizBooks();
+      })
       .catch(async (error) => {
         console.error('Failed to delete section:', error);
         // 失敗時はロールバック
@@ -538,6 +560,10 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
 
     // バックグラウンドでAPI呼び出し
     answerApi.create(quizBookId, questionNumber, result, chapterId, sectionId)
+      .then(() => {
+        // 分析データのリフレッシュが必要
+        useAnalyticsStore.getState().setNeedsRefresh(true);
+      })
       .catch(async (error) => {
         console.error('Failed to save answer:', error);
         showErrorToast('回答の保存に失敗しました。再度お試しください。');

@@ -6,8 +6,7 @@ export default function DashboardLayout() {
       screenOptions={{
         headerShown: true,
         animation: 'fade',
-        presentation: 'card',
-        animationDuration: 50,
+        animationDuration: 250,
         gestureEnabled: false,
         headerTitleAlign: 'center',
       }}

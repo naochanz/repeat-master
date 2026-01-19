@@ -6,8 +6,7 @@ export default function StudyLayout() {
       screenOptions={{
         headerShown: true,
         animation: 'fade',
-        presentation: 'card',
-        animationDuration: 50,
+        animationDuration: 250,
         headerBackTitle: '',
         gestureEnabled: false,
         fullScreenGestureEnabled: false,

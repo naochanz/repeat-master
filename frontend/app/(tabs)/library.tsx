@@ -228,6 +228,7 @@ export default function LibraryScreen() {
   const handleTitleConfirm = async (title: string) => {
     try {
       await addQuizBook(title, selectedCategoryId, true, scannedIsbn || undefined, scannedThumbnail || undefined);
+      await fetchActiveQuizBookCount();
       setTitleModalVisible(false);
       setSelectedCategoryId('');
       setScannedTitle('');
@@ -287,6 +288,7 @@ export default function LibraryScreen() {
   const confirmDelete = async () => {
     if (deleteTargetId) {
       await deleteQuizBook(deleteTargetId);
+      await fetchActiveQuizBookCount();
       setDeleteDialogVisible(false);
       setDeleteTargetId(null);
     }

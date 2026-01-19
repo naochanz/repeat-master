@@ -89,7 +89,8 @@ export default function RootLayout() {
   const onboardingRoute = '/onboarding';
 
   // ✅ オンボーディング未完了かつ認証済みでない場合、オンボーディングへリダイレクト
-  if (!hasSeenOnboarding && !isAuthenticated && pathname !== onboardingRoute) {
+  // ただし、認証画面にいる場合はリダイレクトしない
+  if (!hasSeenOnboarding && !isAuthenticated && pathname !== onboardingRoute && !authRoutes.includes(pathname)) {
     return <Redirect href="/onboarding" />;
   }
 
@@ -120,10 +121,18 @@ function RootLayoutNav() {
         screenOptions={{
           headerShown: false,
           animation: 'fade',
-          presentation: 'card',
-          animationDuration: 50,
+          animationDuration: 250,
         }}
-      />
+      >
+        <Stack.Screen
+          name="paywall"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+            animationDuration: 300,
+          }}
+        />
+      </Stack>
       <Toast />
     </ThemeProvider>
   );

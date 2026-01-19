@@ -89,7 +89,7 @@ const Login = () => {
               style={styles.logoImage}
               resizeMode="contain"
             />
-            <Text style={styles.tagline}>反復学習で確実にマスター</Text>
+            <Text style={styles.tagline}>学習スタイルを変えず、効率を最大化する</Text>
           </View>
 
           {/* Form */}
@@ -202,16 +202,16 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: theme.spacing.xl,
-    marginBottom: theme.spacing.xl * 2,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
   },
   logoImage: {
-    width: 140,
-    height: 140,
-    marginBottom: theme.spacing.md,
+    width: 120,
+    height: 120,
+    marginBottom: theme.spacing.sm,
   },
   tagline: {
-    fontSize: theme.typography.fontSizes.base,
+    fontSize: theme.typography.fontSizes.sm,
     color: theme.colors.secondary[500],
     fontFamily: 'ZenKaku-Regular',
   },
@@ -223,10 +223,10 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Bold',
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
   },
   inputGroup: {
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -275,7 +275,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: theme.spacing.xl,
+    marginTop: theme.spacing.lg,
     gap: theme.spacing.sm,
   },
   signupText: {
@@ -291,8 +291,8 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: theme.spacing.xl,
-    marginBottom: theme.spacing.lg,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   divider: {
     flex: 1,

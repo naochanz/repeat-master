@@ -5,6 +5,8 @@ export default function AnalyticsLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
+        animation: 'fade',
+        animationDuration: 250,
       }}
     />
   );
