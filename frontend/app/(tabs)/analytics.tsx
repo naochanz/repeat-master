@@ -1,6 +1,7 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAnalyticsStore } from '@/stores/analyticsStore';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -49,13 +50,22 @@ export default function AnalyticsScreen() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [currentIndexMap, setCurrentIndexMap] = useState<{ [categoryId: string]: number }>({});
+  const [hasLoaded, setHasLoaded] = useState(false);
+
+  const { needsRefresh, setNeedsRefresh } = useAnalyticsStore();
 
   const scrollRefs = useRef<{ [categoryId: string]: ScrollView | null }>({});
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
-    }, [])
+      // 初回ロードまたはリフレッシュが必要な場合のみデータを取得
+      if (!hasLoaded || needsRefresh) {
+        loadData();
+        if (needsRefresh) {
+          setNeedsRefresh(false);
+        }
+      }
+    }, [hasLoaded, needsRefresh])
   );
 
   const loadData = async () => {
@@ -88,6 +98,7 @@ export default function AnalyticsScreen() {
       console.error('Failed to load analytics data:', error);
     } finally {
       setLoading(false);
+      setHasLoaded(true);
     }
   };
 

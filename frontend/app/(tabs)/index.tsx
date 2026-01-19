@@ -5,7 +5,6 @@ import { router, useFocusEffect, useNavigation } from 'expo-router';
 import { Edit3, Target } from 'lucide-react-native';
 import React, { useCallback, useState, useMemo, useRef } from 'react';
 import { ActivityIndicator, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { CommonActions } from '@react-navigation/native';
 
 export default function DashboardScreen() {
@@ -28,7 +27,6 @@ export default function DashboardScreen() {
   const hasLoadedOnce = useRef(false);
 
   const navigation = useNavigation();
-  const opacity = useSharedValue(0);
 
   // 時間帯による挨拶
   const greeting = useMemo(() => {
@@ -47,8 +45,6 @@ export default function DashboardScreen() {
   // ✅ 画面フォーカス時にデータを取得
   useFocusEffect(
     useCallback(() => {
-      opacity.value = 0;
-
       // データ取得
       const loadData = async () => {
         if (!hasLoadedOnce.current) {
@@ -82,19 +78,8 @@ export default function DashboardScreen() {
         }
       }
 
-      const timer = setTimeout(() => {
-        opacity.value = withTiming(1, { duration: 50 });
-      }, 16);
-
-      return () => clearTimeout(timer);
     }, [fetchUser, fetchRecentStudyRecords])
   );
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: opacity.value,
-    };
-  });
 
   const handleEditGoal = () => {
     setTempGoal(user?.goal || '');
@@ -132,7 +117,7 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+      <View style={{ flex: 1 }}>
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -206,7 +191,7 @@ export default function DashboardScreen() {
           )}
 
         </ScrollView>
-      </Animated.View>
+      </View>
 
       <Modal
         visible={isEditingGoal}

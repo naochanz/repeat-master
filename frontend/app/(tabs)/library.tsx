@@ -5,7 +5,6 @@ import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'exp
 import { AlertCircle, Edit, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { CommonActions } from '@react-navigation/native';
 import AddItemModal from '../_compornents/AddItemModal';
 import CategorySelectModal from '../_compornents/CategorySelectModal';
@@ -59,7 +58,6 @@ export default function LibraryScreen() {
   const [isCategoryCreating, setIsCategoryCreating] = useState(false);
 
   const navigation = useNavigation();
-  const opacity = useSharedValue(0);
 
   useEffect(() => {
     fetchCategories();
@@ -80,8 +78,8 @@ export default function LibraryScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      // 初期状態は透明
-      opacity.value = 0;
+      // アクティブな問題集数を更新（削除後などに即座に反映させるため）
+      fetchActiveQuizBookCount();
 
       // スタディスタックの履歴をリセット
       const rootState = navigation.getState();
@@ -102,20 +100,8 @@ export default function LibraryScreen() {
         }
       }
 
-      // レンダリング完了後にフェードイン開始
-      const timer = setTimeout(() => {
-        opacity.value = withTiming(1, { duration: 50 });
-      }, 16);
-
-      return () => clearTimeout(timer);
     }, [])
   );
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: opacity.value,
-    };
-  });
 
   const groupedQuizBooks = useMemo(() => {
     const groups: { [key: string]: { categoryId: string; books: any[] } } = {};
@@ -353,7 +339,7 @@ export default function LibraryScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+      <View style={{ flex: 1 }}>
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -412,7 +398,7 @@ export default function LibraryScreen() {
             })
           )}
         </ScrollView>
-      </Animated.View>
+      </View>
 
       <TouchableOpacity
         style={styles.fab}

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { PurchasesPackage } from 'react-native-purchases';
+import { PurchasesPackage, PACKAGE_TYPE } from 'react-native-purchases';
 import { showErrorToast, showSuccessToast } from '@/utils/toast';
 
 export default function PaywallScreen() {
@@ -96,11 +96,36 @@ export default function PaywallScreen() {
     router.back();
   };
 
+  // パッケージの表示情報を取得
+  const getPackageDisplayInfo = (pkg: PurchasesPackage) => {
+    const productId = pkg.product.identifier;
+
+    // 製品IDで判定
+    if (productId.includes('monthly')) {
+      return { title: '月額プラン', priceSuffix: '/月' };
+    } else if (productId.includes('yearly')) {
+      return { title: '年額プラン', priceSuffix: '/年' };
+    } else if (productId.includes('add_quizbook')) {
+      return { title: '問題集追加（買い切り）', priceSuffix: '' };
+    }
+
+    // パッケージタイプでフォールバック
+    switch (pkg.packageType) {
+      case PACKAGE_TYPE.MONTHLY:
+        return { title: '月額プラン', priceSuffix: '/月' };
+      case PACKAGE_TYPE.ANNUAL:
+        return { title: '年額プラン', priceSuffix: '/年' };
+      case PACKAGE_TYPE.LIFETIME:
+        return { title: '買い切りプラン', priceSuffix: '' };
+      default:
+        return { title: pkg.product.title || 'プラン', priceSuffix: '' };
+    }
+  };
+
   const features = [
     { text: '問題集を無制限に登録', free: false, premium: true },
-    { text: '資格カテゴリを無制限に作成', free: false, premium: true },
-    { text: '全ての学習履歴にアクセス', free: false, premium: true },
-    { text: '問題集1冊を登録', free: true, premium: true },
+    { text: '資格カテゴリを無制限に作成', free: true, premium: true },
+    { text: '全ての学習履歴にアクセス', free: true, premium: true },
     { text: '完了した問題集の閲覧', free: true, premium: true },
   ];
 
@@ -160,31 +185,34 @@ export default function PaywallScreen() {
         </View>
 
         <View style={styles.pricingSection}>
-          {packages.map((pkg) => (
-            <TouchableOpacity
-              key={pkg.identifier}
-              style={[
-                styles.packageCard,
-                selectedPackage?.identifier === pkg.identifier && styles.packageCardSelected,
-              ]}
-              onPress={() => setSelectedPackage(pkg)}
-            >
-              <View style={styles.packageInfo}>
-                <Text style={styles.packageTitle}>月額プラン</Text>
-                <Text style={styles.packagePrice}>{pkg.product.priceString}/月</Text>
-              </View>
-              <View
+          {packages.map((pkg) => {
+            const displayInfo = getPackageDisplayInfo(pkg);
+            return (
+              <TouchableOpacity
+                key={pkg.identifier}
                 style={[
-                  styles.radioButton,
-                  selectedPackage?.identifier === pkg.identifier && styles.radioButtonSelected,
+                  styles.packageCard,
+                  selectedPackage?.identifier === pkg.identifier && styles.packageCardSelected,
                 ]}
+                onPress={() => setSelectedPackage(pkg)}
               >
-                {selectedPackage?.identifier === pkg.identifier && (
-                  <View style={styles.radioButtonInner} />
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
+                <View style={styles.packageInfo}>
+                  <Text style={styles.packageTitle}>{displayInfo.title}</Text>
+                  <Text style={styles.packagePrice}>{pkg.product.priceString}{displayInfo.priceSuffix}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.radioButton,
+                    selectedPackage?.identifier === pkg.identifier && styles.radioButtonSelected,
+                  ]}
+                >
+                  {selectedPackage?.identifier === pkg.identifier && (
+                    <View style={styles.radioButtonInner} />
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
 
           {packages.length === 0 && (
             <View style={styles.noPackagesMessage}>
