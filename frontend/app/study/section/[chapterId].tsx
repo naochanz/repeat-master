@@ -1,4 +1,5 @@
 import EditDeleteModal from '@/app/_compornents/EditDeleteModal';
+import LoadingOverlay from '@/app/_compornents/LoadingOverlay';
 import CustomTabBar from '@/components/CustomTabBar';
 import Card from '@/components/ui/Card';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -14,6 +15,7 @@ const SectionList = () => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { chapterId } = useLocalSearchParams();
   const quizBooks = useQuizBookStore(state => state.quizBooks);
+  const isLoading = useQuizBookStore(state => state.isLoading);
   const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
   const updateQuizBook = useQuizBookStore(state => state.updateQuizBook);
   const addSectionToChapter = useQuizBookStore(state => state.addSection);
@@ -383,6 +385,7 @@ const SectionList = () => {
         />
 
         <CustomTabBar />
+        <LoadingOverlay visible={isLoading} />
       </SafeAreaView>
     </>
   );

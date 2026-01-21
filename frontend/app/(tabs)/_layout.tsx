@@ -12,6 +12,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: theme.colors.primary[600],
         tabBarInactiveTintColor: theme.colors.secondary[400],
         headerShown: false,
+        lazy: false,
         animation: 'fade',
         tabBarStyle: {
           backgroundColor: theme.colors.neutral.white,

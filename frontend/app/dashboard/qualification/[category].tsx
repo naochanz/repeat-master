@@ -1,4 +1,5 @@
 import ConfirmDialog from '@/app/_compornents/ConfirmDialog';
+import LoadingOverlay from '@/app/_compornents/LoadingOverlay';
 import CustomTabBar from '@/components/CustomTabBar';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
@@ -18,6 +19,7 @@ export default function QualificationDetailScreen() {
 
   const { category } = useLocalSearchParams<{ category: string }>();
   const quizBooks = useQuizBookStore(state => state.quizBooks);
+  const isLoading = useQuizBookStore(state => state.isLoading);
   const deleteQuizBook = useQuizBookStore(state => state.deleteQuizBook);
   const updateQuizBook = useQuizBookStore(state => state.updateQuizBook);
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
@@ -347,6 +349,7 @@ export default function QualificationDetailScreen() {
         />
 
         <CustomTabBar />
+        <LoadingOverlay visible={isLoading} />
       </SafeAreaView>
     </>
   );

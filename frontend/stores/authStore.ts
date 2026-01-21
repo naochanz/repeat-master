@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { Session, User } from '@supabase/supabase-js';
 import { Profile } from '@/types/database';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { subscriptionService } from '@/services/subscription';
 
 interface AuthState {
   user: User | null;
@@ -39,6 +40,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           session,
           isAuthenticated: true,
         });
+        // RevenueCatにユーザーIDを紐づけ
+        await subscriptionService.login(session.user.id);
         // プロファイルを取得
         await get().fetchProfile();
       }
@@ -52,8 +55,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
 
         if (session) {
+          // RevenueCatにユーザーIDを紐づけ
+          await subscriptionService.login(session.user.id);
           await get().fetchProfile();
         } else {
+          // RevenueCatからログアウト
+          await subscriptionService.logout();
           set({ profile: null });
         }
       });
@@ -106,6 +113,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         session: data.session,
         isAuthenticated: true,
       });
+
+      // RevenueCatにユーザーIDを紐づけ
+      if (data.user) {
+        await subscriptionService.login(data.user.id);
+      }
 
       await get().fetchProfile();
     } finally {
@@ -189,6 +201,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
       });
 
+      // RevenueCatにユーザーIDを紐づけ
+      if (data.user) {
+        await subscriptionService.login(data.user.id);
+      }
+
       await get().fetchProfile();
     } finally {
       set({ isLoading: false });
@@ -196,6 +213,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
+    // RevenueCatからもログアウト
+    await subscriptionService.logout();
     await supabase.auth.signOut();
     set({
       user: null,

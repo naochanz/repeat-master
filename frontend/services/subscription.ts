@@ -153,6 +153,12 @@ class SubscriptionService {
     const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
 
     if (entitlement) {
+      // 買い切り商品（add_quizbook）はプレミアム扱いにしない
+      const productId = entitlement.productIdentifier;
+      if (productId && productId.includes('add_quizbook')) {
+        return DEFAULT_STATUS;
+      }
+
       return {
         isPremium: true,
         expirationDate: entitlement.expirationDate || null,

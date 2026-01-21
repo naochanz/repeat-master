@@ -22,7 +22,7 @@ export default function TermsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>1. 規約への同意</Text>
           <Text style={styles.paragraph}>
-            DoriLoop（以下「本アプリ」）をご利用いただくことにより、本利用規約に同意したものとみなされます。本規約に同意いただけない場合は、本アプリをご利用いただけません。
+            DORILOOP（以下「本アプリ」）をご利用いただくことにより、本利用規約に同意したものとみなされます。本規約に同意いただけない場合は、本アプリをご利用いただけません。
           </Text>
         </View>
 

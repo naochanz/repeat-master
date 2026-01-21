@@ -9,6 +9,7 @@ import { CommonActions } from '@react-navigation/native';
 import AddItemModal from '../_compornents/AddItemModal';
 import CategorySelectModal from '../_compornents/CategorySelectModal';
 import ConfirmDialog from '../_compornents/ConfirmDialog';
+import LoadingOverlay from '../_compornents/LoadingOverlay';
 import QuizBookCard from '../_compornents/QuizBookCard';
 import QuizBookTitleModal from '../_compornents/QuizBookTitleModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,6 +28,7 @@ export default function LibraryScreen() {
 
   const quizBooks = useQuizBookStore(state => state.quizBooks);
   const categories = useQuizBookStore(state => state.categories);
+  const isLoading = useQuizBookStore(state => state.isLoading);
   const fetchCategories = useQuizBookStore(state => state.fetchCategories);
   const createCategory = useQuizBookStore(state => state.createCategory);
   const updateCategory = useQuizBookStore(state => state.updateCategory);
@@ -526,6 +528,8 @@ export default function LibraryScreen() {
           setCategoryBooksCount(0); // ✅ リセット
         }}
       />
+
+      <LoadingOverlay visible={isLoading} />
     </SafeAreaView>
   );
 }

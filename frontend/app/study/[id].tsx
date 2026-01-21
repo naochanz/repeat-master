@@ -1,4 +1,5 @@
 import EditDeleteModal from '@/app/_compornents/EditDeleteModal';
+import LoadingOverlay from '@/app/_compornents/LoadingOverlay';
 import CustomTabBar from '@/components/CustomTabBar';
 import Card from '@/components/ui/Card';
 import { useAppTheme } from '@/hooks/useAppTheme';
@@ -17,6 +18,7 @@ const StudyHome = () => {
     const { id } = useLocalSearchParams();
 
     const quizBooks = useQuizBookStore(state => state.quizBooks);
+    const isLoading = useQuizBookStore(state => state.isLoading);
     const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
     const addChapterToQuizBook = useQuizBookStore(state => state.addChapter);
     const deleteChapterFromQuizBook = useQuizBookStore(state => state.deleteChapter);
@@ -422,6 +424,7 @@ const StudyHome = () => {
                 </Modal>
 
                 <CustomTabBar />
+                <LoadingOverlay visible={isLoading} />
             </SafeAreaView>
         </>
     )

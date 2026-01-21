@@ -10,7 +10,7 @@ const Header = () => {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <Text style={styles.appTitle} numberOfLines={1}>DoriLoop</Text>
+          <Text style={styles.appTitle} numberOfLines={1}>DORILOOP</Text>
         </View>
       </View>
     </View>
