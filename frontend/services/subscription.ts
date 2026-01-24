@@ -132,7 +132,6 @@ class SubscriptionService {
       if (error.userCancelled) {
         throw new Error('CANCELLED');
       }
-      console.error('Failed to purchase:', error);
       throw error;
     }
   }
@@ -158,7 +157,6 @@ class SubscriptionService {
       // 買い切り商品（add_quizbook）はプレミアム扱いにしない
       const productId = entitlement.productIdentifier;
 
-      // 部分一致でチェック（製品IDの変更に対応）
       if (productId && productId.includes('add_quizbook')) {
         return DEFAULT_STATUS;
       }

@@ -1,6 +1,4 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch, Modal, TextInput } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ONBOARDING_COMPLETE_KEY } from '../onboarding';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { router } from 'expo-router';
@@ -77,12 +75,6 @@ export default function SettingsScreen() {
     } finally {
       setIsUpdatingName(false);
     }
-  };
-
-  // TODO: 確認後削除
-  const handleResetOnboarding = async () => {
-    await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
-    Alert.alert('リセット完了', 'アプリを再起動してください');
   };
 
   const handleDeleteAccount = () => {
@@ -222,15 +214,6 @@ export default function SettingsScreen() {
           <ChevronRight size={18} color={theme.colors.secondary[400]} />
         </TouchableOpacity>
 
-        {/* デバッグ（確認後削除） */}
-        <Text style={styles.sectionLabel}>デバッグ</Text>
-        <TouchableOpacity
-          style={styles.row}
-          onPress={handleResetOnboarding}
-          activeOpacity={0.6}
-        >
-          <Text style={styles.rowLabel}>オンボーディングをリセット</Text>
-        </TouchableOpacity>
 
         {/* その他 */}
         <Text style={styles.sectionLabel}>その他</Text>

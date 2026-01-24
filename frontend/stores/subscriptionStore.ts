@@ -21,7 +21,7 @@ interface SubscriptionStore {
   initialize: (userId?: string) => Promise<void>;
   refreshStatus: () => Promise<void>;
   fetchPackages: () => Promise<void>;
-  purchasePackage: (pkg: PurchasesPackage) => Promise<boolean>;
+  purchasePackage: (pkg: PurchasesPackage) => Promise<{ success: boolean; isAddQuizBook: boolean }>;
   restorePurchases: () => Promise<boolean>;
   fetchActiveQuizBookCount: () => Promise<void>;
   canCreateQuizBook: () => boolean;
