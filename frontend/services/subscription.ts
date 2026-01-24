@@ -1,5 +1,5 @@
 import Purchases, { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
-import { Platform, Alert } from 'react-native';
+import { Platform } from 'react-native';
 
 // RevenueCat API Keys (App Store Connect/Play Console で設定後に置き換え)
 const REVENUECAT_API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || '';
@@ -154,12 +154,6 @@ class SubscriptionService {
   private parseCustomerInfo(customerInfo: CustomerInfo): SubscriptionStatus {
     const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
 
-    // デバッグ用Alert（確認後削除）
-    Alert.alert(
-      'Debug: parseCustomerInfo',
-      `entitlement: ${entitlement ? 'あり' : 'なし'}\nproductId: ${entitlement?.productIdentifier || 'N/A'}\nENTITLEMENT_ID: ${ENTITLEMENT_ID}`
-    );
-
     if (entitlement) {
       // 買い切り商品（add_quizbook）はプレミアム扱いにしない
       const productId = entitlement.productIdentifier;
@@ -191,12 +185,6 @@ class SubscriptionService {
       // nonSubscriptionTransactionsから add_quizbook の購入回数をカウント
       const addQuizbookPurchases = customerInfo.nonSubscriptionTransactions.filter(
         (transaction) => transaction.productIdentifier === PRODUCT_ID_ADD_QUIZBOOK
-      );
-
-      // デバッグ用Alert（確認後削除）
-      Alert.alert(
-        'Debug: getPurchasedQuizBookSlots',
-        `総トランザクション数: ${customerInfo.nonSubscriptionTransactions.length}\nadd_quizbook購入数: ${addQuizbookPurchases.length}\n製品IDs: ${customerInfo.nonSubscriptionTransactions.map(t => t.productIdentifier).join(', ') || 'なし'}`
       );
 
       return addQuizbookPurchases.length;

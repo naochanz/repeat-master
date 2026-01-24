@@ -1,95 +1,94 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { BaseToastProps } from 'react-native-toast-message';
-
-const MAX_SHORT_MESSAGE_LENGTH = 30;
-
-const SuccessToast = ({ text1, text2 }: BaseToastProps) => {
-  const isLongMessage = (text2?.length || 0) > MAX_SHORT_MESSAGE_LENGTH;
-
-  return (
-    <View style={[styles.container, styles.successContainer]}>
-      {text1 && <Text style={styles.title}>{text1}</Text>}
-      {text2 && (
-        <Text style={[styles.message, isLongMessage && styles.messageLong]}>
-          {text2}
-        </Text>
-      )}
-    </View>
-  );
-};
-
-const ErrorToast = ({ text1, text2 }: BaseToastProps) => {
-  const isLongMessage = (text2?.length || 0) > MAX_SHORT_MESSAGE_LENGTH;
-
-  return (
-    <View style={[styles.container, styles.errorContainer]}>
-      {text1 && <Text style={styles.title}>{text1}</Text>}
-      {text2 && (
-        <Text style={[styles.message, isLongMessage && styles.messageLong]}>
-          {text2}
-        </Text>
-      )}
-    </View>
-  );
-};
-
-const InfoToast = ({ text1, text2 }: BaseToastProps) => {
-  const isLongMessage = (text2?.length || 0) > MAX_SHORT_MESSAGE_LENGTH;
-
-  return (
-    <View style={[styles.container, styles.infoContainer]}>
-      {text1 && <Text style={styles.title}>{text1}</Text>}
-      {text2 && (
-        <Text style={[styles.message, isLongMessage && styles.messageLong]}>
-          {text2}
-        </Text>
-      )}
-    </View>
-  );
-};
+import { BaseToast, ErrorToast, BaseToastProps } from 'react-native-toast-message';
 
 export const toastConfig = {
-  success: (props: BaseToastProps) => <SuccessToast {...props} />,
-  error: (props: BaseToastProps) => <ErrorToast {...props} />,
-  info: (props: BaseToastProps) => <InfoToast {...props} />,
+  success: (props: BaseToastProps) => (
+    <BaseToast
+      {...props}
+      style={{
+        borderLeftColor: '#16a34a',
+        backgroundColor: '#16a34a',
+        borderLeftWidth: 0,
+        borderRadius: 12,
+        width: '90%',
+        minHeight: 70,
+      }}
+      contentContainerStyle={{
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+      }}
+      text1Style={{
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#fff',
+        fontFamily: 'ZenKaku-Bold',
+      }}
+      text2Style={{
+        fontSize: 17,
+        fontWeight: '500',
+        color: '#fff',
+        fontFamily: 'ZenKaku-Medium',
+      }}
+      text2NumberOfLines={3}
+    />
+  ),
+  error: (props: BaseToastProps) => (
+    <ErrorToast
+      {...props}
+      style={{
+        borderLeftColor: '#dc2626',
+        backgroundColor: '#dc2626',
+        borderLeftWidth: 0,
+        borderRadius: 12,
+        width: '90%',
+        minHeight: 70,
+      }}
+      contentContainerStyle={{
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+      }}
+      text1Style={{
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#fff',
+        fontFamily: 'ZenKaku-Bold',
+      }}
+      text2Style={{
+        fontSize: 17,
+        fontWeight: '500',
+        color: '#fff',
+        fontFamily: 'ZenKaku-Medium',
+      }}
+      text2NumberOfLines={3}
+    />
+  ),
+  info: (props: BaseToastProps) => (
+    <BaseToast
+      {...props}
+      style={{
+        borderLeftColor: '#2563eb',
+        backgroundColor: '#2563eb',
+        borderLeftWidth: 0,
+        borderRadius: 12,
+        width: '90%',
+        minHeight: 70,
+      }}
+      contentContainerStyle={{
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+      }}
+      text1Style={{
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#fff',
+        fontFamily: 'ZenKaku-Bold',
+      }}
+      text2Style={{
+        fontSize: 17,
+        fontWeight: '500',
+        color: '#fff',
+        fontFamily: 'ZenKaku-Medium',
+      }}
+      text2NumberOfLines={3}
+    />
+  ),
 };
-
-const styles = StyleSheet.create({
-  container: {
-    width: '90%',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  successContainer: {
-    backgroundColor: '#16a34a',
-  },
-  errorContainer: {
-    backgroundColor: '#dc2626',
-  },
-  infoContainer: {
-    backgroundColor: '#2563eb',
-  },
-  title: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-    fontFamily: 'ZenKaku-Bold',
-    marginBottom: 4,
-  },
-  message: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '500',
-    fontFamily: 'ZenKaku-Medium',
-  },
-  messageLong: {
-    fontSize: 15,
-  },
-});

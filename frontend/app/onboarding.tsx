@@ -121,7 +121,7 @@ export default function OnboardingScreen() {
     } catch (error) {
       console.error('Failed to save onboarding status:', error);
     }
-    router.replace('/agreement');
+    router.replace('/signup');
   };
 
   return (

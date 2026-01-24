@@ -86,7 +86,7 @@ export default function RootLayout() {
     return null;
   }
 
-  const authRoutes = ['/login', '/signup', '/verify-email', '/agreement'];
+  const authRoutes = ['/login', '/signup', '/verify-email', '/terms', '/privacy-policy'];
   const onboardingRoute = '/onboarding';
 
   // ✅ オンボーディング未完了かつ認証済みでない場合、オンボーディングへリダイレクト
@@ -133,8 +133,24 @@ function RootLayoutNav() {
             animationDuration: 300,
           }}
         />
+        <Stack.Screen
+          name="terms"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+            animationDuration: 300,
+          }}
+        />
+        <Stack.Screen
+          name="privacy-policy"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+            animationDuration: 300,
+          }}
+        />
       </Stack>
-      <Toast config={toastConfig} />
+      <Toast config={toastConfig} topOffset={60} />
     </ThemeProvider>
   );
 }

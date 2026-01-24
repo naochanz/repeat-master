@@ -8,7 +8,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { useAuthStore } from '@/stores/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showErrorToast } from '@/utils/toast';
-import { Mail, Lock, User } from 'lucide-react-native';
+import { Mail, Lock, User, Check } from 'lucide-react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 
 const signupSchema = z
@@ -35,6 +35,7 @@ const Signup = () => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [isAppleAuthAvailable, setIsAppleAuthAvailable] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const register = useAuthStore((state) => state.register);
   const signInWithApple = useAuthStore((state) => state.signInWithApple);
@@ -211,11 +212,37 @@ const Signup = () => {
               )}
             </View>
 
+            {/* Terms Agreement */}
+            <View style={styles.agreementContainer}>
+              <TouchableOpacity
+                style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}
+                onPress={() => setAgreedToTerms(!agreedToTerms)}
+              >
+                {agreedToTerms && <Check size={14} color={theme.colors.neutral.white} />}
+              </TouchableOpacity>
+              <Text style={styles.agreementText}>
+                <Text
+                  style={styles.agreementLink}
+                  onPress={() => router.push('/terms')}
+                >
+                  利用規約
+                </Text>
+                <Text>と</Text>
+                <Text
+                  style={styles.agreementLink}
+                  onPress={() => router.push('/privacy-policy')}
+                >
+                  プライバシーポリシー
+                </Text>
+                <Text>に同意する</Text>
+              </Text>
+            </View>
+
             {/* Signup Button */}
             <TouchableOpacity
-              style={[styles.primaryButton, isLoading && styles.buttonDisabled]}
+              style={[styles.primaryButton, (isLoading || !agreedToTerms) && styles.buttonDisabled]}
               onPress={handleSubmit(onSubmit)}
-              disabled={isLoading}
+              disabled={isLoading || !agreedToTerms}
               activeOpacity={0.8}
             >
               <Text style={styles.primaryButtonText}>{isLoading ? '登録中...' : '新規登録'}</Text>
@@ -232,13 +259,15 @@ const Signup = () => {
 
             {/* Apple Sign In */}
             {isAppleAuthAvailable && (
-              <AppleAuthentication.AppleAuthenticationButton
-                buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
-                buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                cornerRadius={theme.borderRadius.lg}
-                style={styles.appleButton}
-                onPress={handleAppleSignIn}
-              />
+              <View style={!agreedToTerms && styles.appleButtonDisabled}>
+                <AppleAuthentication.AppleAuthenticationButton
+                  buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+                  buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                  cornerRadius={theme.borderRadius.lg}
+                  style={styles.appleButton}
+                  onPress={agreedToTerms ? handleAppleSignIn : () => {}}
+                />
+              </View>
             )}
 
             {/* Login Link */}
@@ -322,6 +351,35 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     marginTop: theme.spacing.xs,
     marginLeft: theme.spacing.sm,
   },
+  agreementContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: theme.borderRadius.sm,
+    borderWidth: 2,
+    borderColor: theme.colors.secondary[300],
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: theme.colors.primary[600],
+    borderColor: theme.colors.primary[600],
+  },
+  agreementText: {
+    flex: 1,
+    fontSize: theme.typography.fontSizes.sm,
+    color: theme.colors.secondary[600],
+    fontFamily: 'ZenKaku-Regular',
+  },
+  agreementLink: {
+    color: theme.colors.primary[600],
+    fontFamily: 'ZenKaku-Medium',
+  },
   primaryButton: {
     backgroundColor: theme.colors.primary[600],
     paddingVertical: theme.spacing.md,
@@ -376,6 +434,9 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   appleButton: {
     width: '100%',
     height: 50,
+  },
+  appleButtonDisabled: {
+    opacity: 0.5,
   },
 });
 

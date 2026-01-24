@@ -54,7 +54,18 @@ const Login = () => {
       await loginAction(data.email, data.password);
       router.replace('/(tabs)');
     } catch (error: any) {
-      const errorMessage = error.message || error.response?.data?.message || 'ログインに失敗しました';
+      const code = error?.code || '';
+      const message = error?.message || '';
+      let errorMessage = 'ログインに失敗しました';
+
+      if (code === 'invalid_credentials' || message.includes('Invalid login credentials')) {
+        errorMessage = 'メールアドレスまたはパスワードが正しくありません';
+      } else if (code === 'email_not_confirmed' || message.includes('Email not confirmed')) {
+        errorMessage = 'メールアドレスの確認が完了していません';
+      } else if (code === 'user_not_found' || message.includes('User not found')) {
+        errorMessage = 'アカウントが見つかりません';
+      }
+
       showErrorToast(errorMessage, 'ログインエラー');
     }
   };

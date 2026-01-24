@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import React, { useMemo } from 'react';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack } from 'expo-router';
+import { router } from 'expo-router';
+import { X } from 'lucide-react-native';
 
 export default function PrivacyPolicyScreen() {
   const theme = useAppTheme();
@@ -10,12 +11,12 @@ export default function PrivacyPolicyScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <Stack.Screen
-        options={{
-          title: 'プライバシーポリシー',
-          headerBackTitle: '戻る',
-        }}
-      />
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>プライバシーポリシー</Text>
+        <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
+          <X size={24} color={theme.colors.secondary[600]} />
+        </TouchableOpacity>
+      </View>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.lastUpdated}>最終更新日: 2026年1月24日</Text>
 
@@ -150,6 +151,26 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   container: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.secondary[100],
+  },
+  headerTitle: {
+    fontSize: theme.typography.fontSizes.lg,
+    fontWeight: theme.typography.fontWeights.bold as any,
+    color: theme.colors.secondary[900],
+    fontFamily: 'ZenKaku-Bold',
+  },
+  closeButton: {
+    position: 'absolute',
+    right: theme.spacing.md,
+    padding: theme.spacing.sm,
   },
   content: {
     flex: 1,
