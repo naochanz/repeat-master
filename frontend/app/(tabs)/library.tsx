@@ -4,7 +4,7 @@ import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { router, useFocusEffect, useLocalSearchParams, useNavigation } from 'expo-router';
 import { AlertCircle, Edit, MoreVertical, Plus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import AddItemModal from '../_compornents/AddItemModal';
 import CategorySelectModal from '../_compornents/CategorySelectModal';
@@ -439,6 +439,7 @@ export default function LibraryScreen() {
         visible={titleModalVisible}
         categoryName={categories.find(c => c.id === selectedCategoryId)?.name || ''}
         initialTitle={scannedTitle}
+        isLoading={isLoading}
         onConfirm={handleTitleConfirm}
         onCancel={handleTitleCancel}
       />
@@ -449,6 +450,7 @@ export default function LibraryScreen() {
         message="この問題集を削除してもよろしいですか？この操作は取り消せません。"
         onConfirm={confirmDelete}
         onCancel={() => setDeleteDialogVisible(false)}
+        isLoading={isLoading}
       />
 
       <Modal
@@ -498,14 +500,20 @@ export default function LibraryScreen() {
                 <TouchableOpacity
                   style={[styles.editModalButton, styles.cancelButton]}
                   onPress={() => setShowEditModal(false)}
+                  disabled={isLoading}
                 >
-                  <Text style={styles.cancelButtonText}>キャンセル</Text>
+                  <Text style={[styles.cancelButtonText, isLoading && { opacity: 0.5 }]}>キャンセル</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.editModalButton, styles.confirmButton]}
                   onPress={confirmEditCategory}
+                  disabled={isLoading}
                 >
-                  <Text style={styles.confirmButtonText}>保存</Text>
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={theme.colors.neutral.white} />
+                  ) : (
+                    <Text style={styles.confirmButtonText}>保存</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
@@ -527,6 +535,7 @@ export default function LibraryScreen() {
           setDeleteCategoryDialogVisible(false);
           setCategoryBooksCount(0); // ✅ リセット
         }}
+        isLoading={isLoading}
       />
 
       <LoadingOverlay visible={isLoading} />

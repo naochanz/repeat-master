@@ -2,6 +2,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { BookOpen } from 'lucide-react-native';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   SafeAreaView,
@@ -18,6 +19,7 @@ interface QuizBookTitleModalProps {
   visible: boolean;
   categoryName: string;
   initialTitle?: string;
+  isLoading?: boolean;
   onConfirm: (title: string) => void;
   onCancel: () => void;
 }
@@ -26,6 +28,7 @@ const QuizBookTitleModal = ({
   visible,
   categoryName,
   initialTitle = '',
+  isLoading = false,
   onConfirm,
   onCancel,
 }: QuizBookTitleModalProps) => {
@@ -94,18 +97,23 @@ const QuizBookTitleModal = ({
               <TouchableOpacity
                 style={[styles.actionButton, styles.cancelButton]}
                 onPress={handleCancel}
+                disabled={isLoading}
               >
-                <Text style={styles.cancelButtonText}>キャンセル</Text>
+                <Text style={[styles.cancelButtonText, isLoading && styles.disabledButtonText]}>キャンセル</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionButton, styles.confirmButton]}
                 onPress={handleConfirm}
-                disabled={!title.trim()}
+                disabled={!title.trim() || isLoading}
               >
-                <Text style={[
-                  styles.confirmButtonText,
-                  !title.trim() && styles.disabledButtonText
-                ]}>追加</Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={theme.colors.neutral.white} />
+                ) : (
+                  <Text style={[
+                    styles.confirmButtonText,
+                    !title.trim() && styles.disabledButtonText
+                  ]}>追加</Text>
+                )}
               </TouchableOpacity>
             </View>
           </Pressable>

@@ -84,6 +84,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   updateCategory: async (id: string, name: string) => {
+    set({ isLoading: true });
     try {
       await categoryApi.update(id, { name });
       await get().fetchCategories();
@@ -91,10 +92,13 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       console.error('Failed to update category:', error);
       showErrorToast('カテゴリの更新に失敗しました。');
       throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 
   deleteCategory: async (id: string) => {
+    set({ isLoading: true });
     try {
       await categoryApi.delete(id);
       useAnalyticsStore.getState().setNeedsRefresh(true);
@@ -104,20 +108,20 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       console.error('Failed to delete category:', error);
       showErrorToast('カテゴリの削除に失敗しました。再度お試しください。');
       throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 
   // ========== QuizBook CRUD (Optimistic UI) ==========
 
   fetchQuizBooks: async () => {
-    set({ isLoading: true });
     try {
       const response = await quizBookApi.getAll();
-      set({ quizBooks: response.data, isLoading: false });
+      set({ quizBooks: response.data });
     } catch (error) {
       console.error('Failed to fetch quiz books:', error);
       showErrorToast('問題集の取得に失敗しました。');
-      set({ isLoading: false });
     }
   },
 
@@ -146,6 +150,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   updateQuizBook: async (id: string, updates: any) => {
+    set({ isLoading: true });
     try {
       await quizBookApi.update(id, updates);
       await get().fetchQuizBooks();
@@ -153,10 +158,13 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       console.error('Failed to update quiz book:', error);
       showErrorToast('問題集の更新に失敗しました。');
       throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 
   deleteQuizBook: async (id: string) => {
+    set({ isLoading: true });
     try {
       await quizBookApi.delete(id);
       useAnalyticsStore.getState().setNeedsRefresh(true);
@@ -165,10 +173,13 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       console.error('Failed to delete quiz book:', error);
       showErrorToast('問題集の削除に失敗しました。再度お試しください。');
       throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 
   completeQuizBook: async (id: string) => {
+    set({ isLoading: true });
     try {
       await quizBookApi.complete(id);
       useAnalyticsStore.getState().setNeedsRefresh(true);
@@ -177,10 +188,13 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       console.error('Failed to complete quiz book:', error);
       showErrorToast('問題集の完了に失敗しました。');
       throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 
   reactivateQuizBook: async (id: string) => {
+    set({ isLoading: true });
     try {
       await quizBookApi.reactivate(id);
       useAnalyticsStore.getState().setNeedsRefresh(true);
@@ -189,6 +203,8 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       console.error('Failed to reactivate quiz book:', error);
       showErrorToast('問題集の再開に失敗しました。');
       throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 
@@ -210,6 +226,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   updateChapter: async (quizBookId: string, chapterId: string, updates: any) => {
+    set({ isLoading: true });
     try {
       await chapterApi.update(quizBookId, chapterId, updates);
       await get().fetchQuizBooks();
@@ -217,10 +234,13 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       console.error('Failed to update chapter:', error);
       showErrorToast('章の更新に失敗しました。');
       throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 
   deleteChapter: async (quizBookId: string, chapterId: string) => {
+    set({ isLoading: true });
     try {
       await chapterApi.delete(quizBookId, chapterId);
       useAnalyticsStore.getState().setNeedsRefresh(true);
@@ -229,6 +249,8 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       console.error('Failed to delete chapter:', error);
       showErrorToast('章の削除に失敗しました。再度お試しください。');
       throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 
@@ -250,6 +272,7 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
   },
 
   updateSection: async (quizBookId: string, chapterId: string, sectionId: string, updates: any) => {
+    set({ isLoading: true });
     try {
       await sectionApi.update(quizBookId, chapterId, sectionId, updates);
       await get().fetchQuizBooks();
@@ -257,10 +280,13 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       console.error('Failed to update section:', error);
       showErrorToast('節の更新に失敗しました。');
       throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 
   deleteSection: async (quizBookId: string, chapterId: string, sectionId: string) => {
+    set({ isLoading: true });
     try {
       await sectionApi.delete(quizBookId, chapterId, sectionId);
       useAnalyticsStore.getState().setNeedsRefresh(true);
@@ -269,6 +295,8 @@ export const useQuizBookStore = create<QuizBookStore>((set, get) => ({
       console.error('Failed to delete section:', error);
       showErrorToast('節の削除に失敗しました。再度お試しください。');
       throw error;
+    } finally {
+      set({ isLoading: false });
     }
   },
 

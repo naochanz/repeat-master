@@ -1,7 +1,7 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { AlertTriangle } from 'lucide-react-native';
 import React, { useMemo } from 'react';
-import { Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface ConfirmDialogProps {
   visible: boolean;
@@ -9,6 +9,7 @@ interface ConfirmDialogProps {
   message: string;
   onConfirm: () => void;
   onCancel: () => void;
+  isLoading?: boolean;
 }
 
 const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -17,6 +18,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   message,
   onConfirm,
   onCancel,
+  isLoading = false,
 }) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -45,15 +47,21 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
                 onPress={onCancel}
+                disabled={isLoading}
               >
-                <Text style={styles.cancelButtonText}>キャンセル</Text>
+                <Text style={[styles.cancelButtonText, isLoading && { opacity: 0.5 }]}>キャンセル</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.button, styles.confirmButton]}
                 onPress={onConfirm}
+                disabled={isLoading}
               >
-                <Text style={styles.confirmButtonText}>削除</Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={theme.colors.neutral.white} />
+                ) : (
+                  <Text style={styles.confirmButtonText}>削除</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>

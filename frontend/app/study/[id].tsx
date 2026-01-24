@@ -7,7 +7,7 @@ import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, MoreVertical, Plus, ArrowLeft } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
@@ -356,14 +356,20 @@ const StudyHome = () => {
                                         setShowAddModal(false);
                                         setNewChapterTitle('');
                                     }}
+                                    disabled={isLoading}
                                 >
-                                    <Text style={styles.cancelButtonText}>キャンセル</Text>
+                                    <Text style={[styles.cancelButtonText, isLoading && { opacity: 0.5 }]}>キャンセル</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[styles.modalButton, styles.confirmButton]}
                                     onPress={handleAddChapter}
+                                    disabled={isLoading}
                                 >
-                                    <Text style={styles.confirmButtonText}>追加</Text>
+                                    {isLoading ? (
+                                        <ActivityIndicator size="small" color={theme.colors.neutral.white} />
+                                    ) : (
+                                        <Text style={styles.confirmButtonText}>追加</Text>
+                                    )}
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -382,6 +388,7 @@ const StudyHome = () => {
                     editLabel="章名"
                     editValue={editingChapter?.title || ''}
                     editPlaceholder="章名を入力"
+                    isLoading={isLoading}
                 />
 
                 <Modal
@@ -409,14 +416,20 @@ const StudyHome = () => {
                                         setShowConfirmRoundModal(false);
                                         setUnansweredQuestionsWarning('');
                                     }}
+                                    disabled={isLoading}
                                 >
-                                    <Text style={styles.cancelButtonText}>キャンセル</Text>
+                                    <Text style={[styles.cancelButtonText, isLoading && { opacity: 0.5 }]}>キャンセル</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
                                     style={[styles.modalButton, styles.confirmButton]}
                                     onPress={handleExecuteConfirmRound}
+                                    disabled={isLoading}
                                 >
-                                    <Text style={styles.confirmButtonText}>確定</Text>
+                                    {isLoading ? (
+                                        <ActivityIndicator size="small" color={theme.colors.neutral.white} />
+                                    ) : (
+                                        <Text style={styles.confirmButtonText}>確定</Text>
+                                    )}
                                 </TouchableOpacity>
                             </View>
                         </View>

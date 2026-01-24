@@ -1,7 +1,7 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { Trash2 } from 'lucide-react-native';
 import React, { useState, useEffect, useMemo } from 'react';
-import { Modal, Pressable, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface EditDeleteModalProps {
   visible: boolean;
@@ -13,6 +13,7 @@ interface EditDeleteModalProps {
   editValue?: string;
   editPlaceholder?: string;
   showEditField?: boolean;
+  isLoading?: boolean;
 }
 
 const EditDeleteModal = ({
@@ -24,7 +25,8 @@ const EditDeleteModal = ({
   editLabel = '名前',
   editValue = '',
   editPlaceholder = '入力してください',
-  showEditField = true
+  showEditField = true,
+  isLoading = false
 }: EditDeleteModalProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -76,24 +78,37 @@ const EditDeleteModal = ({
                 <TouchableOpacity
                   style={[styles.actionButton, styles.saveButton]}
                   onPress={handleSave}
+                  disabled={isLoading}
                 >
-                  <Text style={styles.saveButtonText}>保存</Text>
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={theme.colors.neutral.white} />
+                  ) : (
+                    <Text style={styles.saveButtonText}>保存</Text>
+                  )}
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.deleteButton]}
                 onPress={handleDelete}
+                disabled={isLoading}
               >
-                <Trash2 size={20} color={theme.colors.neutral.white} />
-                <Text style={styles.deleteButtonText}>削除</Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={theme.colors.neutral.white} />
+                ) : (
+                  <>
+                    <Trash2 size={20} color={theme.colors.neutral.white} />
+                    <Text style={styles.deleteButtonText}>削除</Text>
+                  </>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.actionButton, styles.cancelButton]}
                 onPress={onClose}
+                disabled={isLoading}
               >
-                <Text style={styles.cancelButtonText}>キャンセル</Text>
+                <Text style={[styles.cancelButtonText, isLoading && { opacity: 0.5 }]}>キャンセル</Text>
               </TouchableOpacity>
             </View>
           </Pressable>
