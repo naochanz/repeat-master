@@ -11,7 +11,7 @@ export const ENTITLEMENT_ID = 'DORILOOP Pro';
 // 製品ID (App Store Connect)
 export const PRODUCT_ID_MONTHLY = 'com.DORILOOP.premium.monthly';
 export const PRODUCT_ID_YEARLY = 'com.DORILOOP.premium.yearly';
-export const PRODUCT_ID_ADD_QUIZBOOK = 'add_quizbook';
+export const PRODUCT_ID_ADD_QUIZBOOK = 'com.naochanz.add_quizbook';
 
 export interface SubscriptionStatus {
   isPremium: boolean;
@@ -155,7 +155,7 @@ class SubscriptionService {
     if (entitlement) {
       // 買い切り商品（add_quizbook）はプレミアム扱いにしない
       const productId = entitlement.productIdentifier;
-      if (productId && productId.includes('add_quizbook')) {
+      if (productId && productId === PRODUCT_ID_ADD_QUIZBOOK) {
         return DEFAULT_STATUS;
       }
 
@@ -167,6 +167,25 @@ class SubscriptionService {
     }
 
     return DEFAULT_STATUS;
+  }
+
+  // 買い切り商品の購入回数を取得
+  async getPurchasedQuizBookSlots(): Promise<number> {
+    if (!this.initialized) {
+      return 0;
+    }
+
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      // nonSubscriptionTransactionsから add_quizbook の購入回数をカウント
+      const addQuizbookPurchases = customerInfo.nonSubscriptionTransactions.filter(
+        (transaction) => transaction.productIdentifier === PRODUCT_ID_ADD_QUIZBOOK
+      );
+      return addQuizbookPurchases.length;
+    } catch (error) {
+      console.error('Failed to get purchased quiz book slots:', error);
+      return 0;
+    }
   }
 
   // リスナーを追加（購入状態の変更を監視）

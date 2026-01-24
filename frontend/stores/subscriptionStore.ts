@@ -11,6 +11,7 @@ interface SubscriptionStore {
   willRenew: boolean;
   packages: PurchasesPackage[];
   activeQuizBookCount: number;
+  purchasedSlots: number;  // 買い切りで購入した追加枠
 
   // 無料プランの制限
   FREE_ACTIVE_LIMIT: number;
@@ -33,6 +34,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
   willRenew: false,
   packages: [],
   activeQuizBookCount: 0,
+  purchasedSlots: 0,
   FREE_ACTIVE_LIMIT: 1,
 
   initialize: async (userId?: string) => {
@@ -54,10 +56,12 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
   refreshStatus: async () => {
     try {
       const status = await subscriptionService.getSubscriptionStatus();
+      const purchasedSlots = await subscriptionService.getPurchasedQuizBookSlots();
       set({
         isPremium: status.isPremium,
         expirationDate: status.expirationDate,
         willRenew: status.willRenew,
+        purchasedSlots,
       });
     } catch (error) {
       console.error('Failed to refresh subscription status:', error);
@@ -77,12 +81,15 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
     set({ isLoading: true });
     try {
       const status = await subscriptionService.purchasePackage(pkg);
+      // 買い切り商品の場合、追加枠を更新
+      const purchasedSlots = await subscriptionService.getPurchasedQuizBookSlots();
       set({
         isPremium: status.isPremium,
         expirationDate: status.expirationDate,
         willRenew: status.willRenew,
+        purchasedSlots,
       });
-      return status.isPremium;
+      return status.isPremium || purchasedSlots > 0;
     } catch (error: any) {
       if (error.message === 'CANCELLED') {
         return false;
@@ -126,9 +133,11 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
   },
 
   canCreateQuizBook: () => {
-    const { isPremium, activeQuizBookCount, FREE_ACTIVE_LIMIT } = get();
+    const { isPremium, activeQuizBookCount, FREE_ACTIVE_LIMIT, purchasedSlots } = get();
     if (isPremium) return true;
-    return activeQuizBookCount < FREE_ACTIVE_LIMIT;
+    // 無料枠 + 買い切りで購入した追加枠
+    const totalLimit = FREE_ACTIVE_LIMIT + purchasedSlots;
+    return activeQuizBookCount < totalLimit;
   },
 
   logout: async () => {
@@ -139,6 +148,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
       willRenew: false,
       packages: [],
       activeQuizBookCount: 0,
+      purchasedSlots: 0,
     });
   },
 }));

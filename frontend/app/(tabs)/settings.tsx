@@ -108,158 +108,130 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.content}>
-        {/* サブスクリプション状態 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>プラン</Text>
-
-          {isPremium ? (
-            <View style={styles.premiumCard}>
-              <View style={styles.premiumHeader}>
-                <View style={styles.premiumBadge}>
-                  <Crown size={20} color={theme.colors.warning[500]} fill={theme.colors.warning[500]} />
-                  <Text style={styles.premiumBadgeText}>Premium</Text>
-                </View>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        {/* プラン */}
+        <Text style={styles.sectionLabel}>プラン</Text>
+        {isPremium ? (
+          <>
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <Crown size={20} color={theme.colors.warning[500]} fill={theme.colors.warning[500]} />
+                <Text style={styles.rowLabel}>Premium</Text>
               </View>
-
-              <View style={styles.premiumDetails}>
-                {expirationDate && (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>次回更新日</Text>
-                    <Text style={styles.detailValue}>{formatDate(expirationDate)}</Text>
-                  </View>
-                )}
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>自動更新</Text>
-                  <Text style={[styles.detailValue, { color: willRenew ? theme.colors.success[600] : theme.colors.secondary[500] }]}>
-                    {willRenew ? 'オン' : 'オフ'}
-                  </Text>
-                </View>
+            </View>
+            {expirationDate && (
+              <View style={styles.row}>
+                <Text style={styles.rowLabel}>次回更新日</Text>
+                <Text style={styles.rowValue}>{formatDate(expirationDate)}</Text>
               </View>
-
-              <Text style={styles.premiumNote}>
-                サブスクリプションの管理はApp Storeから行えます
+            )}
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>自動更新</Text>
+              <Text style={[styles.rowValue, { color: willRenew ? theme.colors.success[600] : theme.colors.secondary[500] }]}>
+                {willRenew ? 'オン' : 'オフ'}
               </Text>
             </View>
-          ) : (
-            <TouchableOpacity style={styles.upgradeCard} onPress={handleUpgrade} activeOpacity={0.8}>
-              <View style={styles.upgradeContent}>
-                <View style={styles.upgradeIcon}>
-                  <Crown size={24} color={theme.colors.warning[500]} />
-                </View>
-                <View style={styles.upgradeText}>
-                  <Text style={styles.upgradeTitle}>プレミアムにアップグレード</Text>
-                  <Text style={styles.upgradeDescription}>
-                    問題集を無制限に登録して学習を加速
-                  </Text>
-                </View>
-              </View>
-              <ChevronRight size={20} color={theme.colors.secondary[400]} />
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={styles.restoreButton}
-            onPress={handleRestore}
-            activeOpacity={0.7}
-            disabled={isLoading}
-          >
-            <RefreshCw size={18} color={theme.colors.primary[600]} />
-            <Text style={styles.restoreButtonText}>購入を復元</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* プロフィール */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>プロフィール</Text>
-
-          <TouchableOpacity
-            style={styles.standardCard}
-            onPress={handleEditName}
-            activeOpacity={0.7}
-          >
-            <View style={styles.cardLeft}>
-              <User size={20} color={theme.colors.primary[600]} />
-              <Text style={styles.cardLabel}>{profile?.name || '未設定'}</Text>
+          </>
+        ) : (
+          <TouchableOpacity style={styles.row} onPress={handleUpgrade} activeOpacity={0.6}>
+            <View style={styles.rowLeft}>
+              <Crown size={20} color={theme.colors.warning[500]} />
+              <Text style={styles.rowLabel}>プレミアムにアップグレード</Text>
             </View>
-            <Edit3 size={20} color={theme.colors.secondary[400]} />
+            <ChevronRight size={18} color={theme.colors.secondary[400]} />
           </TouchableOpacity>
-        </View>
+        )}
 
-        {/* 外観 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>外観</Text>
-
-          <View style={styles.standardCard}>
-            <View style={styles.cardLeft}>
-              <Moon size={20} color={theme.colors.primary[600]} />
-              <Text style={styles.cardLabel}>ダークモード</Text>
-            </View>
-            <Switch
-              value={isDark}
-              onValueChange={handleToggleDarkMode}
-              trackColor={{ false: theme.colors.secondary[200], true: theme.colors.primary[400] }}
-              thumbColor={isDark ? theme.colors.primary[600] : theme.colors.neutral.white}
-            />
+        <TouchableOpacity
+          style={styles.row}
+          onPress={handleRestore}
+          activeOpacity={0.6}
+          disabled={isLoading}
+        >
+          <View style={styles.rowLeft}>
+            <RefreshCw size={20} color={theme.colors.primary[600]} />
+            <Text style={styles.rowLabel}>購入を復元</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* アカウント */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>アカウント</Text>
+        <Text style={styles.sectionLabel}>アカウント</Text>
+        <TouchableOpacity
+          style={styles.row}
+          onPress={handleEditName}
+          activeOpacity={0.6}
+        >
+          <View style={styles.rowLeft}>
+            <User size={20} color={theme.colors.primary[600]} />
+            <Text style={styles.rowLabel}>ユーザー名</Text>
+          </View>
+          <View style={styles.rowRight}>
+            <Text style={styles.rowValue}>{profile?.name || '未設定'}</Text>
+            <Edit3 size={18} color={theme.colors.secondary[400]} />
+          </View>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.standardCard, { marginBottom: theme.spacing.sm }]}
-            onPress={handleLogout}
-            activeOpacity={0.7}
-          >
-            <View style={styles.cardLeft}>
-              <LogOut size={20} color={theme.colors.secondary[600]} />
-              <Text style={styles.cardLabel}>ログアウト</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.standardCard, styles.dangerCard]}
-            onPress={handleDeleteAccount}
-            activeOpacity={0.7}
-            disabled={isDeleting}
-          >
-            <View style={styles.cardLeft}>
-              <Trash2 size={20} color={theme.colors.error[600]} />
-              <Text style={[styles.cardLabel, { color: theme.colors.error[600] }]}>
-                {isDeleting ? '削除中...' : 'アカウントを削除'}
-              </Text>
-            </View>
-          </TouchableOpacity>
+        {/* 外観 */}
+        <Text style={styles.sectionLabel}>外観</Text>
+        <View style={styles.row}>
+          <View style={styles.rowLeft}>
+            <Moon size={20} color={theme.colors.primary[600]} />
+            <Text style={styles.rowLabel}>ダークモード</Text>
+          </View>
+          <Switch
+            value={isDark}
+            onValueChange={handleToggleDarkMode}
+            trackColor={{ false: theme.colors.secondary[200], true: theme.colors.primary[400] }}
+            thumbColor={isDark ? theme.colors.primary[600] : theme.colors.neutral.white}
+          />
         </View>
 
         {/* 法的情報 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>法的情報</Text>
+        <Text style={styles.sectionLabel}>法的情報</Text>
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => router.push('/privacy-policy')}
+          activeOpacity={0.6}
+        >
+          <Text style={styles.rowLabel}>プライバシーポリシー</Text>
+          <ChevronRight size={18} color={theme.colors.secondary[400]} />
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.standardCard, { marginBottom: theme.spacing.sm }]}
-            onPress={() => router.push('/privacy-policy')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.cardLeft}>
-              <Text style={styles.cardLabel}>プライバシーポリシー</Text>
-            </View>
-            <ChevronRight size={20} color={theme.colors.secondary[400]} />
-          </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.row}
+          onPress={() => router.push('/terms')}
+          activeOpacity={0.6}
+        >
+          <Text style={styles.rowLabel}>利用規約</Text>
+          <ChevronRight size={18} color={theme.colors.secondary[400]} />
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.standardCard}
-            onPress={() => router.push('/terms')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.cardLeft}>
-              <Text style={styles.cardLabel}>利用規約</Text>
-            </View>
-            <ChevronRight size={20} color={theme.colors.secondary[400]} />
-          </TouchableOpacity>
-        </View>
+        {/* その他 */}
+        <Text style={styles.sectionLabel}>その他</Text>
+        <TouchableOpacity
+          style={styles.row}
+          onPress={handleLogout}
+          activeOpacity={0.6}
+        >
+          <View style={styles.rowLeft}>
+            <LogOut size={20} color={theme.colors.secondary[600]} />
+            <Text style={styles.rowLabel}>ログアウト</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.row}
+          onPress={handleDeleteAccount}
+          activeOpacity={0.6}
+          disabled={isDeleting}
+        >
+          <View style={styles.rowLeft}>
+            <Trash2 size={20} color={theme.colors.error[600]} />
+            <Text style={[styles.rowLabel, { color: theme.colors.error[600] }]}>
+              {isDeleting ? '削除中...' : 'アカウントを削除'}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* ユーザー名編集モーダル */}
@@ -311,152 +283,44 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     flex: 1,
     backgroundColor: theme.colors.neutral[50],
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
     padding: theme.spacing.lg,
   },
-  section: {
-    marginBottom: theme.spacing.lg,
-  },
-  sectionTitle: {
+  sectionLabel: {
     fontSize: theme.typography.fontSizes.sm,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[600],
-    fontFamily: 'ZenKaku-Bold',
-    marginBottom: theme.spacing.md,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    color: theme.colors.secondary[500],
+    fontFamily: 'ZenKaku-Regular',
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
   },
-  standardCard: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: theme.colors.neutral.white,
-    padding: theme.spacing.lg,
-    borderRadius: theme.borderRadius.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.secondary[200],
-    ...theme.shadows.sm,
+    paddingVertical: theme.spacing.md,
   },
-  cardLeft: {
+  rowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.md,
   },
-  cardLabel: {
+  rowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  rowLabel: {
     fontSize: theme.typography.fontSizes.base,
     color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Medium',
   },
-  premiumCard: {
-    backgroundColor: theme.colors.neutral.white,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    borderWidth: 2,
-    borderColor: theme.colors.warning[300],
-    ...theme.shadows.sm,
-  },
-  premiumHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  premiumBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    backgroundColor: theme.colors.warning[100],
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: 999,
-  },
-  premiumBadgeText: {
-    fontSize: theme.typography.fontSizes.sm,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.warning[700],
-    fontFamily: 'ZenKaku-Bold',
-  },
-  premiumDetails: {
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  detailLabel: {
-    fontSize: theme.typography.fontSizes.sm,
-    color: theme.colors.secondary[600],
-    fontFamily: 'ZenKaku-Regular',
-  },
-  detailValue: {
-    fontSize: theme.typography.fontSizes.sm,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-  },
-  premiumNote: {
-    fontSize: theme.typography.fontSizes.xs,
+  rowValue: {
+    fontSize: theme.typography.fontSizes.base,
     color: theme.colors.secondary[500],
     fontFamily: 'ZenKaku-Regular',
-    textAlign: 'center',
-  },
-  upgradeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: theme.colors.neutral.white,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.secondary[200],
-    ...theme.shadows.sm,
-  },
-  upgradeContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  upgradeIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: theme.colors.warning[100],
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: theme.spacing.md,
-  },
-  upgradeText: {
-    flex: 1,
-  },
-  upgradeTitle: {
-    fontSize: theme.typography.fontSizes.base,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-    marginBottom: 2,
-  },
-  upgradeDescription: {
-    fontSize: theme.typography.fontSizes.sm,
-    color: theme.colors.secondary[600],
-    fontFamily: 'ZenKaku-Regular',
-  },
-  restoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-  },
-  restoreButtonText: {
-    fontSize: theme.typography.fontSizes.sm,
-    color: theme.colors.primary[600],
-    fontFamily: 'ZenKaku-Medium',
-  },
-  dangerCard: {
-    borderColor: theme.colors.error[300],
   },
   modalOverlay: {
     flex: 1,

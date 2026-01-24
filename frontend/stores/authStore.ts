@@ -4,6 +4,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { Profile } from '@/types/database';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { subscriptionService } from '@/services/subscription';
+import { useSubscriptionStore } from './subscriptionStore';
 
 interface AuthState {
   user: User | null;
@@ -42,6 +43,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
         // RevenueCatにユーザーIDを紐づけ
         await subscriptionService.login(session.user.id);
+        // サブスクリプション状態を更新
+        await useSubscriptionStore.getState().refreshStatus();
         // プロファイルを取得
         await get().fetchProfile();
       }
@@ -57,10 +60,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (session) {
           // RevenueCatにユーザーIDを紐づけ
           await subscriptionService.login(session.user.id);
+          // サブスクリプション状態を更新
+          await useSubscriptionStore.getState().refreshStatus();
           await get().fetchProfile();
         } else {
           // RevenueCatからログアウト
           await subscriptionService.logout();
+          // サブスクリプション状態をリセット
+          await useSubscriptionStore.getState().logout();
           set({ profile: null });
         }
       });
@@ -117,6 +124,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // RevenueCatにユーザーIDを紐づけ
       if (data.user) {
         await subscriptionService.login(data.user.id);
+        // サブスクリプション状態を更新
+        await useSubscriptionStore.getState().refreshStatus();
       }
 
       await get().fetchProfile();
@@ -204,6 +213,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // RevenueCatにユーザーIDを紐づけ
       if (data.user) {
         await subscriptionService.login(data.user.id);
+        // サブスクリプション状態を更新
+        await useSubscriptionStore.getState().refreshStatus();
       }
 
       await get().fetchProfile();
@@ -215,6 +226,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     // RevenueCatからもログアウト
     await subscriptionService.logout();
+    // サブスクリプション状態をリセット
+    await useSubscriptionStore.getState().logout();
     await supabase.auth.signOut();
     set({
       user: null,

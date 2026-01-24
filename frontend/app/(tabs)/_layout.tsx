@@ -13,8 +13,8 @@ export default function TabLayout() {
         tabBarInactiveTintColor: theme.colors.secondary[400],
         headerShown: false,
         lazy: false,
-        animation: 'fade',
-        detachInactiveScreens: false,
+        // animation: 'fade', // SDK 54 + React Navigation 7 bug - blank screen issue
+        // detachInactiveScreens: false,
         tabBarStyle: {
           backgroundColor: theme.colors.neutral.white,
           borderTopColor: theme.colors.secondary[200],
