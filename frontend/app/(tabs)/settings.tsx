@@ -1,4 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch, Modal, TextInput } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ONBOARDING_COMPLETE_KEY } from '../onboarding';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { router } from 'expo-router';
@@ -30,11 +32,18 @@ export default function SettingsScreen() {
   }, []);
 
   const handleLogout = async () => {
-    await logout();
-    router.replace('/login');
+    try {
+      await logout();
+    } finally {
+      router.replace('/login');
+    }
   };
 
   const handleUpgrade = () => {
+    router.push('/paywall?source=settings');
+  };
+
+  const handlePremiumTap = () => {
     router.push('/paywall?source=settings');
   };
 
@@ -68,6 +77,12 @@ export default function SettingsScreen() {
     } finally {
       setIsUpdatingName(false);
     }
+  };
+
+  // TODO: 確認後削除
+  const handleResetOnboarding = async () => {
+    await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
+    Alert.alert('リセット完了', 'アプリを再起動してください');
   };
 
   const handleDeleteAccount = () => {
@@ -113,12 +128,13 @@ export default function SettingsScreen() {
         <Text style={styles.sectionLabel}>プラン</Text>
         {isPremium ? (
           <>
-            <View style={styles.row}>
+            <TouchableOpacity style={styles.row} onPress={handlePremiumTap} activeOpacity={0.6}>
               <View style={styles.rowLeft}>
                 <Crown size={20} color={theme.colors.warning[500]} fill={theme.colors.warning[500]} />
                 <Text style={styles.rowLabel}>Premium</Text>
               </View>
-            </View>
+              <ChevronRight size={18} color={theme.colors.secondary[400]} />
+            </TouchableOpacity>
             {expirationDate && (
               <View style={styles.row}>
                 <Text style={styles.rowLabel}>次回更新日</Text>
@@ -204,6 +220,16 @@ export default function SettingsScreen() {
         >
           <Text style={styles.rowLabel}>利用規約</Text>
           <ChevronRight size={18} color={theme.colors.secondary[400]} />
+        </TouchableOpacity>
+
+        {/* デバッグ（確認後削除） */}
+        <Text style={styles.sectionLabel}>デバッグ</Text>
+        <TouchableOpacity
+          style={styles.row}
+          onPress={handleResetOnboarding}
+          activeOpacity={0.6}
+        >
+          <Text style={styles.rowLabel}>オンボーディングをリセット</Text>
         </TouchableOpacity>
 
         {/* その他 */}

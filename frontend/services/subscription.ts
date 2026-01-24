@@ -1,5 +1,5 @@
 import Purchases, { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 
 // RevenueCat API Keys (App Store Connect/Play Console で設定後に置き換え)
 const REVENUECAT_API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || '';
@@ -17,12 +17,14 @@ export interface SubscriptionStatus {
   isPremium: boolean;
   expirationDate: string | null;
   willRenew: boolean;
+  activeProductId: string | null;
 }
 
 const DEFAULT_STATUS: SubscriptionStatus = {
   isPremium: false,
   expirationDate: null,
   willRenew: false,
+  activeProductId: null,
 };
 
 class SubscriptionService {
@@ -152,10 +154,18 @@ class SubscriptionService {
   private parseCustomerInfo(customerInfo: CustomerInfo): SubscriptionStatus {
     const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
 
+    // デバッグ用Alert（確認後削除）
+    Alert.alert(
+      'Debug: parseCustomerInfo',
+      `entitlement: ${entitlement ? 'あり' : 'なし'}\nproductId: ${entitlement?.productIdentifier || 'N/A'}\nENTITLEMENT_ID: ${ENTITLEMENT_ID}`
+    );
+
     if (entitlement) {
       // 買い切り商品（add_quizbook）はプレミアム扱いにしない
       const productId = entitlement.productIdentifier;
-      if (productId && productId === PRODUCT_ID_ADD_QUIZBOOK) {
+
+      // 部分一致でチェック（製品IDの変更に対応）
+      if (productId && productId.includes('add_quizbook')) {
         return DEFAULT_STATUS;
       }
 
@@ -163,6 +173,7 @@ class SubscriptionService {
         isPremium: true,
         expirationDate: entitlement.expirationDate || null,
         willRenew: entitlement.willRenew,
+        activeProductId: productId || null,
       };
     }
 
@@ -181,6 +192,13 @@ class SubscriptionService {
       const addQuizbookPurchases = customerInfo.nonSubscriptionTransactions.filter(
         (transaction) => transaction.productIdentifier === PRODUCT_ID_ADD_QUIZBOOK
       );
+
+      // デバッグ用Alert（確認後削除）
+      Alert.alert(
+        'Debug: getPurchasedQuizBookSlots',
+        `総トランザクション数: ${customerInfo.nonSubscriptionTransactions.length}\nadd_quizbook購入数: ${addQuizbookPurchases.length}\n製品IDs: ${customerInfo.nonSubscriptionTransactions.map(t => t.productIdentifier).join(', ') || 'なし'}`
+      );
+
       return addQuizbookPurchases.length;
     } catch (error) {
       console.error('Failed to get purchased quiz book slots:', error);

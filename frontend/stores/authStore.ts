@@ -224,11 +224,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    // RevenueCatからもログアウト
-    await subscriptionService.logout();
-    // サブスクリプション状態をリセット
-    await useSubscriptionStore.getState().logout();
-    await supabase.auth.signOut();
+    try {
+      // RevenueCatからもログアウト
+      await subscriptionService.logout();
+    } catch (e) {
+      console.error('RevenueCat logout error:', e);
+    }
+    try {
+      // サブスクリプション状態をリセット
+      await useSubscriptionStore.getState().logout();
+    } catch (e) {
+      console.error('Subscription store logout error:', e);
+    }
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Supabase signOut error:', e);
+    }
     set({
       user: null,
       profile: null,

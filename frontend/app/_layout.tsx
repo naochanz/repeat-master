@@ -12,6 +12,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
+import { toastConfig } from '@/components/ToastConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -85,7 +86,7 @@ export default function RootLayout() {
     return null;
   }
 
-  const authRoutes = ['/login', '/signup', '/verify-email'];
+  const authRoutes = ['/login', '/signup', '/verify-email', '/agreement'];
   const onboardingRoute = '/onboarding';
 
   // ✅ オンボーディング未完了かつ認証済みでない場合、オンボーディングへリダイレクト
@@ -133,7 +134,7 @@ function RootLayoutNav() {
           }}
         />
       </Stack>
-      <Toast />
+      <Toast config={toastConfig} />
     </ThemeProvider>
   );
 }

@@ -24,6 +24,7 @@ export default function PaywallScreen() {
     isPremium,
     isLoading,
     packages,
+    activeProductId,
     fetchPackages,
     purchasePackage,
     restorePurchases,
@@ -32,6 +33,7 @@ export default function PaywallScreen() {
   const [selectedPackage, setSelectedPackage] = useState<PurchasesPackage | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [fetchingPackages, setFetchingPackages] = useState(false);
+  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
 
   useEffect(() => {
     // isLoadingがfalseになった（初期化完了）後にパッケージを取得
@@ -51,21 +53,19 @@ export default function PaywallScreen() {
     }
   }, [packages]);
 
-  // すでにプレミアムの場合は戻る
-  useEffect(() => {
-    if (isPremium) {
-      router.back();
-    }
-  }, [isPremium]);
 
   const handlePurchase = async () => {
     if (!selectedPackage) return;
 
     setPurchasing(true);
     try {
-      const success = await purchasePackage(selectedPackage);
-      if (success) {
-        showSuccessToast('プレミアムプランへようこそ！');
+      const result = await purchasePackage(selectedPackage);
+      if (result.success) {
+        if (result.isAddQuizBook) {
+          showSuccessToast('問題集枠を追加しました！');
+        } else {
+          showSuccessToast('プレミアムプランへようこそ！');
+        }
         router.back();
       }
     } catch (error) {
@@ -94,6 +94,14 @@ export default function PaywallScreen() {
 
   const handleClose = () => {
     router.back();
+  };
+
+  const handleScroll = (event: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const paddingToBottom = 50;
+    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
+      setHasScrolledToBottom(true);
+    }
   };
 
   // パッケージの表示情報を取得
@@ -145,7 +153,12 @@ export default function PaywallScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
         <View style={styles.heroSection}>
           <View style={styles.crownContainer}>
             <Crown size={48} color={theme.colors.warning[500]} fill={theme.colors.warning[500]} />
@@ -187,29 +200,41 @@ export default function PaywallScreen() {
         <View style={styles.pricingSection}>
           {packages.map((pkg) => {
             const displayInfo = getPackageDisplayInfo(pkg);
+            const isCurrentPlan = activeProductId === pkg.product.identifier;
             return (
               <TouchableOpacity
                 key={pkg.identifier}
                 style={[
                   styles.packageCard,
                   selectedPackage?.identifier === pkg.identifier && styles.packageCardSelected,
+                  isCurrentPlan && styles.packageCardCurrent,
                 ]}
-                onPress={() => setSelectedPackage(pkg)}
+                onPress={() => !isCurrentPlan && setSelectedPackage(pkg)}
+                disabled={isCurrentPlan}
               >
                 <View style={styles.packageInfo}>
-                  <Text style={styles.packageTitle}>{displayInfo.title}</Text>
+                  <View style={styles.packageTitleRow}>
+                    <Text style={styles.packageTitle}>{displayInfo.title}</Text>
+                    {isCurrentPlan && (
+                      <View style={styles.currentBadge}>
+                        <Text style={styles.currentBadgeText}>現在のプラン</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={styles.packagePrice}>{pkg.product.priceString}{displayInfo.priceSuffix}</Text>
                 </View>
-                <View
-                  style={[
-                    styles.radioButton,
-                    selectedPackage?.identifier === pkg.identifier && styles.radioButtonSelected,
-                  ]}
-                >
-                  {selectedPackage?.identifier === pkg.identifier && (
-                    <View style={styles.radioButtonInner} />
-                  )}
-                </View>
+                {!isCurrentPlan && (
+                  <View
+                    style={[
+                      styles.radioButton,
+                      selectedPackage?.identifier === pkg.identifier && styles.radioButtonSelected,
+                    ]}
+                  >
+                    {selectedPackage?.identifier === pkg.identifier && (
+                      <View style={styles.radioButtonInner} />
+                    )}
+                  </View>
+                )}
               </TouchableOpacity>
             );
           })}
@@ -236,15 +261,19 @@ export default function PaywallScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.purchaseButton, purchasing && styles.purchaseButtonDisabled]}
+          style={[styles.purchaseButton, (purchasing || !selectedPackage || !hasScrolledToBottom) && styles.purchaseButtonDisabled]}
           onPress={handlePurchase}
-          disabled={purchasing || !selectedPackage}
+          disabled={purchasing || !selectedPackage || !hasScrolledToBottom}
         >
           {purchasing ? (
             <ActivityIndicator color={theme.colors.neutral.white} />
           ) : (
             <Text style={styles.purchaseButtonText}>
-              プレミアムを始める
+              {selectedPackage?.product.identifier.includes('add_quizbook')
+                ? '問題集枠を購入する'
+                : isPremium
+                  ? 'プランを変更する'
+                  : 'プレミアムを始める'}
             </Text>
           )}
         </TouchableOpacity>
@@ -252,6 +281,12 @@ export default function PaywallScreen() {
         <TouchableOpacity style={styles.restoreButton} onPress={handleRestore} disabled={purchasing}>
           <Text style={styles.restoreButtonText}>購入を復元</Text>
         </TouchableOpacity>
+
+        {!hasScrolledToBottom && (
+          <Text style={styles.scrollHint}>
+            下にスクロールしてプランを確認してください
+          </Text>
+        )}
 
         <Text style={styles.legalText}>
           サブスクリプションはいつでもキャンセルできます。
@@ -379,14 +414,35 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     borderColor: theme.colors.primary[600],
     backgroundColor: theme.colors.primary[50],
   },
+  packageCardCurrent: {
+    borderColor: theme.colors.success[400],
+    backgroundColor: theme.colors.success[50],
+    opacity: 0.8,
+  },
   packageInfo: {
     flex: 1,
+  },
+  packageTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
+  },
+  currentBadge: {
+    backgroundColor: theme.colors.success[500],
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: theme.borderRadius.sm,
+  },
+  currentBadgeText: {
+    fontSize: theme.typography.fontSizes.xs,
+    fontFamily: 'ZenKaku-Bold',
+    color: theme.colors.neutral.white,
   },
   packageTitle: {
     fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Bold',
     color: theme.colors.secondary[900],
-    marginBottom: theme.spacing.xs,
   },
   packagePrice: {
     fontSize: theme.typography.fontSizes.xl,
@@ -450,6 +506,13 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     fontSize: theme.typography.fontSizes.sm,
     fontFamily: 'ZenKaku-Medium',
     color: theme.colors.primary[600],
+  },
+  scrollHint: {
+    fontSize: theme.typography.fontSizes.sm,
+    fontFamily: 'ZenKaku-Regular',
+    color: theme.colors.warning[600],
+    textAlign: 'center',
+    marginBottom: theme.spacing.sm,
   },
   legalText: {
     fontSize: theme.typography.fontSizes.xs,

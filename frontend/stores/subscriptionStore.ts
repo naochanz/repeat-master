@@ -9,6 +9,7 @@ interface SubscriptionStore {
   isLoading: boolean;
   expirationDate: string | null;
   willRenew: boolean;
+  activeProductId: string | null;
   packages: PurchasesPackage[];
   activeQuizBookCount: number;
   purchasedSlots: number;  // 買い切りで購入した追加枠
@@ -32,6 +33,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
   isLoading: true,
   expirationDate: null,
   willRenew: false,
+  activeProductId: null,
   packages: [],
   activeQuizBookCount: 0,
   purchasedSlots: 0,
@@ -61,6 +63,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
         isPremium: status.isPremium,
         expirationDate: status.expirationDate,
         willRenew: status.willRenew,
+        activeProductId: status.activeProductId,
         purchasedSlots,
       });
     } catch (error) {
@@ -77,8 +80,9 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
     }
   },
 
-  purchasePackage: async (pkg: PurchasesPackage) => {
+  purchasePackage: async (pkg: PurchasesPackage): Promise<{ success: boolean; isAddQuizBook: boolean }> => {
     set({ isLoading: true });
+    const isAddQuizBook = pkg.product.identifier.includes('add_quizbook');
     try {
       const status = await subscriptionService.purchasePackage(pkg);
       // 買い切り商品の場合、追加枠を更新
@@ -87,12 +91,17 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
         isPremium: status.isPremium,
         expirationDate: status.expirationDate,
         willRenew: status.willRenew,
+        activeProductId: status.activeProductId,
         purchasedSlots,
       });
-      return status.isPremium || purchasedSlots > 0;
+
+      if (isAddQuizBook) {
+        return { success: purchasedSlots > 0, isAddQuizBook: true };
+      }
+      return { success: status.isPremium, isAddQuizBook: false };
     } catch (error: any) {
       if (error.message === 'CANCELLED') {
-        return false;
+        return { success: false, isAddQuizBook };
       }
       throw error;
     } finally {
@@ -146,6 +155,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
       isPremium: false,
       expirationDate: null,
       willRenew: false,
+      activeProductId: null,
       packages: [],
       activeQuizBookCount: 0,
       purchasedSlots: 0,

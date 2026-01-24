@@ -141,8 +141,12 @@ export class UsersService {
       .delete()
       .eq('id', userId);
 
-    // 4. Supabase Authのユーザー削除はクライアント側で行う
-    // （サービスロールキーがないためサーバー側からは削除できない）
+    // 4. Supabase Authのユーザーを削除
+    const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+    if (authError) {
+      console.error('Failed to delete auth user:', authError);
+      throw new Error('Failed to delete user account');
+    }
   }
 
   private mapToUserProfile(data: any): UserProfile {
