@@ -288,7 +288,7 @@ const SectionList = () => {
                         第{section.sectionNumber}節
                       </Text>
                       {section.title && (
-                        <Text style={styles.sectionTitle}>
+                        <Text style={styles.sectionTitle} numberOfLines={1} ellipsizeMode="tail">
                           {section.title}
                         </Text>
                       )}
@@ -522,21 +522,25 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     padding: 4,
   },
   sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: theme.spacing.sm,
+    paddingRight: 32,
   },
   sectionNumber: {
     fontSize: theme.typography.fontSizes.sm,
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.primary[600],
-    marginBottom: 4,
     fontFamily: 'ZenKaku-Bold',
+    flexShrink: 0,
   },
   sectionTitle: {
-    fontSize: theme.typography.fontSizes.lg,
+    fontSize: theme.typography.fontSizes.sm,
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.secondary[900],
-    marginBottom: theme.spacing.xs,
     fontFamily: 'ZenKaku-Bold',
+    marginLeft: theme.spacing.sm,
+    flex: 1,
   },
   sectionStats: {
     flexDirection: 'row',

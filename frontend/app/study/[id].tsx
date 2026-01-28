@@ -288,7 +288,7 @@ const StudyHome = () => {
                                                 第{chapter.chapterNumber}章
                                             </Text>
                                             {chapter.title?.trim() && (
-                                                <Text style={styles.chapterTitle}>
+                                                <Text style={styles.chapterTitle} numberOfLines={1} ellipsizeMode="tail">
                                                     {chapter.title}
                                                 </Text>
                                             )}
@@ -522,21 +522,25 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
         padding: 4,
     },
     chapterHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
         marginBottom: theme.spacing.sm,
+        paddingRight: 32,
     },
     chapterNumber: {
         fontSize: theme.typography.fontSizes.sm,
         fontWeight: theme.typography.fontWeights.bold as any,
         color: theme.colors.primary[600],
-        marginBottom: 4,
         fontFamily: 'ZenKaku-Bold',
+        flexShrink: 0,
     },
     chapterTitle: {
-        fontSize: theme.typography.fontSizes.lg,
+        fontSize: theme.typography.fontSizes.sm,
         fontWeight: theme.typography.fontWeights.bold as any,
         color: theme.colors.secondary[900],
-        marginBottom: theme.spacing.xs,
         fontFamily: 'ZenKaku-Bold',
+        marginLeft: theme.spacing.sm,
+        flex: 1,
     },
     chapterStats: {
         flexDirection: 'row',
