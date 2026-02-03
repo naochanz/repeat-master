@@ -34,6 +34,8 @@ export default function PaywallScreen() {
   const [purchasing, setPurchasing] = useState(false);
   const [fetchingPackages, setFetchingPackages] = useState(false);
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
+  const [contentHeight, setContentHeight] = useState(0);
+  const [scrollViewHeight, setScrollViewHeight] = useState(0);
 
   useEffect(() => {
     // isLoadingがfalseになった（初期化完了）後にパッケージを取得
@@ -52,6 +54,13 @@ export default function PaywallScreen() {
       setSelectedPackage(packages[0]);
     }
   }, [packages]);
+
+  // コンテンツが画面に収まる場合はスクロール不要としてボタンを有効にする
+  useEffect(() => {
+    if (contentHeight > 0 && scrollViewHeight > 0 && contentHeight <= scrollViewHeight) {
+      setHasScrolledToBottom(true);
+    }
+  }, [contentHeight, scrollViewHeight]);
 
 
   const handlePurchase = async () => {
@@ -158,6 +167,8 @@ export default function PaywallScreen() {
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        onLayout={(e) => setScrollViewHeight(e.nativeEvent.layout.height)}
+        onContentSizeChange={(_, height) => setContentHeight(height)}
       >
         <View style={styles.heroSection}>
           <View style={styles.crownContainer}>

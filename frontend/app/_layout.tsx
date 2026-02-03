@@ -87,6 +87,7 @@ export default function RootLayout() {
   }
 
   const authRoutes = ['/login', '/signup', '/verify-email', '/terms', '/privacy-policy'];
+  const legalRoutes = ['/terms', '/privacy-policy']; // 認証済みでもアクセス可能なルート
   const onboardingRoute = '/onboarding';
 
   // ✅ オンボーディング未完了かつ認証済みでない場合、オンボーディングへリダイレクト
@@ -100,8 +101,8 @@ export default function RootLayout() {
     return <Redirect href="/login" />;
   }
 
-  // ✅ 認証済みの場合、認証画面にいたらホームへリダイレクト（verify-emailは除外）
-  if (isAuthenticated && authRoutes.includes(pathname) && pathname !== '/verify-email') {
+  // ✅ 認証済みの場合、認証画面にいたらホームへリダイレクト（verify-email、利用規約、プライバシーポリシーは除外）
+  if (isAuthenticated && authRoutes.includes(pathname) && pathname !== '/verify-email' && !legalRoutes.includes(pathname)) {
     return <Redirect href="/(tabs)" />;
   }
 
