@@ -109,10 +109,10 @@ export default function BarcodeScannerScreen() {
           <Camera size={64} color={theme.colors.secondary[400]} />
           <Text style={styles.permissionTitle}>カメラへのアクセスが必要です</Text>
           <Text style={styles.permissionText}>
-            本のバーコードをスキャンするために{'\n'}カメラへのアクセスを許可してください
+            本のバーコードをスキャンするために{'\n'}カメラを使用します
           </Text>
           <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-            <Text style={styles.permissionButtonText}>カメラを許可する</Text>
+            <Text style={styles.permissionButtonText}>次へ</Text>
           </TouchableOpacity>
         </View>
       </>

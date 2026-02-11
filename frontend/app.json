@@ -13,7 +13,9 @@
       "bundleIdentifier": "com.naochanz.doriloop",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "本のバーコードをスキャンするためにカメラを使用します",
+        "CFBundleDevelopmentRegion": "ja"
       }
     },
     "android": {
@@ -28,7 +30,11 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
+    "locales": {
+      "ja": "./locales/ja.json"
+    },
     "plugins": [
+      "expo-localization",
       "expo-router",
       [
         "expo-splash-screen",
