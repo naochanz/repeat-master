@@ -2,10 +2,11 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import { googleBooksApi, BookInfo } from '@/services/googleBooksApi';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, Stack } from 'expo-router';
-import { ArrowLeft, Camera, X } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -24,6 +25,20 @@ export default function BarcodeScannerScreen() {
   const [loading, setLoading] = useState(false);
   const [bookInfo, setBookInfo] = useState<BookInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [permissionChecked, setPermissionChecked] = useState(false);
+
+  // 画面表示時に自動でカメラ権限を要求
+  useEffect(() => {
+    if (!permission) return;
+    if (permission.granted) {
+      setPermissionChecked(true);
+      return;
+    }
+    if (!permissionChecked) {
+      setPermissionChecked(true);
+      requestPermission();
+    }
+  }, [permission]);
 
   const handleBarcodeScanned = async ({ type, data }: { type: string; data: string }) => {
     if (scanned || loading) return;
@@ -59,17 +74,6 @@ export default function BarcodeScannerScreen() {
     setError(null);
   };
 
-  const handleConfirm = () => {
-    if (bookInfo) {
-      // Navigate back with book info
-      router.back();
-      // Use setTimeout to ensure navigation completes before setting params
-      setTimeout(() => {
-        router.setParams({ bookTitle: bookInfo.title });
-      }, 100);
-    }
-  };
-
   const handleSelectBook = () => {
     if (bookInfo) {
       router.navigate({
@@ -78,20 +82,34 @@ export default function BarcodeScannerScreen() {
           scannedBookTitle: bookInfo.title,
           scannedBookIsbn: bookInfo.isbn,
           scannedBookThumbnail: bookInfo.thumbnail || '',
-          openCategoryModal: 'true'
+          openQuizBookModal: 'true'
         }
       });
     }
   };
 
-  if (!permission) {
+  // 権限読み込み中 or システムダイアログ表示中
+  if (!permission || !permissionChecked) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={theme.colors.primary[600]} />
-      </View>
+      <>
+        <Stack.Screen
+          options={{
+            headerTitle: 'バーコードスキャン',
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 8 }}>
+                <X size={24} color={theme.colors.secondary[900]} />
+              </TouchableOpacity>
+            ),
+          }}
+        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary[600]} />
+        </View>
+      </>
     );
   }
 
+  // 権限が拒否された場合 → 設定画面へ誘導
   if (!permission.granted) {
     return (
       <>
@@ -100,19 +118,20 @@ export default function BarcodeScannerScreen() {
             headerTitle: 'バーコードスキャン',
             headerLeft: () => (
               <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 8 }}>
-                <ArrowLeft size={24} color={theme.colors.secondary[900]} />
+                <X size={24} color={theme.colors.secondary[900]} />
               </TouchableOpacity>
             ),
           }}
         />
-        <View style={styles.permissionContainer}>
-          <Camera size={64} color={theme.colors.secondary[400]} />
-          <Text style={styles.permissionTitle}>カメラへのアクセスが必要です</Text>
-          <Text style={styles.permissionText}>
-            本のバーコードをスキャンするために{'\n'}カメラを使用します
+        <View style={styles.permissionDeniedContainer}>
+          <Text style={styles.permissionDeniedText}>
+            カメラの使用が許可されていません
           </Text>
-          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-            <Text style={styles.permissionButtonText}>次へ</Text>
+          <Text style={styles.permissionDeniedSubtext}>
+            設定アプリからカメラへのアクセスを{'\n'}許可してください
+          </Text>
+          <TouchableOpacity style={styles.openSettingsButton} onPress={() => Linking.openSettings()}>
+            <Text style={styles.openSettingsButtonText}>設定を開く</Text>
           </TouchableOpacity>
         </View>
       </>
@@ -126,7 +145,7 @@ export default function BarcodeScannerScreen() {
           headerTitle: 'バーコードスキャン',
           headerLeft: () => (
             <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 8 }}>
-              <ArrowLeft size={24} color={theme.colors.secondary[900]} />
+              <X size={24} color={theme.colors.secondary[900]} />
             </TouchableOpacity>
           ),
         }}
@@ -212,22 +231,27 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     flex: 1,
     backgroundColor: theme.colors.neutral[900],
   },
-  permissionContainer: {
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.neutral[50],
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  permissionDeniedContainer: {
     flex: 1,
     backgroundColor: theme.colors.neutral[50],
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing.xl,
   },
-  permissionTitle: {
-    fontSize: theme.typography.fontSizes.xl,
+  permissionDeniedText: {
+    fontSize: theme.typography.fontSizes.lg,
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.secondary[900],
     fontFamily: 'ZenKaku-Bold',
-    marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.sm,
   },
-  permissionText: {
+  permissionDeniedSubtext: {
     fontSize: theme.typography.fontSizes.base,
     color: theme.colors.secondary[600],
     fontFamily: 'ZenKaku-Regular',
@@ -235,13 +259,13 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     lineHeight: 24,
     marginBottom: theme.spacing.xl,
   },
-  permissionButton: {
+  openSettingsButton: {
     backgroundColor: theme.colors.primary[600],
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.xl,
     borderRadius: theme.borderRadius.md,
   },
-  permissionButtonText: {
+  openSettingsButtonText: {
     fontSize: theme.typography.fontSizes.base,
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.neutral.white,

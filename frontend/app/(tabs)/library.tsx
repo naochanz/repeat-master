@@ -7,11 +7,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import AddItemModal from '../_compornents/AddItemModal';
+import AddQuizBookModal from '../_compornents/AddQuizBookModal';
 import CategorySelectModal from '../_compornents/CategorySelectModal';
 import ConfirmDialog from '../_compornents/ConfirmDialog';
 import LoadingOverlay from '../_compornents/LoadingOverlay';
 import QuizBookCard from '../_compornents/QuizBookCard';
-import QuizBookTitleModal from '../_compornents/QuizBookTitleModal';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showSuccessToast, showErrorToast, showWarningToast } from '@/utils/toast';
 
@@ -19,11 +19,11 @@ export default function LibraryScreen() {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const { scannedBookTitle, scannedBookIsbn, scannedBookThumbnail, openCategoryModal } = useLocalSearchParams<{
+  const { scannedBookTitle, scannedBookIsbn, scannedBookThumbnail, openQuizBookModal } = useLocalSearchParams<{
     scannedBookTitle?: string;
     scannedBookIsbn?: string;
     scannedBookThumbnail?: string;
-    openCategoryModal?: string;
+    openQuizBookModal?: string;
   }>();
 
   const quizBooks = useQuizBookStore(state => state.quizBooks);
@@ -43,13 +43,12 @@ export default function LibraryScreen() {
   const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [addItemModalVisible, setAddItemModalVisible] = useState(false);
+  const [addQuizBookModalVisible, setAddQuizBookModalVisible] = useState(false);
+  const [pendingScannedTitle, setPendingScannedTitle] = useState<string>('');
+  const [pendingScannedIsbn, setPendingScannedIsbn] = useState<string>('');
+  const [pendingScannedThumbnail, setPendingScannedThumbnail] = useState<string>('');
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [titleModalVisible, setTitleModalVisible] = useState(false);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
-  const [scannedTitle, setScannedTitle] = useState<string>('');
-  const [scannedIsbn, setScannedIsbn] = useState<string>('');
-  const [scannedThumbnail, setScannedThumbnail] = useState<string>('');
+  const [isCategoryCreating, setIsCategoryCreating] = useState(false);
 
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -57,7 +56,6 @@ export default function LibraryScreen() {
   const [targetCategoryId, setTargetCategoryId] = useState<string>('');
   const [deleteCategoryDialogVisible, setDeleteCategoryDialogVisible] = useState(false);
   const [categoryBooksCount, setCategoryBooksCount] = useState(0);
-  const [isCategoryCreating, setIsCategoryCreating] = useState(false);
 
   const navigation = useNavigation();
 
@@ -67,16 +65,15 @@ export default function LibraryScreen() {
 
   // バーコードスキャンから戻ってきた場合の処理
   useEffect(() => {
-    if (scannedBookTitle && openCategoryModal === 'true') {
-      setScannedTitle(scannedBookTitle);
-      setScannedIsbn(scannedBookIsbn || '');
-      setScannedThumbnail(scannedBookThumbnail || '');
-      setIsAddingCategory(false);
-      setCategoryModalVisible(true);
+    if (scannedBookTitle && openQuizBookModal === 'true') {
+      setPendingScannedTitle(scannedBookTitle);
+      setPendingScannedIsbn(scannedBookIsbn || '');
+      setPendingScannedThumbnail(scannedBookThumbnail || '');
+      setAddQuizBookModalVisible(true);
       // パラメータをクリア
-      router.setParams({ scannedBookTitle: undefined, scannedBookIsbn: undefined, scannedBookThumbnail: undefined, openCategoryModal: undefined });
+      router.setParams({ scannedBookTitle: undefined, scannedBookIsbn: undefined, scannedBookThumbnail: undefined, openQuizBookModal: undefined });
     }
-  }, [scannedBookTitle, scannedBookIsbn, scannedBookThumbnail, openCategoryModal]);
+  }, [scannedBookTitle, scannedBookIsbn, scannedBookThumbnail, openQuizBookModal]);
 
   useFocusEffect(
     useCallback(() => {
@@ -131,7 +128,6 @@ export default function LibraryScreen() {
 
   const handleAddCategory = () => {
     setAddItemModalVisible(false);
-    setIsAddingCategory(true);
     setCategoryModalVisible(true);
   };
 
@@ -143,96 +139,59 @@ export default function LibraryScreen() {
       return;
     }
 
-    if (categories.length === 0) {
-      setAddItemModalVisible(false);
-      setIsAddingCategory(true);
-      setCategoryModalVisible(true);
+    setAddItemModalVisible(false);
+    setPendingScannedTitle('');
+    setPendingScannedIsbn('');
+    setPendingScannedThumbnail('');
+    setAddQuizBookModalVisible(true);
+  };
+
+  const handleQuizBookConfirm = async (params: {
+    categoryId?: string;
+    newCategoryName?: string;
+    title: string;
+    isbn?: string;
+    thumbnail?: string;
+  }) => {
+    let categoryId = params.categoryId;
+    if (params.newCategoryName) {
+      categoryId = await createCategory(params.newCategoryName);
+    }
+    if (!categoryId) return;
+    await addQuizBook(params.title, categoryId, true, params.isbn, params.thumbnail);
+    await fetchActiveQuizBookCount();
+    setAddQuizBookModalVisible(false);
+    setPendingScannedTitle('');
+    setPendingScannedIsbn('');
+    setPendingScannedThumbnail('');
+  };
+
+  const handleQuizBookScanBarcode = () => {
+    setAddQuizBookModalVisible(false);
+    // モーダルのフェードアニメーション完了後にナビゲーション
+    setTimeout(() => {
+      router.push('/barcode-scanner');
+    }, 300);
+  };
+
+  const handleCategorySelect = async (categoryName: string) => {
+    // カテゴリ追加モード：カテゴリのみ作成
+    const existingCategory = categories.find(c => c.name === categoryName);
+
+    if (existingCategory) {
+      setCategoryModalVisible(false);
       return;
     }
-    setAddItemModalVisible(false);
-    setIsAddingCategory(false);
-    setCategoryModalVisible(true);
-  };
 
-  const handleScanBarcode = () => {
-    // 無料ユーザーで既にアクティブな問題集がある場合はペイウォールを表示
-    if (!canCreateQuizBook()) {
-      setAddItemModalVisible(false);
-      router.push('/paywall?source=add_quiz_book');
-      return;
-    }
-
-    setAddItemModalVisible(false);
-    router.push('/barcode-scanner');
-  };
-
-  const handleCategorySelect = async (categoryNameOrId: string) => {
-    if (isAddingCategory) {
-      // カテゴリ追加モード：カテゴリのみ作成
-      const existingCategory = categories.find(c => c.name === categoryNameOrId);
-
-      if (existingCategory) {
-        // 既存のカテゴリの場合は何もしない
-        setCategoryModalVisible(false);
-        setIsAddingCategory(false);
-        return;
-      }
-
-      // 新しいカテゴリを作成
-      try {
-        setIsCategoryCreating(true);
-        await createCategory(categoryNameOrId);
-        setCategoryModalVisible(false);
-        setIsAddingCategory(false);
-      } catch (error) {
-        console.error('Failed to create category:', error);
-      } finally {
-        setIsCategoryCreating(false);
-      }
-    } else {
-      // 問題集追加モード：カテゴリを選択してタイトル入力へ
-      const category = categories.find(c => c.name === categoryNameOrId);
-      if (category) {
-        setSelectedCategoryId(category.id);
-        setCategoryModalVisible(false);
-        setTitleModalVisible(true);
-      } else {
-        // 新しいカテゴリの場合は作成してからIDを取得
-        try {
-          setIsCategoryCreating(true);
-          const categoryId = await createCategory(categoryNameOrId);
-          setSelectedCategoryId(categoryId);
-          setCategoryModalVisible(false);
-          setTitleModalVisible(true);
-        } catch (error) {
-          console.error('Failed to create category:', error);
-        } finally {
-          setIsCategoryCreating(false);
-        }
-      }
-    }
-  };
-
-  const handleTitleConfirm = async (title: string) => {
     try {
-      await addQuizBook(title, selectedCategoryId, true, scannedIsbn || undefined, scannedThumbnail || undefined);
-      await fetchActiveQuizBookCount();
-      setTitleModalVisible(false);
-      setSelectedCategoryId('');
-      setScannedTitle('');
-      setScannedIsbn('');
-      setScannedThumbnail('');
+      setIsCategoryCreating(true);
+      await createCategory(categoryName);
+      setCategoryModalVisible(false);
     } catch (error) {
-      console.error('Failed to confirm Title:', error);
+      console.error('Failed to create category:', error);
+    } finally {
+      setIsCategoryCreating(false);
     }
-  };
-
-  const handleTitleCancel = () => {
-    setTitleModalVisible(false);
-    setSelectedCategoryId('');
-    setScannedTitle('');
-    setScannedIsbn('');
-    setScannedThumbnail('');
   };
 
   const handleCardPress = (quizBookId: string) => {
@@ -415,8 +374,23 @@ export default function LibraryScreen() {
         visible={addItemModalVisible}
         onAddCategory={handleAddCategory}
         onAddQuizBook={handleAddQuizBook}
-        onScanBarcode={handleScanBarcode}
         onClose={() => setAddItemModalVisible(false)}
+      />
+
+      <AddQuizBookModal
+        visible={addQuizBookModalVisible}
+        categories={categories}
+        initialTitle={pendingScannedTitle}
+        initialIsbn={pendingScannedIsbn}
+        initialThumbnail={pendingScannedThumbnail}
+        onConfirm={handleQuizBookConfirm}
+        onScanBarcode={handleQuizBookScanBarcode}
+        onClose={() => {
+          setAddQuizBookModalVisible(false);
+          setPendingScannedTitle('');
+          setPendingScannedIsbn('');
+          setPendingScannedThumbnail('');
+        }}
       />
 
       <CategorySelectModal
@@ -425,23 +399,13 @@ export default function LibraryScreen() {
         onSelect={(categoryName) => {
           handleCategorySelect(categoryName);
         }}
-        mode={isAddingCategory ? 'create' : 'select'}
+        mode="create"
         registeredCategories={categories.map(c => c.name)}
         isLoading={isCategoryCreating}
         loadingMessage="資格グループを作成中..."
         onClose={() => {
           setCategoryModalVisible(false);
-          setIsAddingCategory(false);
         }}
-      />
-
-      <QuizBookTitleModal
-        visible={titleModalVisible}
-        categoryName={categories.find(c => c.id === selectedCategoryId)?.name || ''}
-        initialTitle={scannedTitle}
-        isLoading={isLoading}
-        onConfirm={handleTitleConfirm}
-        onCancel={handleTitleCancel}
       />
 
       <ConfirmDialog

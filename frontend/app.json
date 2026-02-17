@@ -15,7 +15,9 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "本のバーコードをスキャンするためにカメラを使用します",
-        "CFBundleDevelopmentRegion": "ja"
+        "CFBundleDevelopmentRegion": "ja",
+        "CFBundleLocalizations": ["ja", "en"],
+        "CFBundleAllowMixedLocalizations": true
       }
     },
     "android": {
