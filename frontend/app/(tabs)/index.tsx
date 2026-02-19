@@ -6,6 +6,9 @@ import { Edit3, Target } from 'lucide-react-native';
 import React, { useCallback, useState, useMemo, useRef } from 'react';
 import { ActivityIndicator, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
+import FeedbackModal, { shouldShowFeedback } from '@/components/FeedbackModal';
+import AdBanner from '@/components/AdBanner';
+import StudyHeatmap from '@/components/StudyHeatmap';
 
 export default function DashboardScreen() {
   const theme = useAppTheme();
@@ -14,8 +17,10 @@ export default function DashboardScreen() {
   // ✅ バックエンドから取得
   const user = useUserStore(state => state.user);
   const recentStudyRecords = useUserStore(state => state.recentStudyRecords);
+  const activityData = useUserStore(state => state.activityData);
   const fetchUser = useUserStore(state => state.fetchUser);
   const fetchRecentStudyRecords = useUserStore(state => state.fetchRecentStudyRecords);
+  const fetchActivity = useUserStore(state => state.fetchActivity);
   const updateUserGoal = useUserStore(state => state.updateUserGoal);
 
   // ユーザープロファイル
@@ -24,6 +29,7 @@ export default function DashboardScreen() {
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [tempGoal, setTempGoal] = useState('');
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [showFeedback, setShowFeedback] = useState(false);
   const hasLoadedOnce = useRef(false);
 
   const navigation = useNavigation();
@@ -51,13 +57,18 @@ export default function DashboardScreen() {
           setIsInitialLoading(true);
         }
         try {
-          await Promise.all([fetchUser(), fetchRecentStudyRecords()]);
+          await Promise.all([fetchUser(), fetchRecentStudyRecords(), fetchActivity()]);
         } finally {
           setIsInitialLoading(false);
           hasLoadedOnce.current = true;
         }
       };
       loadData();
+
+      // フィードバックモーダル表示チェック
+      shouldShowFeedback().then(shouldShow => {
+        if (shouldShow) setShowFeedback(true);
+      });
 
       // スタディスタックの履歴をリセット
       const rootState = navigation.getState();
@@ -78,7 +89,7 @@ export default function DashboardScreen() {
         }
       }
 
-    }, [fetchUser, fetchRecentStudyRecords])
+    }, [fetchUser, fetchRecentStudyRecords, fetchActivity])
   );
 
   const handleEditGoal = () => {
@@ -145,6 +156,11 @@ export default function DashboardScreen() {
             </Text>
           </TouchableOpacity>
 
+          {/* 学習ヒートマップ */}
+          <View style={styles.heatmapSection}>
+            <StudyHeatmap data={activityData} />
+          </View>
+
           {/* ✅ バックエンドから取得したデータを表示（問題集ごと） */}
           {recentStudyRecords.length > 0 && (
             <View style={styles.recentStudySection}>
@@ -192,6 +208,13 @@ export default function DashboardScreen() {
 
         </ScrollView>
       </View>
+
+      <AdBanner />
+
+      <FeedbackModal
+        visible={showFeedback}
+        onClose={() => setShowFeedback(false)}
+      />
 
       <Modal
         visible={isEditingGoal}
@@ -397,6 +420,9 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.neutral.white,
     fontFamily: 'ZenKaku-Bold',
+  },
+  heatmapSection: {
+    marginBottom: theme.spacing.lg,
   },
   recentStudySection: {
     marginBottom: theme.spacing.lg,

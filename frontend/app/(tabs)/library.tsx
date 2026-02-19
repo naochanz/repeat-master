@@ -6,6 +6,7 @@ import { AlertCircle, Edit, MoreVertical, Plus, Trash2 } from 'lucide-react-nati
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
+import AdBanner from '@/components/AdBanner';
 import AddItemModal from '../_compornents/AddItemModal';
 import AddQuizBookModal from '../_compornents/AddQuizBookModal';
 import CategorySelectModal from '../_compornents/CategorySelectModal';
@@ -360,6 +361,8 @@ export default function LibraryScreen() {
           )}
         </ScrollView>
       </View>
+
+      <AdBanner />
 
       <TouchableOpacity
         style={styles.fab}

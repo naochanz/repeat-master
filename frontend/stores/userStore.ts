@@ -2,19 +2,27 @@ import { create } from 'zustand';
 import { User, StudyRecord } from '@/types/user';
 import { userApi, studyRecordApi } from '@/services/api';
 
+interface ActivityData {
+    date: string;
+    count: number;
+}
+
 interface UserStore {
     user: User | null;
     recentStudyRecords: StudyRecord[];
+    activityData: ActivityData[];
     isLoading: boolean;
 
     fetchUser: () => Promise<void>;
     updateUserGoal: (goal: string) => Promise<void>;
     fetchRecentStudyRecords: () => Promise<void>;
+    fetchActivity: () => Promise<void>;
 }
 
 export const useUserStore = create<UserStore>((set, get) => ({
     user: null,
     recentStudyRecords: [],
+    activityData: [],
     isLoading: false,
 
     fetchUser: async () => {
@@ -43,6 +51,15 @@ export const useUserStore = create<UserStore>((set, get) => ({
             set({ recentStudyRecords: response.data });
         } catch (error) {
             console.error('Failed to fetch recent study records:', error);
+        }
+    },
+
+    fetchActivity: async () => {
+        try {
+            const response = await studyRecordApi.getActivity();
+            set({ activityData: response.data });
+        } catch (error) {
+            console.error('Failed to fetch activity:', error);
         }
     },
 }));

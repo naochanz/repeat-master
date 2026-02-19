@@ -1,4 +1,4 @@
-import { Controller, Get, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Request, UseGuards } from '@nestjs/common';
 import { StudyRecordsService } from './study-records.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -10,5 +10,11 @@ export class StudyRecordsController {
     @Get('recent')
     async getRecent(@Request() req){
         return this.studyRecordsService.getRecentRecords(req.user.id);
+    }
+
+    @Get('activity')
+    async getActivity(@Request() req, @Query('days') days?: string){
+        const numDays = days ? parseInt(days, 10) : 105;
+        return this.studyRecordsService.getActivity(req.user.id, numDays);
     }
 }

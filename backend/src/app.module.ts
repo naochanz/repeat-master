@@ -7,6 +7,7 @@ import { UsersModule } from './users/users.module';
 import { QuizBooksModule } from './quiz-books/quiz-books.module';
 import { CategoriesModule } from './categories/categories.module';
 import { StudyRecordsModule } from './study-records/study-records.module';
+import { FeedbackModule } from './feedback/feedback.module';
 import { SupabaseModule } from './supabase/supabase.module';
 
 @Module({
@@ -20,6 +21,7 @@ import { SupabaseModule } from './supabase/supabase.module';
     StudyRecordsModule,
     QuizBooksModule,
     CategoriesModule,
+    FeedbackModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -121,4 +121,5 @@ export const userApi = {
 // Study Record API
 export const studyRecordApi = {
   getRecent: () => api.get('/study-records/recent'),
+  getActivity: (days?: number) => api.get('/study-records/activity', { params: { days } }),
 };

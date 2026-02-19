@@ -141,6 +141,7 @@ export default function PaywallScreen() {
 
   const features = [
     { text: '問題集を無制限に登録', free: false, premium: true },
+    { text: '広告非表示', free: false, premium: true },
     { text: '資格カテゴリを無制限に作成', free: true, premium: true },
     { text: '全ての学習履歴にアクセス', free: true, premium: true },
     { text: '完了した問題集の閲覧', free: true, premium: true },

@@ -17,6 +17,7 @@ import { LineChart } from 'react-native-chart-kit';
 import { router, useFocusEffect } from 'expo-router';
 import { List, TrendingDown, X, AlertCircle } from 'lucide-react-native';
 import { quizBookApi } from '@/services/api';
+import AdBanner from '@/components/AdBanner';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CAROUSEL_ITEM_WIDTH = SCREEN_WIDTH - 60; // 両端に30pxずつ余白を残す
@@ -224,6 +225,7 @@ export default function AnalyticsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <AdBanner />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {Object.entries(groupedQuizBooks).map(([categoryId, group]) => {
           const currentIndex = currentIndexMap[categoryId] || 0;

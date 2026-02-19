@@ -133,6 +133,38 @@ export class StudyRecordsService {
     return records.map((record) => this.mapToStudyRecord(record, chapterMap, sectionMap));
   }
 
+  async getActivity(userId: string, days: number = 105): Promise<{ date: string; count: number }[]> {
+    const supabase = this.supabaseService.getClient();
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const startDateStr = startDate.toISOString().split('T')[0];
+
+    // answersテーブルから日別の回答数を集計
+    const { data, error } = await supabase
+      .from('answers')
+      .select('answered_at')
+      .eq('user_id', userId)
+      .gte('answered_at', startDateStr);
+
+    if (error) throw error;
+
+    // 日ごとに集計
+    const countMap = new Map<string, number>();
+    (data || []).forEach((record) => {
+      const dateStr = new Date(record.answered_at).toISOString().split('T')[0];
+      countMap.set(dateStr, (countMap.get(dateStr) || 0) + 1);
+    });
+
+    // 結果を配列として返す
+    const result: { date: string; count: number }[] = [];
+    for (const [date, count] of countMap.entries()) {
+      result.push({ date, count });
+    }
+
+    return result.sort((a, b) => a.date.localeCompare(b.date));
+  }
+
   private mapToStudyRecord(
     data: any,
     chapterMap: Map<string, number>,
