@@ -21,6 +21,11 @@ export class QuizBooksController {
     return this.quizBooksService.findAll(req.user.id);
   }
 
+  @Get('stats/active-count')
+  getActiveCount(@Request() req) {
+    return this.quizBooksService.countActiveQuizBooks(req.user.id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @Request() req) {
     return this.quizBooksService.findOne(id, req.user.id);
@@ -53,11 +58,6 @@ export class QuizBooksController {
   @Post(':id/reactivate')
   reactivate(@Param('id') id: string, @Request() req) {
     return this.quizBooksService.reactivate(id, req.user.id);
-  }
-
-  @Get('stats/active-count')
-  getActiveCount(@Request() req) {
-    return this.quizBooksService.countActiveQuizBooks(req.user.id);
   }
 
   // ========== Chapter CRUD ==========
