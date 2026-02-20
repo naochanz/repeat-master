@@ -14,9 +14,11 @@ import * as StoreReview from 'expo-store-review';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '@/services/api';
 
-const FEEDBACK_STORAGE_KEY = '@doriloop/feedback_shown';
+const FEEDBACK_COMPLETED_KEY = '@doriloop/feedback_completed'; // レビュー/フィードバック送信済み（永久非表示）
+const FEEDBACK_DISMISSED_AT_KEY = '@doriloop/feedback_dismissed_at'; // ×で閉じた日時
 const FEEDBACK_SESSION_COUNT_KEY = '@doriloop/session_count';
 const SESSIONS_BEFORE_FEEDBACK = 5;
+const DISMISS_COOLDOWN_DAYS = 7;
 
 type FeedbackStep = 'initial' | 'negative_form' | 'thank_you';
 
@@ -27,22 +29,38 @@ interface FeedbackModalProps {
 
 export async function shouldShowFeedback(): Promise<boolean> {
   try {
-    const alreadyShown = await AsyncStorage.getItem(FEEDBACK_STORAGE_KEY);
-    if (alreadyShown === 'true') return false;
+    // レビュー/フィードバック送信済みなら永久非表示
+    const completed = await AsyncStorage.getItem(FEEDBACK_COMPLETED_KEY);
+    if (completed === 'true') return false;
 
+    // セッション数が閾値未満なら非表示
     const countStr = await AsyncStorage.getItem(FEEDBACK_SESSION_COUNT_KEY);
     const count = countStr ? parseInt(countStr, 10) : 0;
     const newCount = count + 1;
     await AsyncStorage.setItem(FEEDBACK_SESSION_COUNT_KEY, String(newCount));
+    if (newCount < SESSIONS_BEFORE_FEEDBACK) return false;
 
-    return newCount >= SESSIONS_BEFORE_FEEDBACK;
+    // ×で閉じた場合はクールダウン期間中は非表示
+    const dismissedAt = await AsyncStorage.getItem(FEEDBACK_DISMISSED_AT_KEY);
+    if (dismissedAt) {
+      const daysSinceDismiss = (Date.now() - parseInt(dismissedAt, 10)) / (1000 * 60 * 60 * 24);
+      if (daysSinceDismiss < DISMISS_COOLDOWN_DAYS) return false;
+    }
+
+    return true;
   } catch {
     return false;
   }
 }
 
-export async function markFeedbackShown(): Promise<void> {
-  await AsyncStorage.setItem(FEEDBACK_STORAGE_KEY, 'true');
+// レビューまたはフィードバック送信完了（永久非表示）
+export async function markFeedbackCompleted(): Promise<void> {
+  await AsyncStorage.setItem(FEEDBACK_COMPLETED_KEY, 'true');
+}
+
+// ×で閉じた（クールダウン後に再表示）
+export async function markFeedbackDismissed(): Promise<void> {
+  await AsyncStorage.setItem(FEEDBACK_DISMISSED_AT_KEY, String(Date.now()));
 }
 
 export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) {
@@ -54,7 +72,7 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
   const [submitting, setSubmitting] = useState(false);
 
   const handlePositive = async () => {
-    await markFeedbackShown();
+    await markFeedbackCompleted();
     try {
       const isAvailable = await StoreReview.isAvailableAsync();
       if (isAvailable) {
@@ -79,13 +97,13 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
     } catch (e) {
       console.error('Failed to send feedback:', e);
     }
-    await markFeedbackShown();
+    await markFeedbackCompleted();
     setSubmitting(false);
     setStep('thank_you');
   };
 
   const handleClose = async () => {
-    await markFeedbackShown();
+    await markFeedbackDismissed();
     onClose();
     resetState();
   };
