@@ -300,8 +300,8 @@ export default function LibraryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={{ flex: 1 }}>
+    <View style={styles.safeArea}>
+      <SafeAreaView style={{ flex: 1 }}>
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
@@ -360,7 +360,7 @@ export default function LibraryScreen() {
             })
           )}
         </ScrollView>
-      </View>
+      </SafeAreaView>
 
       <AdBanner />
 
@@ -506,7 +506,7 @@ export default function LibraryScreen() {
       />
 
       <LoadingOverlay visible={isLoading} />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -580,7 +580,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   fab: {
     position: 'absolute',
     right: theme.spacing.lg,
-    bottom: theme.spacing.xl,
+    bottom: 70,
     width: 56,
     height: 56,
     borderRadius: 28,

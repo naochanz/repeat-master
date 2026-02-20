@@ -140,20 +140,47 @@ export class StudyRecordsService {
     startDate.setDate(startDate.getDate() - days);
     const startDateStr = startDate.toISOString().split('T')[0];
 
-    // answersテーブルから日別の回答数を集計
+    // ユーザーの問題集IDを取得
+    const { data: quizBooks, error: qbError } = await supabase
+      .from('quiz_books')
+      .select('id')
+      .eq('user_id', userId);
+
+    if (qbError) throw qbError;
+    if (!quizBooks || quizBooks.length === 0) return [];
+
+    const quizBookIds = quizBooks.map((qb) => qb.id);
+
+    // question_answersテーブルからattemptsを取得
+    // chapter_idを通じてquiz_bookに紐づくデータを取得
+    const { data: chapters, error: chError } = await supabase
+      .from('chapters')
+      .select('id')
+      .in('quiz_book_id', quizBookIds);
+
+    if (chError) throw chError;
+    if (!chapters || chapters.length === 0) return [];
+
+    const chapterIds = chapters.map((c) => c.id);
+
     const { data, error } = await supabase
-      .from('answers')
-      .select('answered_at')
-      .eq('user_id', userId)
-      .gte('answered_at', startDateStr);
+      .from('question_answers')
+      .select('attempts')
+      .in('chapter_id', chapterIds);
 
     if (error) throw error;
 
-    // 日ごとに集計
+    // attemptsの中のansweredAtから日ごとに集計
     const countMap = new Map<string, number>();
-    (data || []).forEach((record) => {
-      const dateStr = new Date(record.answered_at).toISOString().split('T')[0];
-      countMap.set(dateStr, (countMap.get(dateStr) || 0) + 1);
+    (data || []).forEach((qa) => {
+      (qa.attempts || []).forEach((attempt: any) => {
+        if (attempt.answeredAt && attempt.resultConfirmFlg) {
+          const dateStr = new Date(attempt.answeredAt).toISOString().split('T')[0];
+          if (dateStr >= startDateStr) {
+            countMap.set(dateStr, (countMap.get(dateStr) || 0) + 1);
+          }
+        }
+      });
     });
 
     // 結果を配列として返す

@@ -224,9 +224,9 @@ export default function AnalyticsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <AdBanner />
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {Object.entries(groupedQuizBooks).map(([categoryId, group]) => {
           const currentIndex = currentIndexMap[categoryId] || 0;
 
@@ -309,6 +309,9 @@ export default function AnalyticsScreen() {
           </View>
         )}
       </ScrollView>
+      </SafeAreaView>
+
+      <AdBanner />
 
       {/* 問題集選択モーダル */}
       {selectedCategoryId && (
@@ -341,7 +344,7 @@ export default function AnalyticsScreen() {
           </Pressable>
         </Modal>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
