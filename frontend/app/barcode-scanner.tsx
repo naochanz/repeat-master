@@ -94,6 +94,7 @@ export default function BarcodeScannerScreen() {
       <>
         <Stack.Screen
           options={{
+            headerShown: true,
             headerTitle: 'バーコードスキャン',
             headerLeft: () => (
               <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 8 }}>
@@ -115,6 +116,7 @@ export default function BarcodeScannerScreen() {
       <>
         <Stack.Screen
           options={{
+            headerShown: true,
             headerTitle: 'バーコードスキャン',
             headerLeft: () => (
               <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 8 }}>
@@ -142,6 +144,7 @@ export default function BarcodeScannerScreen() {
     <>
       <Stack.Screen
         options={{
+          headerShown: true,
           headerTitle: 'バーコードスキャン',
           headerLeft: () => (
             <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 8 }}>
