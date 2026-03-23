@@ -90,6 +90,7 @@ const QuestionScreen = () => {
     setIsLoadingAnswer(true);
     try {
       await saveAnswer(bookId, currentQuestionNumber, result, chapterId, sectionId || undefined);
+      setFeedbackResult(result);
     } finally {
       setIsLoadingAnswer(false);
     }
