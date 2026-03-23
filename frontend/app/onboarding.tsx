@@ -1,25 +1,23 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import React, { useState, useMemo } from 'react';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BookOpen, Target, Rocket } from 'lucide-react-native';
+import { BookOpen, Library, Play } from 'lucide-react-native';
 
 export const ONBOARDING_COMPLETE_KEY = '@repeat_master_onboarding_complete';
-const PENDING_GOAL_KEY = '@repeat_master_pending_goal';
 
 const STEPS = [
   { title: '問題集の周回を\nもっと効率的に', description: '正誤を記録して、弱点を可視化。\n繰り返すほど実力が伸びる学習アプリです。', icon: BookOpen },
-  { title: '目標を決めよう', description: '何を目指して勉強していますか？\n後から変更できます。', icon: Target, hasInput: true },
-  { title: '準備完了！', description: 'アカウントを作成したら、\n最初の問題集を登録しましょう。', icon: Rocket },
+  { title: 'ライブラリに\n問題集を追加しよう', description: 'ホーム画面からライブラリへ移動して、\n問題集を登録するところから始めましょう。', icon: Library },
+  { title: '学習をスタート！', description: '登録した問題集をタップすると\n章ごとに学習を進められます。', icon: Play },
 ] as const;
 
 export default function OnboardingScreen() {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [step, setStep] = useState(0);
-  const [goal, setGoal] = useState('');
 
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
@@ -27,7 +25,6 @@ export default function OnboardingScreen() {
 
   const handleNext = async () => {
     if (isLast) {
-      if (goal.trim()) await AsyncStorage.setItem(PENDING_GOAL_KEY, goal.trim());
       await AsyncStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
       router.replace('/signup');
     } else {
@@ -42,52 +39,36 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        {/* Step Progress */}
-        <View style={styles.progressRow}>
-          {STEPS.map((_, i) => (
-            <View key={i} style={[styles.progressBar, i <= step && styles.progressBarActive]} />
-          ))}
+      {/* Step Progress */}
+      <View style={styles.progressRow}>
+        {STEPS.map((_, i) => (
+          <View key={i} style={[styles.progressBar, i <= step && styles.progressBarActive]} />
+        ))}
+      </View>
+
+      {/* Content */}
+      <View style={styles.content}>
+        <Text style={styles.stepLabel}>STEP {step + 1} / {STEPS.length}</Text>
+
+        <View style={styles.iconWrap}>
+          <Icon size={40} color={theme.colors.primary[600]} />
         </View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <Text style={styles.stepLabel}>STEP {step + 1} / {STEPS.length}</Text>
+        <Text style={styles.title}>{current.title}</Text>
+        <Text style={styles.description}>{current.description}</Text>
+      </View>
 
-          <View style={styles.iconWrap}>
-            <Icon size={40} color={theme.colors.primary[600]} />
-          </View>
-
-          <Text style={styles.title}>{current.title}</Text>
-          <Text style={styles.description}>{current.description}</Text>
-
-          {'hasInput' in current && current.hasInput && (
-            <View style={styles.inputSection}>
-              <Text style={styles.inputLabel}>学習の目標</Text>
-              <TextInput
-                style={styles.input}
-                value={goal}
-                onChangeText={setGoal}
-                placeholder="例: TOEIC 800点、基本情報技術者合格"
-                placeholderTextColor={theme.colors.secondary[400]}
-                maxLength={100}
-              />
-            </View>
-          )}
-        </View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.7}>
-            <Text style={styles.nextBtnText}>{isLast ? 'はじめる' : '次へ進む'}</Text>
+      {/* Footer */}
+      <View style={styles.footer}>
+        <TouchableOpacity style={styles.nextBtn} onPress={handleNext} activeOpacity={0.7}>
+          <Text style={styles.nextBtnText}>{isLast ? 'はじめる' : '次へ進む'}</Text>
+        </TouchableOpacity>
+        {!isLast && (
+          <TouchableOpacity style={styles.skipBtn} onPress={handleSkip} activeOpacity={1}>
+            <Text style={styles.skipBtnText}>スキップ</Text>
           </TouchableOpacity>
-          {!isLast && (
-            <TouchableOpacity style={styles.skipBtn} onPress={handleSkip} activeOpacity={1}>
-              <Text style={styles.skipBtnText}>スキップ</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </KeyboardAvoidingView>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -104,10 +85,6 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   iconWrap: { width: 72, height: 72, borderRadius: 20, backgroundColor: theme.colors.primary[50], justifyContent: 'center', alignItems: 'center', marginVertical: 8 },
   title: { fontSize: 24, fontWeight: '700', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Bold', lineHeight: 34 },
   description: { fontSize: 14, color: theme.colors.secondary[500], fontFamily: 'ZenKaku-Regular', lineHeight: 22 },
-
-  inputSection: { marginTop: 8, gap: 8 },
-  inputLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.secondary[700], fontFamily: 'ZenKaku-Bold' },
-  input: { height: 52, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.secondary[200], paddingHorizontal: 16, fontSize: 15, fontFamily: 'ZenKaku-Regular', color: theme.colors.secondary[900] },
 
   footer: { paddingHorizontal: 24, paddingBottom: 32, gap: 12 },
   nextBtn: { height: 54, borderRadius: 14, backgroundColor: theme.colors.primary[600], justifyContent: 'center', alignItems: 'center' },

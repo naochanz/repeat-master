@@ -1,6 +1,6 @@
 import EditDeleteModal from '@/app/_compornents/EditDeleteModal';
 import LoadingOverlay from '@/app/_compornents/LoadingOverlay';
-import CustomTabBar from '@/components/CustomTabBar';
+// CustomTabBar removed from study screen
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -247,7 +247,7 @@ const StudyHome = () => {
           </View>
         </BottomSheet>
 
-        <CustomTabBar />
+        {/* TabBar removed */}
         <LoadingOverlay visible={isLoading} />
       </SafeAreaView>
     </>

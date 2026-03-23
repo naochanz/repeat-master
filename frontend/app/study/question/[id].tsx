@@ -123,6 +123,7 @@ const QuestionScreen = () => {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <AnswerFeedback result={feedbackResult} onComplete={() => setFeedbackResult(null)} />
         {/* Nav Bar */}
         <View style={styles.navBar}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
@@ -180,7 +181,7 @@ const QuestionScreen = () => {
         <LoadingOverlay visible={isLoading} />
 
         {/* Picker */}
-        <QuestionPickerSheet visible={pickerVisible} totalQuestions={questionCount} currentIndex={currentIndex} getAttempts={getAttempts} onSelect={setCurrentIndex} onClose={() => setPickerVisible(false)} />
+        <QuestionPickerSheet visible={pickerVisible} totalQuestions={questionCount} currentIndex={currentIndex} getAttempts={getAttempts} isBookmarked={(num) => isBookmarkedFn(chapterId, sectionId, num)} onSelect={setCurrentIndex} onClose={() => setPickerVisible(false)} />
 
 
         {/* Delete */}

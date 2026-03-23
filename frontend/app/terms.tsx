@@ -50,9 +50,9 @@ export default function TermsScreen() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>第3条（料金プラン）</Text>
-          <Text style={styles.numberedItem}>1. 本アプリには無料プランと有料プラン（プレミアムプラン、追加枠）があります。</Text>
-          <Text style={styles.numberedItem}>2. 有料プランの料金は、アプリ内に表示された金額とします。</Text>
-          <Text style={styles.numberedItem}>3. サブスクリプションは、解約手続きを行わない限り自動更新されます。</Text>
+          <Text style={styles.numberedItem}>1. 本アプリは無料で利用できます。無料版には広告が表示されます。</Text>
+          <Text style={styles.numberedItem}>2. アプリ内で広告削除オプション（買い切り）を購入することで、広告を非表示にすることができます。</Text>
+          <Text style={styles.numberedItem}>3. 広告削除オプションは一度の購入で永続的に有効であり、自動更新や追加課金は発生しません。</Text>
           <Text style={styles.numberedItem}>4. 支払いはApple IDを通じて行われ、Appleの決済規約が適用されます。</Text>
           <Text style={styles.numberedItem}>5. 返金については、Appleの返金ポリシーに従います。</Text>
         </View>
@@ -91,7 +91,7 @@ export default function TermsScreen() {
           <Text style={styles.sectionTitle}>第7条（サービスの変更・終了）</Text>
           <Text style={styles.numberedItem}>1. 運営者は、ユーザーに事前に通知することなく、本アプリの内容を変更することができます。</Text>
           <Text style={styles.numberedItem}>2. 運営者は、相当の予告期間をもって、本アプリの提供を終了することができます。</Text>
-          <Text style={styles.numberedItem}>3. サービス終了の場合、有料プランの未使用期間については、適切な対応を行います。</Text>
+          <Text style={styles.numberedItem}>3. サービス終了の場合、購入済みの広告削除オプションについては返金対応を行いません。</Text>
         </View>
 
         <View style={styles.section}>
@@ -121,7 +121,7 @@ export default function TermsScreen() {
 
         <Text style={styles.dateText}>
           制定日: 2026年1月1日{'\n'}
-          最終更新日: 2026年1月1日
+          最終更新日: 2026年3月23日
         </Text>
 
         <View style={styles.bottomSpacer} />

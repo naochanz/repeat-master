@@ -1,6 +1,6 @@
 import EditDeleteModal from '@/app/_compornents/EditDeleteModal';
 import LoadingOverlay from '@/app/_compornents/LoadingOverlay';
-import CustomTabBar from '@/components/CustomTabBar';
+// CustomTabBar removed from section screen
 import BottomSheet from '@/components/BottomSheet';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
@@ -163,7 +163,7 @@ const SectionList = () => {
 
         <EditDeleteModal visible={!!activeMenu && !!editingSection} onClose={() => { setActiveMenu(null); setEditingSection(null); }} onSave={handleSaveSection} onDelete={handleDeleteSection} title="節の編集" editLabel="節名" editValue={editingSection?.title || ''} editPlaceholder="節名を入力" isLoading={isLoading} />
 
-        <CustomTabBar />
+        {/* TabBar removed */}
         <LoadingOverlay visible={isLoading} />
       </SafeAreaView>
     </>

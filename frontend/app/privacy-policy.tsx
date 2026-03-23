@@ -33,6 +33,7 @@ export default function PrivacyPolicyScreen() {
           <Text style={styles.listItem}>• メールアドレス（アカウント登録時）</Text>
           <Text style={styles.listItem}>• 学習データ（問題集の登録情報、回答履歴、正答率など）</Text>
           <Text style={styles.listItem}>• アプリの利用状況に関するデータ</Text>
+          <Text style={styles.listItem}>• 広告配信に関するデータ（広告識別子、広告の表示・クリックに関する情報など。詳細は後述の「広告配信について」をご確認ください）</Text>
           <Text style={styles.listItem}>• お問い合わせ時にご提供いただく情報</Text>
         </View>
 
@@ -41,13 +42,29 @@ export default function PrivacyPolicyScreen() {
           <Text style={styles.paragraph}>収集した情報は、以下の目的で利用します。</Text>
           <Text style={styles.listItem}>• 本アプリのサービス提供および機能の改善</Text>
           <Text style={styles.listItem}>• ユーザーサポートの提供</Text>
+          <Text style={styles.listItem}>• 広告の配信および最適化</Text>
           <Text style={styles.listItem}>• サービスに関する重要なお知らせの送信</Text>
           <Text style={styles.listItem}>• 利用規約違反への対応</Text>
           <Text style={styles.listItem}>• 統計データの作成（個人を特定できない形式）</Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>3. 第三者への提供について</Text>
+          <Text style={styles.sectionTitle}>3. 広告配信について</Text>
+          <Text style={styles.paragraph}>
+            本アプリでは、広告配信のためにGoogle AdMob（Google LLC）を利用しています。
+            AdMobは、広告配信の目的で、ユーザーの広告識別子（IDFA等）やアプリの利用状況に関する情報を収集する場合があります。
+            これらの情報は、ユーザーに最適な広告を表示するために利用されます。
+          </Text>
+          <Text style={styles.paragraph}>
+            AdMobによるデータの取り扱いについては、Googleのプライバシーポリシー（https://policies.google.com/privacy）をご参照ください。
+          </Text>
+          <Text style={styles.paragraph}>
+            なお、アプリ内で広告削除オプションを購入いただくことで、広告の表示および広告に関連するデータの収集を停止することができます。
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>4. 第三者への提供について</Text>
           <Text style={styles.paragraph}>
             本アプリは、以下の場合を除き、ユーザーの個人情報を第三者に提供することはありません。
           </Text>
@@ -58,7 +75,7 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>4. データの保護について</Text>
+          <Text style={styles.sectionTitle}>5. データの保護について</Text>
           <Text style={styles.paragraph}>
             本アプリは、ユーザーの個人情報を適切に管理し、不正アクセス、紛失、破壊、改ざん、
             漏洩などを防止するため、必要かつ適切なセキュリティ対策を講じています。
@@ -67,7 +84,7 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>5. データの保存期間</Text>
+          <Text style={styles.sectionTitle}>6. データの保存期間</Text>
           <Text style={styles.paragraph}>
             ユーザーの個人情報は、サービス提供に必要な期間保存されます。
             アカウントを削除された場合、関連する個人情報は合理的な期間内に削除されます。
@@ -75,7 +92,7 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>6. ユーザーの権利</Text>
+          <Text style={styles.sectionTitle}>7. ユーザーの権利</Text>
           <Text style={styles.paragraph}>ユーザーは以下の権利を有します。</Text>
           <Text style={styles.listItem}>• 個人情報へのアクセス権</Text>
           <Text style={styles.listItem}>• 個人情報の訂正・削除の請求権</Text>
@@ -83,7 +100,7 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>7. プライバシーポリシーの変更</Text>
+          <Text style={styles.sectionTitle}>8. プライバシーポリシーの変更</Text>
           <Text style={styles.paragraph}>
             本プライバシーポリシーは、必要に応じて変更されることがあります。
             重要な変更がある場合は、アプリ内またはメールでお知らせします。
@@ -91,7 +108,7 @@ export default function PrivacyPolicyScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>8. お問い合わせ先</Text>
+          <Text style={styles.sectionTitle}>9. お問い合わせ先</Text>
           <Text style={styles.paragraph}>
             本プライバシーポリシーに関するお問い合わせは、以下までご連絡ください。
           </Text>
@@ -102,7 +119,7 @@ export default function PrivacyPolicyScreen() {
 
         <Text style={styles.dateText}>
           制定日: 2026年1月1日{'\n'}
-          最終更新日: 2026年1月1日
+          最終更新日: 2026年3月23日
         </Text>
 
         <View style={styles.bottomSpacer} />

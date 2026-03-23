@@ -101,7 +101,8 @@ export default function AnalyticsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <SafeAreaView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.pageTitle}>分析</Text>
 
@@ -144,8 +145,6 @@ export default function AnalyticsScreen() {
         </View>
       </ScrollView>
 
-      <AdBanner />
-
       <Modal visible={categoryPickerVisible} transparent animationType="fade" onRequestClose={() => setCategoryPickerVisible(false)}>
         <View style={styles.modalOverlay}>
           <Pressable style={{ flex: 1 }} onPress={() => setCategoryPickerVisible(false)} />
@@ -163,7 +162,9 @@ export default function AnalyticsScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+      <AdBanner />
+    </View>
   );
 }
 
