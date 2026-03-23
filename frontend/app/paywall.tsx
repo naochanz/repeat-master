@@ -1,6 +1,6 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
-import { Check, Crown, X } from 'lucide-react-native';
+import { Crown, X, Sparkles } from 'lucide-react-native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,34 +11,26 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
-import { PurchasesPackage, PACKAGE_TYPE } from 'react-native-purchases';
+import { router } from 'expo-router';
 import { showErrorToast, showSuccessToast } from '@/utils/toast';
 
 export default function PaywallScreen() {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const { source } = useLocalSearchParams<{ source?: string }>();
   const {
-    isPremium,
+    isAdFree,
     isLoading,
     packages,
-    activeProductId,
     fetchPackages,
-    purchasePackage,
+    purchaseRemoveAds,
     restorePurchases,
   } = useSubscriptionStore();
 
-  const [selectedPackage, setSelectedPackage] = useState<PurchasesPackage | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [fetchingPackages, setFetchingPackages] = useState(false);
-  const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
-  const [contentHeight, setContentHeight] = useState(0);
-  const [scrollViewHeight, setScrollViewHeight] = useState(0);
 
   useEffect(() => {
-    // isLoadingがfalseになった（初期化完了）後にパッケージを取得
     const loadPackages = async () => {
       if (!isLoading) {
         setFetchingPackages(true);
@@ -49,32 +41,16 @@ export default function PaywallScreen() {
     loadPackages();
   }, [isLoading]);
 
-  useEffect(() => {
-    if (packages.length > 0 && !selectedPackage) {
-      setSelectedPackage(packages[0]);
-    }
-  }, [packages]);
-
-  // コンテンツが画面に収まる場合はスクロール不要としてボタンを有効にする
-  useEffect(() => {
-    if (contentHeight > 0 && scrollViewHeight > 0 && contentHeight <= scrollViewHeight) {
-      setHasScrolledToBottom(true);
-    }
-  }, [contentHeight, scrollViewHeight]);
-
+  const removeAdsPackage = packages.length > 0 ? packages[0] : null;
 
   const handlePurchase = async () => {
-    if (!selectedPackage) return;
+    if (!removeAdsPackage) return;
 
     setPurchasing(true);
     try {
-      const result = await purchasePackage(selectedPackage);
-      if (result.success) {
-        if (result.isAddQuizBook) {
-          showSuccessToast('問題集枠を追加しました！');
-        } else {
-          showSuccessToast('プレミアムプランへようこそ！');
-        }
+      const success = await purchaseRemoveAds(removeAdsPackage);
+      if (success) {
+        showSuccessToast('広告を非表示にしました！');
         router.back();
       }
     } catch (error) {
@@ -101,52 +77,6 @@ export default function PaywallScreen() {
     }
   };
 
-  const handleClose = () => {
-    router.back();
-  };
-
-  const handleScroll = (event: any) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    const paddingToBottom = 50;
-    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom) {
-      setHasScrolledToBottom(true);
-    }
-  };
-
-  // パッケージの表示情報を取得
-  const getPackageDisplayInfo = (pkg: PurchasesPackage) => {
-    const productId = pkg.product.identifier;
-
-    // 製品IDで判定
-    if (productId.includes('monthly')) {
-      return { title: '月額プラン', priceSuffix: '/月' };
-    } else if (productId.includes('yearly')) {
-      return { title: '年額プラン', priceSuffix: '/年' };
-    } else if (productId.includes('add_quizbook')) {
-      return { title: '問題集追加（買い切り）', priceSuffix: '' };
-    }
-
-    // パッケージタイプでフォールバック
-    switch (pkg.packageType) {
-      case PACKAGE_TYPE.MONTHLY:
-        return { title: '月額プラン', priceSuffix: '/月' };
-      case PACKAGE_TYPE.ANNUAL:
-        return { title: '年額プラン', priceSuffix: '/年' };
-      case PACKAGE_TYPE.LIFETIME:
-        return { title: '買い切りプラン', priceSuffix: '' };
-      default:
-        return { title: pkg.product.title || 'プラン', priceSuffix: '' };
-    }
-  };
-
-  const features = [
-    { text: '問題集を無制限に登録', free: false, premium: true },
-    { text: '広告非表示', free: false, premium: true },
-    { text: '資格カテゴリを無制限に作成', free: true, premium: true },
-    { text: '全ての学習履歴にアクセス', free: true, premium: true },
-    { text: '完了した問題集の閲覧', free: true, premium: true },
-  ];
-
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -155,155 +85,87 @@ export default function PaywallScreen() {
     );
   }
 
+  if (isAdFree) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
+            {/* @ts-ignore */}
+            <X size={24} color={theme.colors.secondary[600]} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.alreadyPurchased}>
+          {/* @ts-ignore */}
+          <Crown size={48} color={theme.colors.warning[500]} fill={theme.colors.warning[500]} />
+          <Text style={styles.title}>広告非表示 購入済み</Text>
+          <Text style={styles.subtitle}>快適な学習をお楽しみください</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+        <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
+          {/* @ts-ignore */}
           <X size={24} color={theme.colors.secondary[600]} />
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        onLayout={(e) => setScrollViewHeight(e.nativeEvent.layout.height)}
-        onContentSizeChange={(_, height) => setContentHeight(height)}
-      >
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroSection}>
           <View style={styles.crownContainer}>
-            <Crown size={48} color={theme.colors.warning[500]} fill={theme.colors.warning[500]} />
+            {/* @ts-ignore */}
+            <Sparkles size={48} color={theme.colors.warning[500]} />
           </View>
-          <Text style={styles.title}>DORILOOP Premium</Text>
-          <Text style={styles.subtitle}>学習を加速させよう</Text>
+          <Text style={styles.title}>広告を非表示にする</Text>
+          <Text style={styles.subtitle}>買い切りで広告なしの快適な学習体験を</Text>
         </View>
 
-        <View style={styles.featuresSection}>
-          <Text style={styles.sectionTitle}>プラン比較</Text>
+        <View style={styles.benefitsSection}>
+          <Text style={styles.benefitItem}>すべてのバナー広告が非表示になります</Text>
+          <Text style={styles.benefitItem}>一度の購入でずっと有効</Text>
+          <Text style={styles.benefitItem}>学習に集中できる環境に</Text>
+        </View>
 
-          <View style={styles.planHeader}>
-            <View style={styles.planHeaderItemText} />
-            <View style={styles.planHeaderItemCheck}>
-              <Text style={styles.planHeaderText}>無料</Text>
-            </View>
-            <View style={[styles.planHeaderItemCheck, styles.premiumHeader]}>
-              <Text style={styles.planHeaderTextPremium}>Premium</Text>
-            </View>
+        {removeAdsPackage ? (
+          <View style={styles.priceCard}>
+            <Text style={styles.priceLabel}>買い切り価格</Text>
+            <Text style={styles.priceValue}>{removeAdsPackage.product.priceString}</Text>
           </View>
-
-          {features.map((feature, index) => (
-            <View key={index} style={styles.featureRow}>
-              <Text style={styles.featureText}>{feature.text}</Text>
-              <View style={styles.featureCheck}>
-                {feature.free ? (
-                  <Check size={20} color={theme.colors.success[500]} />
-                ) : (
-                  <X size={20} color={theme.colors.secondary[300]} />
-                )}
-              </View>
-              <View style={[styles.featureCheck, styles.premiumCheck]}>
-                <Check size={20} color={theme.colors.success[500]} />
-              </View>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.pricingSection}>
-          {packages.map((pkg) => {
-            const displayInfo = getPackageDisplayInfo(pkg);
-            const isCurrentPlan = activeProductId === pkg.product.identifier;
-            return (
-              <TouchableOpacity
-                key={pkg.identifier}
-                style={[
-                  styles.packageCard,
-                  selectedPackage?.identifier === pkg.identifier && styles.packageCardSelected,
-                  isCurrentPlan && styles.packageCardCurrent,
-                ]}
-                onPress={() => !isCurrentPlan && setSelectedPackage(pkg)}
-                disabled={isCurrentPlan}
-              >
-                <View style={styles.packageInfo}>
-                  <View style={styles.packageTitleRow}>
-                    <Text style={styles.packageTitle}>{displayInfo.title}</Text>
-                    {isCurrentPlan && (
-                      <View style={styles.currentBadge}>
-                        <Text style={styles.currentBadgeText}>現在のプラン</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.packagePrice}>{pkg.product.priceString}{displayInfo.priceSuffix}</Text>
-                </View>
-                {!isCurrentPlan && (
-                  <View
-                    style={[
-                      styles.radioButton,
-                      selectedPackage?.identifier === pkg.identifier && styles.radioButtonSelected,
-                    ]}
-                  >
-                    {selectedPackage?.identifier === pkg.identifier && (
-                      <View style={styles.radioButtonInner} />
-                    )}
-                  </View>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-
-          {packages.length === 0 && (
-            <View style={styles.noPackagesMessage}>
-              {fetchingPackages ? (
-                <>
-                  <ActivityIndicator size="small" color={theme.colors.primary[600]} style={{ marginBottom: theme.spacing.sm }} />
-                  <Text style={styles.noPackagesText}>
-                    プランを取得中です...
-                  </Text>
-                </>
-              ) : (
-                <Text style={styles.noPackagesText}>
-                  現在利用可能なプランがありません。{'\n'}
-                  RevenueCatでOfferingsを設定してください。
-                </Text>
-              )}
-            </View>
-          )}
-        </View>
+        ) : (
+          <View style={styles.noPackagesMessage}>
+            {fetchingPackages ? (
+              <>
+                <ActivityIndicator size="small" color={theme.colors.primary[600]} style={{ marginBottom: theme.spacing.sm }} />
+                <Text style={styles.noPackagesText}>読み込み中...</Text>
+              </>
+            ) : (
+              <Text style={styles.noPackagesText}>
+                現在利用可能な商品がありません。
+              </Text>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.purchaseButton, (purchasing || !selectedPackage || !hasScrolledToBottom) && styles.purchaseButtonDisabled]}
+          style={[styles.purchaseButton, (purchasing || !removeAdsPackage) && styles.purchaseButtonDisabled]}
           onPress={handlePurchase}
-          disabled={purchasing || !selectedPackage || !hasScrolledToBottom}
+          disabled={purchasing || !removeAdsPackage}
         >
           {purchasing ? (
             <ActivityIndicator color={theme.colors.neutral.white} />
           ) : (
-            <Text style={styles.purchaseButtonText}>
-              {selectedPackage?.product.identifier.includes('add_quizbook')
-                ? '問題集枠を購入する'
-                : isPremium
-                  ? 'プランを変更する'
-                  : 'プレミアムを始める'}
-            </Text>
+            <Text style={styles.purchaseButtonText}>広告を非表示にする</Text>
           )}
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.restoreButton} onPress={handleRestore} disabled={purchasing}>
           <Text style={styles.restoreButtonText}>購入を復元</Text>
         </TouchableOpacity>
-
-        {!hasScrolledToBottom && (
-          <Text style={styles.scrollHint}>
-            下にスクロールしてプランを確認してください
-          </Text>
-        )}
-
-        <Text style={styles.legalText}>
-          サブスクリプションはいつでもキャンセルできます。
-          購入後、Apple ID に課金されます。
-        </Text>
       </View>
     </SafeAreaView>
   );
@@ -320,189 +182,101 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     padding: theme.spacing.md,
   },
   closeButton: {
-    padding: theme.spacing.sm,
+    padding: theme.spacing.xs,
+  },
+  alreadyPurchased: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    paddingBottom: 100,
   },
   content: {
     flex: 1,
-    paddingHorizontal: theme.spacing.lg,
   },
   heroSection: {
     alignItems: 'center',
-    paddingVertical: theme.spacing.xl,
+    paddingVertical: theme.spacing['2xl'],
+    paddingHorizontal: theme.spacing.lg,
   },
   crownContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: theme.colors.warning[100],
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: theme.colors.warning[50],
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   title: {
     fontSize: theme.typography.fontSizes['2xl'],
-    fontWeight: theme.typography.fontWeights.bold as any,
     fontFamily: 'ZenKaku-Bold',
     color: theme.colors.secondary[900],
-    marginBottom: theme.spacing.xs,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: theme.typography.fontSizes.base,
     fontFamily: 'ZenKaku-Regular',
     color: theme.colors.secondary[600],
+    textAlign: 'center',
+    marginTop: theme.spacing.sm,
   },
-  featuresSection: {
+  benefitsSection: {
+    paddingHorizontal: theme.spacing.xl,
+    gap: theme.spacing.md,
     marginBottom: theme.spacing.xl,
   },
-  sectionTitle: {
-    fontSize: theme.typography.fontSizes.lg,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.secondary[900],
-    marginBottom: theme.spacing.md,
+  benefitItem: {
+    fontSize: theme.typography.fontSizes.base,
+    fontFamily: 'ZenKaku-Medium',
+    color: theme.colors.secondary[700],
+    textAlign: 'center',
+    lineHeight: 24,
   },
-  planHeader: {
-    flexDirection: 'row',
-    marginBottom: theme.spacing.sm,
-  },
-  planHeaderItemText: {
-    flex: 2,
-  },
-  planHeaderItemCheck: {
-    flex: 1,
+  priceCard: {
+    marginHorizontal: theme.spacing.xl,
+    backgroundColor: theme.colors.primary[50],
+    borderRadius: theme.borderRadius.xl,
+    padding: theme.spacing.xl,
     alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
+    borderWidth: 2,
+    borderColor: theme.colors.primary[200],
   },
-  premiumHeader: {
-    backgroundColor: theme.colors.primary[100],
-    borderRadius: theme.borderRadius.md,
-  },
-  planHeaderText: {
+  priceLabel: {
     fontSize: theme.typography.fontSizes.sm,
     fontFamily: 'ZenKaku-Medium',
     color: theme.colors.secondary[600],
-  },
-  planHeaderTextPremium: {
-    fontSize: theme.typography.fontSizes.sm,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.primary[600],
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.secondary[100],
-  },
-  featureText: {
-    flex: 2,
-    fontSize: theme.typography.fontSizes.sm,
-    fontFamily: 'ZenKaku-Regular',
-    color: theme.colors.secondary[800],
-  },
-  featureCheck: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  premiumCheck: {
-    backgroundColor: theme.colors.primary[50],
-    borderRadius: theme.borderRadius.sm,
-    paddingVertical: theme.spacing.xs,
-  },
-  pricingSection: {
-    marginBottom: theme.spacing.lg,
-  },
-  packageCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-    borderWidth: 2,
-    borderColor: theme.colors.secondary[200],
-    borderRadius: theme.borderRadius.lg,
-    marginBottom: theme.spacing.md,
-  },
-  packageCardSelected: {
-    borderColor: theme.colors.primary[600],
-    backgroundColor: theme.colors.primary[50],
-  },
-  packageCardCurrent: {
-    borderColor: theme.colors.success[400],
-    backgroundColor: theme.colors.success[50],
-    opacity: 0.8,
-  },
-  packageInfo: {
-    flex: 1,
-  },
-  packageTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
     marginBottom: theme.spacing.xs,
   },
-  currentBadge: {
-    backgroundColor: theme.colors.success[500],
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 2,
-    borderRadius: theme.borderRadius.sm,
-  },
-  currentBadgeText: {
-    fontSize: theme.typography.fontSizes.xs,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.neutral.white,
-  },
-  packageTitle: {
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.secondary[900],
-  },
-  packagePrice: {
-    fontSize: theme.typography.fontSizes.xl,
-    fontWeight: theme.typography.fontWeights.bold as any,
+  priceValue: {
+    fontSize: theme.typography.fontSizes['2xl'],
     fontFamily: 'ZenKaku-Bold',
     color: theme.colors.primary[600],
   },
-  radioButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: theme.colors.secondary[300],
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  radioButtonSelected: {
-    borderColor: theme.colors.primary[600],
-  },
-  radioButtonInner: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: theme.colors.primary[600],
-  },
   noPackagesMessage: {
-    padding: theme.spacing.lg,
     alignItems: 'center',
+    padding: theme.spacing.xl,
   },
   noPackagesText: {
     fontSize: theme.typography.fontSizes.sm,
     fontFamily: 'ZenKaku-Regular',
     color: theme.colors.secondary[500],
+    textAlign: 'center',
   },
   footer: {
     padding: theme.spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.secondary[100],
+    paddingBottom: theme.spacing.xl,
+    gap: theme.spacing.md,
   },
   purchaseButton: {
     backgroundColor: theme.colors.primary[600],
     paddingVertical: theme.spacing.md,
     borderRadius: theme.borderRadius.lg,
     alignItems: 'center',
-    marginBottom: theme.spacing.md,
+    ...theme.shadows.md,
   },
   purchaseButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   purchaseButtonText: {
     fontSize: theme.typography.fontSizes.lg,
@@ -512,25 +286,10 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   restoreButton: {
     alignItems: 'center',
     paddingVertical: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
   },
   restoreButtonText: {
     fontSize: theme.typography.fontSizes.sm,
-    fontFamily: 'ZenKaku-Medium',
-    color: theme.colors.primary[600],
-  },
-  scrollHint: {
-    fontSize: theme.typography.fontSizes.sm,
-    fontFamily: 'ZenKaku-Regular',
-    color: theme.colors.warning[600],
-    textAlign: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  legalText: {
-    fontSize: theme.typography.fontSizes.xs,
     fontFamily: 'ZenKaku-Regular',
     color: theme.colors.secondary[500],
-    textAlign: 'center',
-    lineHeight: 18,
   },
 });

@@ -127,6 +127,39 @@ function RootLayoutNav() {
         }}
       >
         <Stack.Screen
+          name="study"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+            animationDuration: 300,
+            headerShown: false,
+            gestureEnabled: true,
+            gestureDirection: 'vertical',
+          }}
+        />
+        <Stack.Screen
+          name="memo-edit"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+            animationDuration: 300,
+            headerShown: false,
+            gestureEnabled: true,
+            gestureDirection: 'vertical',
+          }}
+        />
+        <Stack.Screen
+          name="book-detail"
+          options={{
+            presentation: 'modal',
+            animation: 'slide_from_bottom',
+            animationDuration: 300,
+            headerShown: false,
+            gestureEnabled: true,
+            gestureDirection: 'vertical',
+          }}
+        />
+        <Stack.Screen
           name="paywall"
           options={{
             presentation: 'modal',

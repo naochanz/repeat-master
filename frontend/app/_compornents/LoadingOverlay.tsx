@@ -28,7 +28,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ visible, message = '処
 const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },

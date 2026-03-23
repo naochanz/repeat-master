@@ -1,41 +1,30 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
-
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+import { type AccentPalette, getPalette, defaultPaletteName } from './colorPalettes';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: '#1A1A1A',
+    background: '#FAFAFA',
+    tint: '#D4874A',
+    icon: '#999999',
+    tabIconDefault: '#BBBBBB',
+    tabIconSelected: '#D4874A',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: '#E5E5E5',
+    background: '#1A1A1A',
+    tint: '#D4874A',
+    icon: '#888888',
+    tabIconDefault: '#555555',
+    tabIconSelected: '#D4874A',
   },
 };
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
@@ -52,111 +41,109 @@ export const Fonts = Platform.select({
   },
 });
 
-// ライトモードのカラー
-const lightColors = {
+const buildLightColors = (palette: AccentPalette) => ({
   primary: {
-    50: '#fff7ed',
-    100: '#ffedd5',
-    200: '#fed7aa',
-    300: '#fdba74',
-    400: '#fb923c',
-    500: '#f97316',
-    600: '#ea580c',
-    700: '#c2410c',
-    800: '#9a3412',
-    900: '#7c2d12',
+    50: palette.primaryLight,
+    100: palette.primaryLight,
+    200: palette.primaryMuted,
+    300: palette.primaryMuted,
+    400: palette.primary,
+    500: palette.primary,
+    600: palette.primary,
+    700: palette.primary,
+    800: palette.primary,
+    900: palette.primary,
   },
   secondary: {
-    50: '#f8fafc',
-    100: '#f1f5f9',
-    200: '#e2e8f0',
-    300: '#cbd5e1',
-    400: '#94a3b8',
-    500: '#64748b',
-    600: '#475569',
-    700: '#334155',
-    800: '#1e293b',
-    900: '#0f172a',
+    50: '#FAFAFA',
+    100: '#F5F5F5',
+    200: '#EEEEEE',
+    300: '#DDDDDD',
+    400: '#BBBBBB',
+    500: '#999999',
+    600: '#777777',
+    700: '#555555',
+    800: '#333333',
+    900: '#1A1A1A',
   },
   neutral: {
-    50: '#f9fafb',
-    100: '#f3f4f6',
-    white: '#ffffff',
+    50: '#FAFAFA',
+    100: '#F5F5F5',
+    white: '#FFFFFF',
   },
-  background: '#ffffff',
-  surface: '#f9fafb',
+  background: '#FAFAFA',
+  surface: '#FFFFFF',
   error: {
-    50: '#fef2f2',
-    300: '#fca5a5',
-    500: '#ef4444',
-    600: '#dc2626',
+    50: palette.errorLight,
+    300: palette.error,
+    500: palette.error,
+    600: palette.error,
   },
   warning: {
-    50: '#fffbeb',
-    300: '#fcd34d',
-    500: '#f59e0b',
-    600: '#d97706',
+    50: '#FFF8E1',
+    300: '#FFD54F',
+    500: '#FFB300',
+    600: '#FFA000',
   },
   success: {
-    50: '#ecfdf5',
-    300: '#6ee7b7',
-    500: '#10b981',
-    600: '#059669',
+    50: palette.successLight,
+    300: palette.success,
+    500: palette.success,
+    600: palette.success,
   },
-};
+});
 
-// ダークモードのカラー
-const darkColors = {
+const buildDarkColors = (palette: AccentPalette) => ({
   primary: {
-    50: '#7c2d12',
-    100: '#9a3412',
-    200: '#c2410c',
-    300: '#ea580c',
-    400: '#f97316',
-    500: '#fb923c',
-    600: '#fdba74',
-    700: '#fed7aa',
-    800: '#ffedd5',
-    900: '#fff7ed',
+    50: palette.primaryLight,
+    100: palette.primaryLight,
+    200: palette.primaryMuted,
+    300: palette.primaryMuted,
+    400: palette.primary,
+    500: palette.primary,
+    600: palette.primary,
+    700: palette.primary,
+    800: palette.primary,
+    900: palette.primary,
   },
   secondary: {
-    50: '#1e293b',
-    100: '#334155',
-    200: '#475569',
-    300: '#64748b',
-    400: '#94a3b8',
-    500: '#cbd5e1',
-    600: '#e2e8f0',
-    700: '#f1f5f9',
-    800: '#f8fafc',
-    900: '#ffffff',
+    50: '#1A1A1A',
+    100: '#242424',
+    200: '#333333',
+    300: '#444444',
+    400: '#666666',
+    500: '#888888',
+    600: '#AAAAAA',
+    700: '#CCCCCC',
+    800: '#DDDDDD',
+    900: '#E5E5E5',
   },
   neutral: {
-    50: '#1e293b',
-    100: '#334155',
-    white: '#0f172a',
+    50: '#1A1A1A',
+    100: '#242424',
+    white: '#242424',
   },
-  background: '#0f172a',
-  surface: '#1e293b',
+  background: '#1A1A1A',
+  surface: '#242424',
   error: {
-    50: '#450a0a',
-    300: '#b91c1c',
-    500: '#ef4444',
-    600: '#f87171',
+    50: palette.errorLight,
+    300: palette.error,
+    500: palette.error,
+    600: palette.error,
   },
   warning: {
-    50: '#451a03',
-    300: '#b45309',
-    500: '#f59e0b',
-    600: '#fbbf24',
+    50: '#332B00',
+    300: '#FFB300',
+    500: '#FFB300',
+    600: '#FFD54F',
   },
   success: {
-    50: '#022c22',
-    300: '#047857',
-    500: '#10b981',
-    600: '#34d399',
+    50: palette.successLight,
+    300: palette.success,
+    500: palette.success,
+    600: palette.success,
   },
-};
+});
 
 const baseTheme = {
   typography: {
@@ -193,65 +180,54 @@ const baseTheme = {
   borderRadius: {
     sm: 4,
     md: 8,
-    lg: 12,
-    xl: 16,
+    lg: 16,
+    xl: 20,
   },
   shadows: {
     sm: {
       shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 1,
-      },
-      shadowOpacity: 0.1,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06,
       shadowRadius: 2,
-      elevation: 2,
+      elevation: 1,
     },
     md: {
       shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.15,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.08,
       shadowRadius: 4,
-      elevation: 4,
+      elevation: 2,
     },
     lg: {
       shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 4,
-      },
-      shadowOpacity: 0.2,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
       shadowRadius: 8,
-      elevation: 8,
+      elevation: 4,
     },
     xl: {
       shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 6,
-      },
-      shadowOpacity: 0.25,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.12,
       shadowRadius: 12,
-      elevation: 12,
+      elevation: 6,
     },
   },
 };
 
-export const lightTheme = {
+const buildTheme = (isDark: boolean, palette: AccentPalette) => ({
   ...baseTheme,
-  colors: lightColors,
-};
+  colors: isDark ? buildDarkColors(palette) : buildLightColors(palette),
+});
 
-export const darkTheme = {
-  ...baseTheme,
-  colors: darkColors,
-};
+const defaultPalette = getPalette(defaultPaletteName);
+export const lightTheme = buildTheme(false, defaultPalette);
+export const darkTheme = buildTheme(true, defaultPalette);
 
-// デフォルトはライトテーマ（後方互換性のため）
+// 後方互換
 export const theme = lightTheme;
 
-// テーマを取得する関数
-export const getTheme = (isDark: boolean) => isDark ? darkTheme : lightTheme;
+export const getTheme = (isDark: boolean, paletteName?: string) => {
+  const palette = getPalette(paletteName ?? defaultPaletteName);
+  return buildTheme(isDark, palette);
+};

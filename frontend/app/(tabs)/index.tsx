@@ -1,20 +1,21 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useUserStore } from '@/stores/userStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useQuizBookStore } from '@/stores/quizBookStore';
+import { useGuideStore } from '@/stores/guideStore';
 import { router, useFocusEffect, useNavigation } from 'expo-router';
-import { Edit3, Target } from 'lucide-react-native';
+import { Edit3, ChevronRight, BookOpen } from 'lucide-react-native';
 import React, { useCallback, useState, useMemo, useRef } from 'react';
-import { ActivityIndicator, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import BottomSheet from '@/components/BottomSheet';
 import { CommonActions } from '@react-navigation/native';
 import FeedbackModal, { shouldShowFeedback } from '@/components/FeedbackModal';
 import AdBanner from '@/components/AdBanner';
-import StudyHeatmap from '@/components/StudyHeatmap';
 
 export default function DashboardScreen() {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  // ✅ バックエンドから取得
   const user = useUserStore(state => state.user);
   const recentStudyRecords = useUserStore(state => state.recentStudyRecords);
   const activityData = useUserStore(state => state.activityData);
@@ -22,8 +23,6 @@ export default function DashboardScreen() {
   const fetchRecentStudyRecords = useUserStore(state => state.fetchRecentStudyRecords);
   const fetchActivity = useUserStore(state => state.fetchActivity);
   const updateUserGoal = useUserStore(state => state.updateUserGoal);
-
-  // ユーザープロファイル
   const profile = useAuthStore(state => state.profile);
 
   const [isEditingGoal, setIsEditingGoal] = useState(false);
@@ -31,31 +30,53 @@ export default function DashboardScreen() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [showFeedback, setShowFeedback] = useState(false);
   const hasLoadedOnce = useRef(false);
-
   const navigation = useNavigation();
 
-  // 時間帯による挨拶
-  const greeting = useMemo(() => {
+  const greetingLine = useMemo(() => {
     const hour = new Date().getHours();
-    const name = profile?.name || 'ゲスト';
+    if (hour >= 5 && hour < 12) return 'おはようございます';
+    if (hour >= 12 && hour < 18) return 'こんにちは';
+    return 'おかえりなさい';
+  }, []);
 
-    if (hour >= 5 && hour < 12) {
-      return `おはようございます、${name}さん`;
-    } else if (hour >= 12 && hour < 18) {
-      return `こんにちは、${name}さん`;
-    } else {
-      return `おかえりなさい、${name}さん`;
+  const streak = useMemo(() => {
+    let days = 0;
+    let answers = 0;
+    const sorted = [...activityData].sort((a, b) => b.date.localeCompare(a.date));
+    for (const d of sorted) {
+      if (d.count > 0) {
+        days++;
+        answers += d.count;
+      } else {
+        break;
+      }
     }
-  }, [profile?.name]);
+    return { days, answers };
+  }, [activityData]);
 
-  // ✅ 画面フォーカス時にデータを取得
+  const quizBooks = useQuizBookStore(state => state.quizBooks);
+  const guideInitialize = useGuideStore(state => state.initialize);
+  const guideIsActive = useGuideStore(state => state.isActive);
+  const guideChecked = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
-      // データ取得
+      if (!guideChecked.current) {
+        guideChecked.current = true;
+        guideInitialize().then(() => {
+          const { isActive } = useGuideStore.getState();
+          if (isActive && quizBooks.length === 0) {
+            router.push('/library');
+          }
+        });
+      }
+    }, [quizBooks])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
       const loadData = async () => {
-        if (!hasLoadedOnce.current) {
-          setIsInitialLoading(true);
-        }
+        if (!hasLoadedOnce.current) setIsInitialLoading(true);
         try {
           await Promise.all([fetchUser(), fetchRecentStudyRecords(), fetchActivity()]);
         } finally {
@@ -64,56 +85,30 @@ export default function DashboardScreen() {
         }
       };
       loadData();
+      shouldShowFeedback().then(s => { if (s) setShowFeedback(true); });
 
-      // フィードバックモーダル表示チェック
-      shouldShowFeedback().then(shouldShow => {
-        if (shouldShow) setShowFeedback(true);
-      });
-
-      // スタディスタックの履歴をリセット
       const rootState = navigation.getState();
-      if (rootState && rootState.routes) {
-        const studyRoute = rootState.routes.find((route: any) => route.name === 'study');
-        if (studyRoute && studyRoute.state) {
-          navigation.dispatch(
-            CommonActions.reset({
-              ...rootState,
-              routes: rootState.routes.map((route: any) => {
-                if (route.name === 'study') {
-                  return { ...route, state: undefined };
-                }
-                return route;
-              }),
-            })
-          );
+      if (rootState?.routes) {
+        const studyRoute = rootState.routes.find((r: any) => r.name === 'study');
+        if (studyRoute?.state) {
+          navigation.dispatch(CommonActions.reset({
+            ...rootState,
+            routes: rootState.routes.map((r: any) => r.name === 'study' ? { ...r, state: undefined } : r),
+          }));
         }
       }
-
     }, [fetchUser, fetchRecentStudyRecords, fetchActivity])
   );
-
-  const handleEditGoal = () => {
-    setTempGoal(user?.goal || '');
-    setIsEditingGoal(true);
-  };
 
   const handleSaveGoal = async () => {
     try {
       await updateUserGoal(tempGoal);
       setIsEditingGoal(false);
-    } catch (error) {
-      console.error('Failed to save goal:', error);
-      alert('目標の保存に失敗しました');
-    }
+    } catch { /* handled by store */ }
   };
 
-  // ✅ バックエンドから取得したデータを使用
   const handleRecentStudyPress = (record: any) => {
-    if (record.sectionId) {
-      router.push(`/study/question/${record.sectionId}` as any);
-    } else {
-      router.push(`/study/question/${record.chapterId}` as any);
-    }
+    router.push(`/study/question/${record.sectionId ?? record.chapterId}` as any);
   };
 
   if (isInitialLoading) {
@@ -128,371 +123,180 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={{ flex: 1 }}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* 挨拶 */}
-          <Text style={styles.greeting}>{greeting}</Text>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View>
+          <Text style={styles.greetingSub}>{greetingLine}</Text>
+          <Text style={styles.greetingName}>{profile?.name || 'ゲスト'}</Text>
+        </View>
 
-          <TouchableOpacity
-            style={styles.goalCard}
-            onPress={handleEditGoal}
-            activeOpacity={0.7}
-          >
-            <View style={styles.goalHeader}>
-              <View style={styles.goalTitleContainer}>
-                {/* @ts-ignore */}
-                <Target size={20} color={theme.colors.neutral.white} />
-                <Text style={styles.goalTitle}>目標</Text>
-              </View>
-              {/* @ts-ignore */}
-              <Edit3 size={20} color={theme.colors.secondary[100]} />
-            </View>
-            <Text style={styles.goalText}>
-              {user?.goal || '目標を設定しましょう'}
-            </Text>
-          </TouchableOpacity>
+        {/* Goal Card */}
+        <TouchableOpacity style={styles.goalCard} onPress={() => { setTempGoal(user?.goal || ''); setIsEditingGoal(true); }} activeOpacity={0.7}>
+          <Text style={styles.goalLabel}>目標</Text>
+          <Text style={styles.goalText}>{user?.goal || '目標を設定しましょう'}</Text>
+        </TouchableOpacity>
 
-          {/* 学習ヒートマップ */}
-          <View style={styles.heatmapSection}>
-            <StudyHeatmap data={activityData} />
+        {/* Streak */}
+        <View style={styles.streakCard}>
+          <View style={styles.streakItem}>
+            <Text style={styles.streakValue}>{streak.days}</Text>
+            <Text style={styles.streakUnit}>日連続</Text>
           </View>
-
-          {/* ✅ バックエンドから取得したデータを表示（問題集ごと） */}
-          {recentStudyRecords.length > 0 && (
-            <View style={styles.recentStudySection}>
-              <Text style={styles.sectionTitle}>最近の学習</Text>
-              <View style={styles.recentCardsVertical}>
-                {recentStudyRecords.map((record) => (
-                  <TouchableOpacity
-                    key={record.id}
-                    style={styles.recentCardVertical}
-                    onPress={() => handleRecentStudyPress(record)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.recentCardTop}>
-                      <View style={styles.recentCardPathContainer}>
-                        <Text style={styles.recentCardBookTitle} numberOfLines={1} ellipsizeMode="tail">
-                          {record.quizBook.title}
-                        </Text>
-                        <Text style={styles.recentCardLocation}>
-                          {' '}第{record.chapterNumber}章{record.sectionNumber ? ` 第${record.sectionNumber}節` : ''} 問{record.questionNumber}
-                        </Text>
-                      </View>
-                      <Text style={styles.recentCardQuestion}>
-                        {record.result}
-                      </Text>
-                    </View>
-
-                    <View style={styles.recentCardBottom}>
-                      <Text style={styles.recentCardDate}>
-                        {new Date(record.answeredAt).toLocaleDateString('ja-JP', {
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </Text>
-                      <Text style={styles.recentCardCategory}>
-                        {record.quizBook.category.name}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-          )}
-
-        </ScrollView>
-      </View>
-
-      <AdBanner />
-
-      <FeedbackModal
-        visible={showFeedback}
-        onClose={() => setShowFeedback(false)}
-      />
-
-      <Modal
-        visible={isEditingGoal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsEditingGoal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              {/* @ts-ignore */}
-              <Target size={24} color={theme.colors.primary[600]} />
-              <Text style={styles.modalTitle}>目標を設定</Text>
-            </View>
-
-            <TextInput
-              style={styles.modalInput}
-              value={tempGoal}
-              onChangeText={setTempGoal}
-              placeholder="例: 簿記2級合格"
-              multiline
-              maxLength={100}
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setIsEditingGoal(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.cancelButtonText}>キャンセル</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.saveButton]}
-                onPress={handleSaveGoal}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.saveButtonText}>保存</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.streakDivider} />
+          <View style={styles.streakItem}>
+            <Text style={styles.streakValue}>{streak.answers}</Text>
+            <Text style={styles.streakUnit}>問解答</Text>
           </View>
         </View>
-      </Modal>
+
+        {/* Recent Study */}
+        <View style={styles.recentSection}>
+          <View style={styles.recentHeader}>
+            <Text style={styles.sectionTitle}>最近の学習</Text>
+            {recentStudyRecords.length > 0 && <Text style={styles.seeAll}>すべて見る</Text>}
+          </View>
+          {recentStudyRecords.length > 0 ? (
+            recentStudyRecords.slice(0, 5).map((record) => (
+              <TouchableOpacity key={record.id} style={styles.recentCard} onPress={() => handleRecentStudyPress(record)} activeOpacity={0.7}>
+                <View style={styles.recentIcon}>
+                  <BookOpen size={20} color={theme.colors.primary[600]} />
+                </View>
+                <View style={styles.recentInfo}>
+                  <Text style={styles.recentTitle} numberOfLines={1}>{record.quizBook.title}</Text>
+                  <Text style={styles.recentDetail}>
+                    第{record.chapterNumber}章{record.sectionNumber ? ` 第${record.sectionNumber}節` : ''} · {record.result}
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={theme.colors.secondary[300]} />
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.recentEmpty}>
+              <Text style={styles.recentEmptyText}>まだ学習記録がありません</Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
+
+      <AdBanner />
+      <FeedbackModal visible={showFeedback} onClose={() => setShowFeedback(false)} />
+
+      {/* Goal Edit */}
+      <BottomSheet visible={isEditingGoal} onClose={() => setIsEditingGoal(false)}>
+        <View style={{ gap: 16 }}>
+          <Text style={styles.modalTitle}>目標を設定</Text>
+          <TextInput style={styles.modalInput} value={tempGoal} onChangeText={setTempGoal} placeholder="例: 簿記2級合格" placeholderTextColor={theme.colors.secondary[400]} multiline maxLength={100} />
+          <View style={styles.modalButtons}>
+            <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setIsEditingGoal(false)}>
+              <Text style={styles.cancelBtnText}>キャンセル</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.modalBtn, styles.saveBtn]} onPress={handleSaveGoal}>
+              <Text style={styles.saveBtnText}>保存</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
 
 const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.neutral[50],
-  },
-  scrollView: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollContent: {
-    padding: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-  },
-  greeting: {
-    fontSize: theme.typography.fontSizes.xl,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-  },
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  content: { padding: 20, paddingTop: 16, gap: 24 },
+
+  greetingSub: { fontSize: 13, color: theme.colors.secondary[500], fontFamily: 'ZenKaku-Regular' },
+  greetingName: { fontSize: 22, fontWeight: '700', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Bold' },
+
   goalCard: {
-    backgroundColor: theme.colors.primary[600],
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
-    ...theme.shadows.lg,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[200],
+    gap: 12,
   },
-  goalHeader: {
+  goalLabel: { fontSize: 12, fontWeight: '600', color: theme.colors.primary[600], fontFamily: 'ZenKaku-Bold', letterSpacing: 1 },
+  goalText: { fontSize: 20, fontWeight: '700', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Bold' },
+  streakCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    backgroundColor: theme.colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[200],
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
   },
-  goalTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-  },
-  goalTitle: {
-    fontSize: theme.typography.fontSizes.base,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.neutral.white,
-    fontFamily: 'ZenKaku-Bold',
-  },
-  goalText: {
-    fontSize: theme.typography.fontSizes.lg,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.neutral.white,
-    fontFamily: 'ZenKaku-Bold',
-    minHeight: 28,
-  },
-  emptyState: {
+  streakItem: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.xl * 3,
+    paddingVertical: 20,
+    gap: 4,
   },
-  emptyTitle: {
-    fontSize: theme.typography.fontSizes.xl,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-    marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.xs,
+  streakValue: { fontSize: 32, fontWeight: '700', color: theme.colors.primary[600], fontFamily: 'ZenKaku-Bold' },
+  streakUnit: { fontSize: 12, color: theme.colors.secondary[500], fontFamily: 'ZenKaku-Regular' },
+  streakDivider: { width: 1, height: 40, backgroundColor: theme.colors.secondary[200] },
+
+  recentSection: { gap: 14 },
+  recentHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Bold' },
+  seeAll: { fontSize: 12, color: theme.colors.primary[600], fontFamily: 'ZenKaku-Regular' },
+  recentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    padding: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[200],
   },
-  emptyDescription: {
-    fontSize: theme.typography.fontSizes.base,
-    color: theme.colors.secondary[600],
-    fontFamily: 'ZenKaku-Regular',
-    textAlign: 'center',
-    marginBottom: theme.spacing.xl,
-    lineHeight: 24,
-  },
-  emptyButton: {
-    backgroundColor: theme.colors.primary[600],
-    paddingHorizontal: theme.spacing.xl,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    ...theme.shadows.md,
-  },
-  emptyButtonText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.neutral.white,
-    fontFamily: 'ZenKaku-Bold',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  recentIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primary[50],
     justifyContent: 'center',
     alignItems: 'center',
-    padding: theme.spacing.lg,
   },
+  recentInfo: { flex: 1, gap: 3 },
+  recentTitle: { fontSize: 15, fontWeight: '600', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Bold' },
+  recentDetail: { fontSize: 12, color: theme.colors.secondary[500], fontFamily: 'ZenKaku-Regular' },
+  recentEmpty: {
+    padding: 24,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[200],
+    alignItems: 'center',
+  },
+  recentEmptyText: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   modalContent: {
-    backgroundColor: theme.colors.neutral.white,
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.xl,
+    padding: 24,
     width: '100%',
     maxWidth: 400,
-    ...theme.shadows.lg,
   },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.lg,
-  },
-  modalTitle: {
-    fontSize: theme.typography.fontSizes.xl,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-  },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Bold', marginBottom: 16, textAlign: 'center' },
   modalInput: {
-    backgroundColor: theme.colors.neutral[50],
-    borderWidth: 2,
-    borderColor: theme.colors.primary[200],
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    fontSize: theme.typography.fontSizes.base,
+    backgroundColor: theme.colors.background,
+    borderWidth: 1,
+    borderColor: theme.colors.secondary[200],
+    borderRadius: 14,
+    padding: 16,
+    fontSize: 16,
     fontFamily: 'ZenKaku-Regular',
+    color: theme.colors.secondary[900],
     minHeight: 80,
     textAlignVertical: 'top',
-    marginBottom: theme.spacing.lg,
+    marginBottom: 16,
   },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-    alignItems: 'center',
-  },
-  cancelButton: {
-    backgroundColor: theme.colors.secondary[100],
-  },
-  cancelButtonText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[700],
-    fontFamily: 'ZenKaku-Bold',
-  },
-  saveButton: {
-    backgroundColor: theme.colors.primary[600],
-    ...theme.shadows.sm,
-  },
-  saveButtonText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.neutral.white,
-    fontFamily: 'ZenKaku-Bold',
-  },
-  heatmapSection: {
-    marginBottom: theme.spacing.lg,
-  },
-  recentStudySection: {
-    marginBottom: theme.spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: theme.typography.fontSizes.lg,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-    marginBottom: theme.spacing.md,
-  },
-  recentCardsVertical: {
-    gap: theme.spacing.sm,
-  },
-  recentCardVertical: {
-    backgroundColor: theme.colors.neutral.white,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    ...theme.shadows.md,
-    borderWidth: 2,
-    borderColor: theme.colors.primary[200],
-    height: 70, // ✅ 固定高さ
-  },
-  recentCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.xs,
-  },
-  recentCardPathContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: theme.spacing.sm,
-  },
-  recentCardBookTitle: {
-    fontSize: theme.typography.fontSizes.sm,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-    flexShrink: 1,
-    maxWidth: 100,
-  },
-  recentCardLocation: {
-    fontSize: theme.typography.fontSizes.sm,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-    flexShrink: 0,
-  },
-  recentCardDate: {
-    fontSize: theme.typography.fontSizes.xs,
-    color: theme.colors.secondary[500],
-    fontFamily: 'ZenKaku-Regular',
-    marginLeft: theme.spacing.sm,
-  },
-  recentCardBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  recentCardQuestion: {
-    fontSize: theme.typography.fontSizes.sm,
-    color: theme.colors.secondary[700],
-    fontFamily: 'ZenKaku-Bold',
-  },
-  recentCardCategory: {
-    fontSize: theme.typography.fontSizes.xs,
-    fontWeight: theme.typography.fontWeights.bold,
-    color: theme.colors.primary[600],
-    fontFamily: 'ZenKaku-Bold',
-  },
+  modalButtons: { flexDirection: 'row', gap: 12 },
+  modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  cancelBtn: { backgroundColor: theme.colors.secondary[100] },
+  cancelBtnText: { fontSize: 16, fontWeight: '700', color: theme.colors.secondary[600], fontFamily: 'ZenKaku-Bold' },
+  saveBtn: { backgroundColor: theme.colors.primary[600] },
+  saveBtnText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF', fontFamily: 'ZenKaku-Bold' },
 });

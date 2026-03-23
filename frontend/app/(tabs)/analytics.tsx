@@ -1,41 +1,17 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
+import { useUserStore } from '@/stores/userStore';
 import { useAnalyticsStore } from '@/stores/analyticsStore';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Dimensions,
-  TouchableOpacity,
-  Modal,
-  Pressable,
-} from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LineChart } from 'react-native-chart-kit';
 import { router, useFocusEffect } from 'expo-router';
-import { List, TrendingDown, X, AlertCircle } from 'lucide-react-native';
-import { quizBookApi } from '@/services/api';
+import { ChevronDown, ChevronRight, ArrowUpDown } from 'lucide-react-native';
 import AdBanner from '@/components/AdBanner';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CAROUSEL_ITEM_WIDTH = SCREEN_WIDTH - 60; // 両端に30pxずつ余白を残す
-const CARD_GAP = 10;
-const SNAP_INTERVAL = CAROUSEL_ITEM_WIDTH + CARD_GAP; // カード幅 + ギャップ
-
-interface RoundStats {
-  round: number;
-  totalQuestions: number;
-  correctAnswers: number;
-  correctRate: number;
-}
-
-interface QuizBookAnalytics {
-  quizBookId: string;
-  totalRounds: number;
-  roundStats: RoundStats[];
-}
+type SortKey = 'default' | 'rate' | 'answered';
+type SortDir = 'asc' | 'desc';
+const SORT_LABELS: Record<SortKey, string> = { default: '登録順', rate: '正答率', answered: '解答数' };
 
 export default function AnalyticsScreen() {
   const theme = useAppTheme();
@@ -45,509 +21,190 @@ export default function AnalyticsScreen() {
   const categories = useQuizBookStore(state => state.categories);
   const fetchQuizBooks = useQuizBookStore(state => state.fetchQuizBooks);
   const fetchCategories = useQuizBookStore(state => state.fetchCategories);
-
-  const [analytics, setAnalytics] = useState<{ [quizBookId: string]: QuizBookAnalytics }>({});
-  const [loading, setLoading] = useState(true);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [currentIndexMap, setCurrentIndexMap] = useState<{ [categoryId: string]: number }>({});
-  const [hasLoaded, setHasLoaded] = useState(false);
-
+  const activityData = useUserStore(state => state.activityData);
+  const fetchActivity = useUserStore(state => state.fetchActivity);
   const { needsRefresh, setNeedsRefresh } = useAnalyticsStore();
 
-  const scrollRefs = useRef<{ [categoryId: string]: ScrollView | null }>({});
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [categoryPickerVisible, setCategoryPickerVisible] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>('default');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      // 初回ロードまたはリフレッシュが必要な場合のみデータを取得
-      if (!hasLoaded || needsRefresh) {
-        loadData();
-        if (needsRefresh) {
-          setNeedsRefresh(false);
-        }
-      }
-    }, [hasLoaded, needsRefresh])
-  );
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      await Promise.all([fetchQuizBooks(), fetchCategories()]);
-
-      // ストアから最新のquizBooksを取得
-      const currentQuizBooks = useQuizBookStore.getState().quizBooks;
-
-      // 問題集がない場合は早期リターン
-      if (currentQuizBooks.length === 0) {
-        setAnalytics({});
-        setLoading(false);
-        return;
-      }
-
-      // すべての問題集の分析データを取得
-      const analyticsData: { [quizBookId: string]: QuizBookAnalytics } = {};
-      for (const book of currentQuizBooks) {
-        try {
-          const response = await quizBookApi.getAnalytics(book.id);
-          analyticsData[book.id] = response.data;
-        } catch (error) {
-          console.error(`Failed to fetch analytics for ${book.id}:`, error);
-        }
-      }
-      setAnalytics(analyticsData);
-    } catch (error) {
-      console.error('Failed to load analytics data:', error);
-    } finally {
-      setLoading(false);
-      setHasLoaded(true);
+  useFocusEffect(useCallback(() => {
+    if (!hasLoaded || needsRefresh) {
+      setIsLoading(true);
+      Promise.all([fetchQuizBooks(), fetchCategories(), fetchActivity()]).finally(() => {
+        setIsLoading(false); setHasLoaded(true);
+        if (needsRefresh) setNeedsRefresh(false);
+      });
     }
-  };
+  }, [hasLoaded, needsRefresh]));
 
-  // 資格グループごとに問題集をグループ化（全カテゴリを表示）
-  const groupedQuizBooks = useMemo(() => {
-    const groups: { [categoryId: string]: { categoryName: string; books: typeof quizBooks } } = {};
+  const selectedCategory = categories.find(c => c.id === selectedCategoryId) || categories[0];
+  const categoryBooks = useMemo(() => quizBooks.filter(b => b.category?.id === selectedCategory?.id), [quizBooks, selectedCategory]);
 
-    // まず全カテゴリを追加
-    categories.forEach((category) => {
-      groups[category.id] = { categoryName: category.name, books: [] };
+  const kpis = useMemo(() => {
+    let totalAnswered = 0, totalCorrect = 0, totalQuestions = 0;
+    quizBooks.forEach(book => book.chapters.forEach(ch => {
+      const process = (answers: any[]) => { totalQuestions += answers.length; answers.forEach((qa: any) => {
+        const confirmed = qa.attempts?.filter((a: any) => a.resultConfirmFlg) || [];
+        totalAnswered += confirmed.length;
+        totalCorrect += confirmed.filter((a: any) => a.result === '○').length;
+      }); };
+      if (ch.sections?.length) ch.sections.forEach(s => { if (s.questionAnswers) process(s.questionAnswers); else totalQuestions += s.questionCount || 0; });
+      else if (ch.questionAnswers) process(ch.questionAnswers);
+      else totalQuestions += ch.questionCount || 0;
+    }));
+    let streak = 0;
+    for (const d of [...activityData].sort((a, b) => b.date.localeCompare(a.date))) { if (d.count > 0) streak++; else break; }
+    return { totalQuestions, totalAnswered, accuracy: totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0, streak };
+  }, [quizBooks, activityData]);
+
+  const bookStats = useMemo(() => categoryBooks.map(book => {
+    let answered = 0, correct = 0;
+    book.chapters.forEach(ch => {
+      const process = (answers: any[]) => answers.forEach((qa: any) => {
+        const confirmed = qa.attempts?.filter((a: any) => a.resultConfirmFlg) || [];
+        answered += confirmed.length;
+        correct += confirmed.filter((a: any) => a.result === '○').length;
+      });
+      if (ch.sections?.length) ch.sections.forEach(s => { if (s.questionAnswers) process(s.questionAnswers); });
+      else if (ch.questionAnswers) process(ch.questionAnswers);
     });
+    return { id: book.id, title: book.title, rate: answered > 0 ? Math.round((correct / answered) * 100) : 0, answered };
+  }), [categoryBooks]);
 
-    // 問題集を各カテゴリに割り当て
-    quizBooks.forEach((book) => {
-      const categoryId = book.category?.id;
-
-      if (categoryId && groups[categoryId]) {
-        groups[categoryId].books.push(book);
-      }
+  const sortItems = <T extends { rate: number; answered: number }>(items: T[]): T[] => {
+    if (sortKey === 'default') return items;
+    return [...items].sort((a, b) => {
+      const va = sortKey === 'rate' ? a.rate : a.answered;
+      const vb = sortKey === 'rate' ? b.rate : b.answered;
+      return sortDir === 'asc' ? va - vb : vb - va;
     });
-
-    return groups;
-  }, [quizBooks, categories]);
-
-  const handleScroll = (categoryId: string, event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offsetX / SNAP_INTERVAL);
-    setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
   };
 
-  const scrollToIndex = (categoryId: string, index: number) => {
-    scrollRefs.current[categoryId]?.scrollTo({ x: index * SNAP_INTERVAL, animated: true });
-    setCurrentIndexMap(prev => ({ ...prev, [categoryId]: index }));
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
   };
 
-  const openQuizBookSelector = (categoryId: string) => {
-    setSelectedCategoryId(categoryId);
-    setModalVisible(true);
+  const barColor = (rate: number) => {
+    if (rate >= 80) return theme.colors.success[500];
+    if (rate >= 50) return theme.colors.primary[600];
+    return theme.colors.error[500];
   };
 
-  const selectQuizBook = (categoryId: string, index: number) => {
-    scrollToIndex(categoryId, index);
-    setModalVisible(false);
-  };
-
-  const renderLineChart = (quizBookId: string) => {
-    const data = analytics[quizBookId];
-
-    if (!data || data.roundStats.length === 0) {
-      return (
-        <View style={styles.emptyChart}>
-          <Text style={styles.emptyChartText}>データがありません</Text>
-        </View>
-      );
-    }
-
-    const chartLabels = data.roundStats.map(stat => `${stat.round}周`);
-    const chartValues = data.roundStats.map(stat => stat.correctRate);
-
-    const chartData = {
-      labels: chartLabels,
-      datasets: [
-        {
-          // メインのデータセット
-          data: chartValues,
-          color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-          strokeWidth: 3,
-          withDots: true,
-        },
-        {
-          // Y軸範囲を制御するための透明ダミーデータセット
-          data: [0, 100],
-          color: () => 'transparent',
-          strokeWidth: 0,
-          withDots: false,
-        },
-      ],
-    };
-
-    return (
-      <LineChart
-        data={chartData}
-        width={CAROUSEL_ITEM_WIDTH - 40}
-        height={200}
-        chartConfig={{
-          backgroundColor: theme.colors.neutral.white,
-          backgroundGradientFrom: theme.colors.neutral.white,
-          backgroundGradientTo: theme.colors.neutral.white,
-          decimalPlaces: 0,
-          color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-          labelColor: (opacity = 1) => `rgba(75, 85, 99, ${opacity})`,
-          fillShadowGradientFromOpacity: 0, // 影の開始色の不透明度を0に
-          fillShadowGradientToOpacity: 0,   // 影の終了色の不透明度を0に
-          style: {
-            borderRadius: theme.borderRadius.lg,
-          },
-          propsForDots: {
-            r: '6',
-            strokeWidth: '2',
-            stroke: theme.colors.primary[600],
-          },
-        }}
-        bezier
-        style={styles.chart}
-        yAxisSuffix="%"
-        yAxisInterval={1}
-        segments={4}
-        fromZero={true}
-        formatYLabel={(value) => value}
-      />
-    );
-  };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>読み込み中...</Text>
-        </View>
-      </SafeAreaView>
-    );
+  if (isLoading) {
+    return <SafeAreaView style={styles.container}><View style={styles.loading}><ActivityIndicator size="large" color={theme.colors.primary[600]} /></View></SafeAreaView>;
   }
 
   return (
-    <View style={styles.container}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {Object.entries(groupedQuizBooks).map(([categoryId, group]) => {
-          const currentIndex = currentIndexMap[categoryId] || 0;
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.pageTitle}>分析</Text>
 
-          return (
-            <View key={categoryId} style={styles.categoryContainer}>
-              <View style={styles.categoryHeader}>
-                <Text style={styles.categoryTitle}>{group.categoryName}</Text>
-                <TouchableOpacity
-                  style={styles.listButton}
-                  onPress={() => openQuizBookSelector(categoryId)}
-                >
-                  <List size={20} color={theme.colors.primary[600]} />
-                  <Text style={styles.listButtonText}>一覧</Text>
-                </TouchableOpacity>
-              </View>
+        <View style={styles.kpiRow}>
+          <View style={styles.kpiItem}><Text style={[styles.kpiValue, { color: theme.colors.secondary[900] }]}>{kpis.totalQuestions}</Text><Text style={styles.kpiLabel}>総問題数</Text></View>
+          <View style={styles.kpiItem}><Text style={[styles.kpiValue, { color: theme.colors.secondary[900] }]}>{kpis.totalAnswered}</Text><Text style={styles.kpiLabel}>総解答数</Text></View>
+          <View style={styles.kpiItem}><Text style={[styles.kpiValue, { color: theme.colors.success[500] }]}>{kpis.accuracy}%</Text><Text style={styles.kpiLabel}>正答率</Text></View>
+          <View style={styles.kpiItem}><Text style={[styles.kpiValue, { color: theme.colors.primary[600] }]}>{kpis.streak}</Text><Text style={styles.kpiLabel}>日連続</Text></View>
+        </View>
 
-              {group.books.length === 0 ? (
-                <View style={styles.emptyBooksContainer}>
-                  <Text style={styles.emptyBooksText}>問題集の登録がありません</Text>
-                </View>
-              ) : (
-                <ScrollView
-                  ref={(ref) => {
-                    scrollRefs.current[categoryId] = ref;
-                  }}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  onMomentumScrollEnd={(e) => handleScroll(categoryId, e)}
-                  scrollEventThrottle={16}
-                  snapToInterval={SNAP_INTERVAL}
-                  snapToAlignment="start"
-                  decelerationRate="fast"
-                  contentContainerStyle={styles.carouselContent}
-                >
-                  {group.books.map((book) => (
-                    <View key={book.id} style={styles.carouselCard}>
-                      <TouchableOpacity onPress={() => router.push(`/study/${book.id}` as any)}>
-                        <Text style={styles.cardTitle} numberOfLines={1} ellipsizeMode="tail">{book.title}</Text>
-                      </TouchableOpacity>
-                      <View style={styles.chartContainer}>
-                        {renderLineChart(book.id)}
-                      </View>
-                      <TouchableOpacity
-                        style={styles.weaknessButton}
-                        onPress={() => router.push(`/analytics/${book.id}` as any)}
-                      >
-                        <TrendingDown size={20} color={theme.colors.neutral.white} />
-                        <Text style={styles.weaknessButtonTextTitle} numberOfLines={1} ellipsizeMode="tail">{book.title}</Text>
-                        <Text style={styles.weaknessButtonText}>の詳細分析へ</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                </ScrollView>
-              )}
-
-              {/* ページネーション */}
-              {group.books.length > 0 && (
-                <View style={styles.pagination}>
-                  {group.books.map((_, index) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.paginationDot,
-                        index === currentIndex && styles.paginationDotActive,
-                      ]}
-                    />
-                  ))}
-                </View>
-              )}
-            </View>
-          );
-        })}
-
-        {Object.keys(groupedQuizBooks).length === 0 && (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyContent}>
-              <AlertCircle size={20} color={theme.colors.warning[600]} />
-              <Text style={styles.emptyStateText}>分析可能な問題集がありません</Text>
-            </View>
-          </View>
+        {categories.length > 0 && (
+          <TouchableOpacity style={styles.selector} onPress={() => setCategoryPickerVisible(true)} activeOpacity={0.7}>
+            <Text style={styles.selectorText}>{selectedCategory?.name || '資格グループを選択'}</Text>
+            <ChevronDown size={18} color={theme.colors.primary[600]} />
+          </TouchableOpacity>
         )}
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>問題集別 正答率</Text>
+          <View style={styles.sortBar}>
+            {(['default', 'rate', 'answered'] as SortKey[]).map(key => (
+              <TouchableOpacity key={key} style={[styles.sortBtn, sortKey === key && styles.sortBtnActive]} onPress={() => toggleSort(key)} activeOpacity={0.7}>
+                <Text style={[styles.sortBtnText, sortKey === key && styles.sortBtnTextActive]}>{SORT_LABELS[key]}</Text>
+                {sortKey === key && <ArrowUpDown size={12} color={theme.colors.primary[600]} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+          {bookStats.length === 0 ? <Text style={styles.emptyText}>この資格に問題集がありません</Text> : (
+            sortItems(bookStats).map(book => (
+              <TouchableOpacity key={book.id} style={styles.barRow} onPress={() => router.push({ pathname: '/book-detail', params: { bookId: book.id } })} activeOpacity={0.7}>
+                <View style={styles.barInfo}>
+                  <Text style={styles.barBookName}>{book.title}</Text>
+                  <View style={styles.barBg}><View style={[styles.barFill, { width: `${book.rate}%`, backgroundColor: barColor(book.rate) }]} /></View>
+                </View>
+                <Text style={[styles.barValue, { color: barColor(book.rate) }]}>{book.answered > 0 ? `${book.rate}%` : '—'}</Text>
+                <ChevronRight size={14} color={theme.colors.secondary[300]} />
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
       </ScrollView>
-      </SafeAreaView>
 
       <AdBanner />
 
-      {/* 問題集選択モーダル */}
-      {selectedCategoryId && (
-        <Modal
-          visible={modalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
-            <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>問題集を選択</Text>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                  <X size={24} color={theme.colors.secondary[600]} />
+      <Modal visible={categoryPickerVisible} transparent animationType="fade" onRequestClose={() => setCategoryPickerVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={{ flex: 1 }} onPress={() => setCategoryPickerVisible(false)} />
+          <View style={styles.pickerSheet}>
+            <View style={styles.pickerHandle} />
+            <Text style={styles.pickerTitle}>資格グループを選択</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {categories.map(cat => (
+                <TouchableOpacity key={cat.id} style={[styles.pickerItem, selectedCategory?.id === cat.id && styles.pickerItemActive]} onPress={() => { setSelectedCategoryId(cat.id); setSortKey('default'); setCategoryPickerVisible(false); }} activeOpacity={0.7}>
+                  <Text style={[styles.pickerItemText, selectedCategory?.id === cat.id && styles.pickerItemTextActive]}>{cat.name}</Text>
+                  <Text style={styles.pickerItemCount}>{quizBooks.filter(b => b.category?.id === cat.id).length}冊</Text>
                 </TouchableOpacity>
-              </View>
-              <ScrollView style={styles.modalBody}>
-                {groupedQuizBooks[selectedCategoryId]?.books.map((book, index) => (
-                  <TouchableOpacity
-                    key={book.id}
-                    style={styles.modalItem}
-                    onPress={() => selectQuizBook(selectedCategoryId, index)}
-                  >
-                    <Text style={styles.modalItemText}>{book.title}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </Pressable>
-          </Pressable>
-        </Modal>
-      )}
-    </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
 const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.neutral.white,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Medium',
-    color: theme.colors.secondary[600],
-  },
-  scrollView: {
-    flex: 1,
-    padding: theme.spacing.md,
-  },
-  categoryContainer: {
-    marginBottom: theme.spacing.xl,
-  },
-  categoryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-  },
-  categoryTitle: {
-    fontSize: theme.typography.fontSizes.xl,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.secondary[900],
-  },
-  listButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.primary[50],
-    borderRadius: theme.borderRadius.md,
-  },
-  listButtonText: {
-    fontSize: theme.typography.fontSizes.sm,
-    fontFamily: 'ZenKaku-Medium',
-    color: theme.colors.primary[600],
-  },
-  carouselContent: {
-    paddingHorizontal: 20,
-  },
-  carouselCard: {
-    width: CAROUSEL_ITEM_WIDTH,
-    marginRight: CARD_GAP,
-    backgroundColor: theme.colors.neutral[50],
-    borderRadius: theme.borderRadius.xl,
-    padding: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.secondary[200],
-    ...theme.shadows.md,
-  },
-  cardTitle: {
-    fontSize: theme.typography.fontSizes.lg,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.secondary[900],
-    marginBottom: theme.spacing.md,
-  },
-  chartContainer: {
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  chart: {
-    borderRadius: theme.borderRadius.lg,
-  },
-  emptyChart: {
-    height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.neutral[50],
-    borderRadius: theme.borderRadius.lg,
-    width: CAROUSEL_ITEM_WIDTH - 40,
-  },
-  emptyChartText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Medium',
-    color: theme.colors.secondary[500],
-  },
-  weaknessButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.xs,
-    backgroundColor: theme.colors.error[600],
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-  },
-  weaknessButtonText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.neutral.white,
-    flexShrink: 0,
-  },
-  weaknessButtonTextTitle: {
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.neutral.white,
-    flexShrink: 1,
-    maxWidth: 120,
-  },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: theme.spacing.md,
-    gap: theme.spacing.xs,
-  },
-  paginationDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.secondary[300],
-  },
-  paginationDotActive: {
-    width: 24,
-    backgroundColor: theme.colors.primary[600],
-  },
-  emptyBooksContainer: {
-    paddingVertical: theme.spacing['2xl'],
-    paddingHorizontal: theme.spacing.lg,
-    alignItems: 'center',
-    backgroundColor: theme.colors.neutral[50],
-    marginHorizontal: theme.spacing.lg,
-    borderRadius: theme.borderRadius.md,
-  },
-  emptyBooksText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Medium',
-    color: theme.colors.secondary[500],
-  },
-  emptyState: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.xl,
-  },
-  emptyContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyStateText: {
-    marginLeft: theme.spacing.sm,
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Medium',
-    color: theme.colors.secondary[600],
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    width: '85%',
-    maxHeight: '70%',
-    backgroundColor: theme.colors.neutral.white,
-    borderRadius: theme.borderRadius.xl,
-    overflow: 'hidden',
-    ...theme.shadows.lg,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.secondary[200],
-    backgroundColor: theme.colors.primary[50],
-  },
-  modalTitle: {
-    fontSize: theme.typography.fontSizes.lg,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.secondary[900],
-  },
-  modalBody: {
-    padding: theme.spacing.lg,
-  },
-  modalItem: {
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    backgroundColor: theme.colors.neutral[50],
-    borderRadius: theme.borderRadius.md,
-    marginBottom: theme.spacing.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.secondary[200],
-  },
-  modalItemText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Medium',
-    color: theme.colors.secondary[900],
-  },
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  content: { padding: 20, gap: 20, paddingBottom: 80 },
+  pageTitle: { fontSize: 24, fontWeight: '700', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Bold' },
+
+  kpiRow: { flexDirection: 'row', gap: 10 },
+  kpiItem: { flex: 1, alignItems: 'center', gap: 2, backgroundColor: theme.colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: theme.colors.secondary[200] },
+  kpiValue: { fontSize: 22, fontWeight: '700', fontFamily: 'ZenKaku-Bold' },
+  kpiLabel: { fontSize: 10, color: theme.colors.secondary[500], fontFamily: 'ZenKaku-Regular' },
+
+  selector: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.secondary[200], paddingHorizontal: 16, paddingVertical: 14 },
+  selectorText: { fontSize: 15, fontWeight: '600', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Bold', flex: 1 },
+
+  card: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, gap: 14, borderWidth: 1, borderColor: theme.colors.secondary[200] },
+  cardTitle: { fontSize: 14, fontWeight: '600', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Bold' },
+
+  sortBar: { flexDirection: 'row', gap: 8 },
+  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: theme.colors.background },
+  sortBtnActive: { backgroundColor: theme.colors.primary[50] },
+  sortBtnText: { fontSize: 11, color: theme.colors.secondary[500], fontFamily: 'ZenKaku-Regular' },
+  sortBtnTextActive: { color: theme.colors.primary[600], fontWeight: '600', fontFamily: 'ZenKaku-Bold' },
+
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  barInfo: { flex: 1, gap: 6 },
+  barBookName: { fontSize: 13, fontWeight: '500', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Medium' },
+  barBg: { flex: 1, height: 20, borderRadius: 4, backgroundColor: theme.colors.secondary[200] },
+  barFill: { height: 20, borderRadius: 4 },
+  barValue: { fontSize: 12, fontWeight: '600', fontFamily: 'ZenKaku-Bold', width: 32, textAlign: 'right' },
+  emptyText: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular', textAlign: 'center', padding: 20 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  pickerSheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40, maxHeight: '60%' },
+  pickerHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: theme.colors.secondary[200], alignSelf: 'center', marginBottom: 16 },
+  pickerTitle: { fontSize: 16, fontWeight: '700', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Bold', marginBottom: 12 },
+  pickerItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, marginBottom: 4 },
+  pickerItemActive: { backgroundColor: theme.colors.primary[50] },
+  pickerItemText: { fontSize: 15, color: theme.colors.secondary[700], fontFamily: 'ZenKaku-Regular' },
+  pickerItemTextActive: { color: theme.colors.primary[600], fontWeight: '600', fontFamily: 'ZenKaku-Bold' },
+  pickerItemCount: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular' },
 });

@@ -12,6 +12,27 @@ export default function StudyLayout() {
         fullScreenGestureEnabled: false,
         headerTitleAlign: 'center',
       }}
-    />
+    >
+      <Stack.Screen
+        name="section/[chapterId]"
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+          headerShown: false,
+          gestureEnabled: true,
+          gestureDirection: 'vertical',
+        }}
+      />
+      <Stack.Screen
+        name="question/[id]"
+        options={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+          headerShown: false,
+          gestureEnabled: true,
+          gestureDirection: 'vertical',
+        }}
+      />
+    </Stack>
   );
 }

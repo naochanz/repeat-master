@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import * as StoreReview from 'expo-store-review';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from '@/services/api';
+import { feedbackDomain } from '@/domain/feedbackDomain';
 
 const FEEDBACK_COMPLETED_KEY = '@doriloop/feedback_completed'; // レビュー/フィードバック送信済み（永久非表示）
 const FEEDBACK_DISMISSED_AT_KEY = '@doriloop/feedback_dismissed_at'; // ×で閉じた日時
@@ -93,7 +93,7 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
     if (!feedbackText.trim()) return;
     setSubmitting(true);
     try {
-      await api.post('/feedback', { message: feedbackText.trim() });
+      await feedbackDomain.submitFeedback(feedbackText);
     } catch (e) {
       console.error('Failed to send feedback:', e);
     }
@@ -125,7 +125,7 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="slide"
       onRequestClose={handleClose}
     >
       <View style={styles.overlay}>

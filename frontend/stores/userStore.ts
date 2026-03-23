@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { User, StudyRecord } from '@/types/user';
-import { userApi, studyRecordApi } from '@/services/api';
+import { userDomain } from '@/domain/userDomain';
+import { studyRecordDomain } from '@/domain/studyRecordDomain';
 
 interface ActivityData {
     date: string;
@@ -28,8 +29,8 @@ export const useUserStore = create<UserStore>((set, get) => ({
     fetchUser: async () => {
         set({ isLoading: true });
         try {
-            const response = await userApi.getMe();
-            set({ user: response.data, isLoading: false });
+            const user = await userDomain.fetchMe();
+            set({ user, isLoading: false });
         } catch (error) {
             console.error('Failed to fetch user:', error);
             set({ isLoading: false });
@@ -37,8 +38,8 @@ export const useUserStore = create<UserStore>((set, get) => ({
     },
     updateUserGoal: async (goal: string) => {
         try {
-            const response = await userApi.updateGoal(goal);
-            set({ user: response.data });
+            const user = await userDomain.updateGoal(goal);
+            set({ user });
         } catch (error) {
             console.error('Failed to update goal:', error);
             throw error;
@@ -47,8 +48,8 @@ export const useUserStore = create<UserStore>((set, get) => ({
 
     fetchRecentStudyRecords: async () => {
         try {
-            const response = await studyRecordApi.getRecent();
-            set({ recentStudyRecords: response.data });
+            const recentStudyRecords = await studyRecordDomain.fetchRecent();
+            set({ recentStudyRecords });
         } catch (error) {
             console.error('Failed to fetch recent study records:', error);
         }
@@ -56,8 +57,8 @@ export const useUserStore = create<UserStore>((set, get) => ({
 
     fetchActivity: async () => {
         try {
-            const response = await studyRecordApi.getActivity();
-            set({ activityData: response.data });
+            const activityData = await studyRecordDomain.fetchActivity();
+            set({ activityData });
         } catch (error) {
             console.error('Failed to fetch activity:', error);
         }

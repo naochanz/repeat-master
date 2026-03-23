@@ -1,30 +1,21 @@
 import Purchases, { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
 import { Platform } from 'react-native';
 
-// RevenueCat API Keys (App Store Connect/Play Console で設定後に置き換え)
 const REVENUECAT_API_KEY_IOS = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS || '';
 const REVENUECAT_API_KEY_ANDROID = process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID || '';
 
 // Entitlement ID (RevenueCat ダッシュボードで設定)
-export const ENTITLEMENT_ID = 'DORILOOP Pro';
+export const ENTITLEMENT_AD_FREE = 'ad_free';
 
-// 製品ID (App Store Connect)
-export const PRODUCT_ID_MONTHLY = 'com.DORILOOP.premium.monthly';
-export const PRODUCT_ID_YEARLY = 'com.DORILOOP.premium.yearly';
-export const PRODUCT_ID_ADD_QUIZBOOK = 'com.naochanz.add_quizbook';
+// 製品ID
+export const PRODUCT_ID_REMOVE_ADS = 'com.naochanz.remove_ads';
 
 export interface SubscriptionStatus {
-  isPremium: boolean;
-  expirationDate: string | null;
-  willRenew: boolean;
-  activeProductId: string | null;
+  isAdFree: boolean;
 }
 
 const DEFAULT_STATUS: SubscriptionStatus = {
-  isPremium: false,
-  expirationDate: null,
-  willRenew: false,
-  activeProductId: null,
+  isAdFree: false,
 };
 
 class SubscriptionService {
@@ -45,7 +36,7 @@ class SubscriptionService {
     const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY_IOS : REVENUECAT_API_KEY_ANDROID;
 
     if (!apiKey) {
-      console.warn('RevenueCat API key not configured - running in free mode');
+      console.warn('RevenueCat API key not configured - running with ads');
       return;
     }
 
@@ -57,18 +48,13 @@ class SubscriptionService {
       }
 
       this.initialized = true;
-      console.log('RevenueCat initialized successfully');
     } catch (error) {
       console.error('Failed to initialize RevenueCat:', error);
     }
   }
 
   async login(userId: string): Promise<void> {
-    if (!this.initialized) {
-      console.warn('RevenueCat not initialized, skipping login');
-      return;
-    }
-
+    if (!this.initialized) return;
     try {
       await Purchases.logIn(userId);
     } catch (error) {
@@ -77,10 +63,7 @@ class SubscriptionService {
   }
 
   async logout(): Promise<void> {
-    if (!this.initialized) {
-      return;
-    }
-
+    if (!this.initialized) return;
     try {
       await Purchases.logOut();
     } catch (error) {
@@ -88,11 +71,8 @@ class SubscriptionService {
     }
   }
 
-  async getSubscriptionStatus(): Promise<SubscriptionStatus> {
-    // SDK未初期化の場合はデフォルト値を返す（無料扱い）
-    if (!this.initialized) {
-      return DEFAULT_STATUS;
-    }
+  async getStatus(): Promise<SubscriptionStatus> {
+    if (!this.initialized) return DEFAULT_STATUS;
 
     try {
       const customerInfo = await Purchases.getCustomerInfo();
@@ -104,9 +84,7 @@ class SubscriptionService {
   }
 
   async getOfferings(): Promise<PurchasesPackage[]> {
-    if (!this.initialized) {
-      return [];
-    }
+    if (!this.initialized) return [];
 
     try {
       const offerings = await Purchases.getOfferings();
@@ -121,25 +99,19 @@ class SubscriptionService {
   }
 
   async purchasePackage(pkg: PurchasesPackage): Promise<SubscriptionStatus> {
-    if (!this.initialized) {
-      throw new Error('RevenueCat not initialized');
-    }
+    if (!this.initialized) throw new Error('RevenueCat not initialized');
 
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
       return this.parseCustomerInfo(customerInfo);
     } catch (error: any) {
-      if (error.userCancelled) {
-        throw new Error('CANCELLED');
-      }
+      if (error.userCancelled) throw new Error('CANCELLED');
       throw error;
     }
   }
 
   async restorePurchases(): Promise<SubscriptionStatus> {
-    if (!this.initialized) {
-      return DEFAULT_STATUS;
-    }
+    if (!this.initialized) return DEFAULT_STATUS;
 
     try {
       const customerInfo = await Purchases.restorePurchases();
@@ -151,63 +123,19 @@ class SubscriptionService {
   }
 
   private parseCustomerInfo(customerInfo: CustomerInfo): SubscriptionStatus {
-    const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-
-    if (entitlement) {
-      // 買い切り商品（add_quizbook）はプレミアム扱いにしない
-      const productId = entitlement.productIdentifier;
-
-      if (productId && productId.includes('add_quizbook')) {
-        return DEFAULT_STATUS;
-      }
-
-      return {
-        isPremium: true,
-        expirationDate: entitlement.expirationDate || null,
-        willRenew: entitlement.willRenew,
-        activeProductId: productId || null,
-      };
-    }
-
-    return DEFAULT_STATUS;
+    const entitlement = customerInfo.entitlements.active[ENTITLEMENT_AD_FREE];
+    return { isAdFree: !!entitlement };
   }
 
-  // 買い切り商品の購入回数を取得
-  async getPurchasedQuizBookSlots(): Promise<number> {
-    if (!this.initialized) {
-      return 0;
-    }
-
-    try {
-      const customerInfo = await Purchases.getCustomerInfo();
-      // nonSubscriptionTransactionsから add_quizbook の購入回数をカウント
-      const addQuizbookPurchases = customerInfo.nonSubscriptionTransactions.filter(
-        (transaction) => transaction.productIdentifier === PRODUCT_ID_ADD_QUIZBOOK
-      );
-
-      return addQuizbookPurchases.length;
-    } catch (error) {
-      console.error('Failed to get purchased quiz book slots:', error);
-      return 0;
-    }
-  }
-
-  // リスナーを追加（購入状態の変更を監視）
   addCustomerInfoUpdateListener(callback: (status: SubscriptionStatus) => void): () => void {
-    if (!this.initialized) {
-      // 未初期化の場合は何もしないリムーバーを返す
-      return () => {};
-    }
+    if (!this.initialized) return () => {};
 
     const listener = (customerInfo: CustomerInfo) => {
       callback(this.parseCustomerInfo(customerInfo));
     };
 
     Purchases.addCustomerInfoUpdateListener(listener);
-
-    return () => {
-      Purchases.removeCustomerInfoUpdateListener(listener);
-    };
+    return () => Purchases.removeCustomerInfoUpdateListener(listener);
   }
 }
 

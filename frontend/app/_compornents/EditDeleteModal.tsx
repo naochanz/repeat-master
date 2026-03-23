@@ -1,7 +1,8 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
-import { Trash2 } from 'lucide-react-native';
+import BottomSheet from '@/components/BottomSheet';
+import { Trash2, CheckCircle, RotateCcw } from 'lucide-react-native';
 import React, { useState, useEffect, useMemo } from 'react';
-import { ActivityIndicator, Modal, Pressable, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface EditDeleteModalProps {
   visible: boolean;
@@ -14,195 +15,79 @@ interface EditDeleteModalProps {
   editPlaceholder?: string;
   showEditField?: boolean;
   isLoading?: boolean;
+  isCompleted?: boolean;
+  onComplete?: () => void;
+  onReactivate?: () => void;
+  children?: React.ReactNode;
 }
 
 const EditDeleteModal = ({
-  visible,
-  onClose,
-  onSave,
-  onDelete,
-  title,
-  editLabel = '名前',
-  editValue = '',
-  editPlaceholder = '入力してください',
-  showEditField = true,
-  isLoading = false
+  visible, onClose, onSave, onDelete, title, editLabel = '名前', editValue = '', editPlaceholder = '入力してください',
+  showEditField = true, isLoading = false, isCompleted = false, onComplete, onReactivate, children,
 }: EditDeleteModalProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [inputValue, setInputValue] = useState(editValue);
 
-  useEffect(() => {
-    setInputValue(editValue);
-  }, [editValue, visible]);
+  useEffect(() => { setInputValue(editValue); }, [editValue, visible]);
 
-  const handleSave = () => {
-    if (onSave) {
-      onSave(inputValue);
-    }
-    onClose();
-  };
-
-  const handleDelete = () => {
-    onDelete();
-    onClose();
-  };
+  const handleSave = () => { if (onSave) onSave(inputValue); onClose(); };
+  const handleDelete = () => { onDelete(); onClose(); };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <SafeAreaView style={styles.modalOverlay}>
-        <Pressable style={styles.modalOverlayPressable} onPress={onClose}>
-          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            {title && <Text style={styles.modalTitle}>{title}</Text>}
-
-            {showEditField && (
-              <View style={styles.editSection}>
-                <Text style={styles.editLabel}>{editLabel}</Text>
-                <TextInput
-                  style={styles.editInput}
-                  value={inputValue}
-                  onChangeText={setInputValue}
-                  placeholder={editPlaceholder}
-                  placeholderTextColor={theme.colors.secondary[400]}
-                />
-              </View>
-            )}
-
-            <View style={styles.buttonSection}>
-              {showEditField && onSave && (
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.saveButton]}
-                  onPress={handleSave}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color={theme.colors.neutral.white} />
-                  ) : (
-                    <Text style={styles.saveButtonText}>保存</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                style={[styles.actionButton, styles.deleteButton]}
-                onPress={handleDelete}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator size="small" color={theme.colors.neutral.white} />
-                ) : (
-                  <>
-                    <Trash2 size={20} color={theme.colors.neutral.white} />
-                    <Text style={styles.deleteButtonText}>削除</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.actionButton, styles.cancelButton]}
-                onPress={onClose}
-                disabled={isLoading}
-              >
-                <Text style={[styles.cancelButtonText, isLoading && { opacity: 0.5 }]}>キャンセル</Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </SafeAreaView>
-    </Modal>
+    <BottomSheet visible={visible} onClose={onClose}>
+      <View style={styles.content}>
+        {title && <Text style={styles.title}>{title}</Text>}
+        {showEditField && (
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>{editLabel}</Text>
+            <TextInput style={styles.input} value={inputValue} onChangeText={setInputValue} placeholder={editPlaceholder} placeholderTextColor={theme.colors.secondary[400]} />
+          </View>
+        )}
+        {children}
+        <View style={styles.buttons}>
+          {showEditField && onSave && (
+            <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={isLoading} activeOpacity={0.7}>
+              {isLoading ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.saveBtnText}>保存</Text>}
+            </TouchableOpacity>
+          )}
+          {isCompleted && onReactivate && (
+            <TouchableOpacity style={styles.completeBtn} onPress={() => { onReactivate(); onClose(); }} disabled={isLoading} activeOpacity={0.7}>
+              <RotateCcw size={18} color="#FFFFFF" /><Text style={styles.completeBtnText}>再開する</Text>
+            </TouchableOpacity>
+          )}
+          {!isCompleted && onComplete && (
+            <TouchableOpacity style={styles.completeBtn} onPress={() => { onComplete(); onClose(); }} disabled={isLoading} activeOpacity={0.7}>
+              <CheckCircle size={18} color="#FFFFFF" /><Text style={styles.completeBtnText}>完了にする</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={isLoading} activeOpacity={0.7}>
+            <Trash2 size={18} color="#FFFFFF" /><Text style={styles.deleteBtnText}>削除</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.cancelBtn} onPress={onClose} disabled={isLoading} activeOpacity={0.7}>
+            <Text style={styles.cancelBtnText}>キャンセル</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </BottomSheet>
   );
 };
 
 const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalOverlayPressable: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-  },
-  modalContent: {
-    backgroundColor: theme.colors.neutral.white,
-    borderRadius: theme.borderRadius.xl,
-    minWidth: 300,
-    maxWidth: 400,
-    ...theme.shadows.xl,
-    overflow: 'hidden',
-  },
-  modalTitle: {
-    fontSize: theme.typography.fontSizes.lg,
-    fontWeight: theme.typography.fontWeights.bold as any,
-    color: theme.colors.secondary[900],
-    fontFamily: 'ZenKaku-Bold',
-    padding: theme.spacing.lg,
-    backgroundColor: theme.colors.primary[50],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.secondary[200],
-    textAlign: 'center',
-  },
-  editSection: {
-    padding: theme.spacing.lg,
-  },
-  editLabel: {
-    fontSize: theme.typography.fontSizes.sm,
-    fontFamily: 'ZenKaku-Medium',
-    color: theme.colors.secondary[700],
-    marginBottom: theme.spacing.xs,
-  },
-  editInput: {
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Regular',
-    color: theme.colors.secondary[900],
-    borderWidth: 1,
-    borderColor: theme.colors.secondary[300],
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.md,
-    backgroundColor: theme.colors.neutral.white,
-  },
-  buttonSection: {
-    padding: theme.spacing.lg,
-    gap: theme.spacing.md,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.borderRadius.md,
-  },
-  saveButton: {
-    backgroundColor: theme.colors.primary[600],
-  },
-  saveButtonText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.neutral.white,
-  },
-  deleteButton: {
-    backgroundColor: theme.colors.error[600],
-  },
-  deleteButtonText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.neutral.white,
-  },
-  cancelButton: {
-    backgroundColor: theme.colors.secondary[100],
-  },
-  cancelButtonText: {
-    fontSize: theme.typography.fontSizes.base,
-    fontFamily: 'ZenKaku-Bold',
-    color: theme.colors.secondary[700],
-  },
+  content: { gap: 16 },
+  title: { fontSize: 18, fontWeight: '700', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Bold' },
+  inputSection: { gap: 8 },
+  inputLabel: { fontSize: 13, fontWeight: '600', color: theme.colors.secondary[700], fontFamily: 'ZenKaku-Bold' },
+  input: { height: 52, borderRadius: 14, backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.secondary[200], paddingHorizontal: 16, fontSize: 15, fontFamily: 'ZenKaku-Regular', color: theme.colors.secondary[900] },
+  buttons: { gap: 10 },
+  saveBtn: { height: 50, borderRadius: 14, backgroundColor: theme.colors.primary[600], justifyContent: 'center', alignItems: 'center' },
+  saveBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', fontFamily: 'ZenKaku-Bold' },
+  completeBtn: { height: 50, borderRadius: 14, backgroundColor: theme.colors.success[500], flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center' },
+  completeBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', fontFamily: 'ZenKaku-Bold' },
+  deleteBtn: { height: 50, borderRadius: 14, backgroundColor: theme.colors.error[500], flexDirection: 'row', gap: 8, justifyContent: 'center', alignItems: 'center' },
+  deleteBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', fontFamily: 'ZenKaku-Bold' },
+  cancelBtn: { height: 50, borderRadius: 14, backgroundColor: theme.colors.secondary[100], justifyContent: 'center', alignItems: 'center' },
+  cancelBtnText: { fontSize: 15, fontWeight: '600', color: theme.colors.secondary[500], fontFamily: 'ZenKaku-Bold' },
 });
 
 export default EditDeleteModal;

@@ -2,13 +2,16 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch, Mo
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { router } from 'expo-router';
-import { LogOut, Crown, ChevronRight, RefreshCw, Trash2, Moon, User, Edit3 } from 'lucide-react-native';
+import { LogOut, Crown, ChevronRight, RefreshCw, Trash2, Moon, User, Edit3, RotateCcw, Palette } from 'lucide-react-native';
+import { accentPalettes } from '@/constants/colorPalettes';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { useThemeStore } from '@/stores/themeStore';
-import { userApi } from '@/services/api';
+import { userDomain } from '@/domain/userDomain';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { showSuccessToast, showErrorToast } from '@/utils/toast';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ONBOARDING_COMPLETE_KEY } from '../onboarding';
 
 export default function SettingsScreen() {
   const theme = useAppTheme();
@@ -17,8 +20,8 @@ export default function SettingsScreen() {
   const logout = useAuthStore(state => state.logout);
   const profile = useAuthStore(state => state.profile);
   const updateProfile = useAuthStore(state => state.updateProfile);
-  const { isPremium, expirationDate, willRenew, refreshStatus, restorePurchases, isLoading } = useSubscriptionStore();
-  const { isDark, setMode } = useThemeStore();
+  const { isAdFree, refreshStatus, restorePurchases, isLoading } = useSubscriptionStore();
+  const { isDark, setMode, accentPalette, setAccentPalette } = useThemeStore();
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
@@ -37,17 +40,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleUpgrade = () => {
-    router.push('/paywall?source=settings');
-  };
-
-  const handlePremiumTap = () => {
-    router.push('/paywall?source=settings');
-  };
-
-  const handleRestore = async () => {
-    await restorePurchases();
-  };
 
   const handleToggleDarkMode = async (value: boolean) => {
     await setMode(value ? 'dark' : 'light');
@@ -95,7 +87,7 @@ export default function SettingsScreen() {
   const confirmDeleteAccount = async () => {
     setIsDeleting(true);
     try {
-      await userApi.deleteAccount();
+      await userDomain.deleteAccount();
       showSuccessToast('アカウントを削除しました');
       await logout();
       router.replace('/login');
@@ -116,35 +108,20 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        {/* プラン */}
-        <Text style={styles.sectionLabel}>プラン</Text>
-        {isPremium ? (
-          <>
-            <TouchableOpacity style={styles.row} onPress={handlePremiumTap} activeOpacity={0.6}>
-              <View style={styles.rowLeft}>
-                <Crown size={20} color={theme.colors.warning[500]} fill={theme.colors.warning[500]} />
-                <Text style={styles.rowLabel}>Premium</Text>
-              </View>
-              <ChevronRight size={18} color={theme.colors.secondary[400]} />
-            </TouchableOpacity>
-            {expirationDate && (
-              <View style={styles.row}>
-                <Text style={styles.rowLabel}>次回更新日</Text>
-                <Text style={styles.rowValue}>{formatDate(expirationDate)}</Text>
-              </View>
-            )}
-            <View style={styles.row}>
-              <Text style={styles.rowLabel}>自動更新</Text>
-              <Text style={[styles.rowValue, { color: willRenew ? theme.colors.success[600] : theme.colors.secondary[500] }]}>
-                {willRenew ? 'オン' : 'オフ'}
-              </Text>
+        {/* 広告 */}
+        <Text style={styles.sectionLabel}>広告</Text>
+        {isAdFree ? (
+          <View style={styles.row}>
+            <View style={styles.rowLeft}>
+              <Crown size={20} color={theme.colors.warning[500]} fill={theme.colors.warning[500]} />
+              <Text style={styles.rowLabel}>広告非表示 購入済み</Text>
             </View>
-          </>
+          </View>
         ) : (
-          <TouchableOpacity style={styles.row} onPress={handleUpgrade} activeOpacity={0.6}>
+          <TouchableOpacity style={styles.row} onPress={() => router.push('/paywall?source=settings')} activeOpacity={0.6}>
             <View style={styles.rowLeft}>
               <Crown size={20} color={theme.colors.warning[500]} />
-              <Text style={styles.rowLabel}>プレミアムにアップグレード</Text>
+              <Text style={styles.rowLabel}>広告を非表示にする</Text>
             </View>
             <ChevronRight size={18} color={theme.colors.secondary[400]} />
           </TouchableOpacity>
@@ -152,7 +129,7 @@ export default function SettingsScreen() {
 
         <TouchableOpacity
           style={styles.row}
-          onPress={handleRestore}
+          onPress={() => restorePurchases()}
           activeOpacity={0.6}
           disabled={isLoading}
         >
@@ -194,6 +171,22 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* カラーパレット */}
+        <Text style={styles.sectionLabel}>カラー</Text>
+        <View style={styles.paletteRow}>
+          {Object.values(accentPalettes).map(p => (
+            <TouchableOpacity
+              key={p.name}
+              style={[styles.paletteItem, accentPalette === p.name && styles.paletteItemActive]}
+              onPress={() => setAccentPalette(p.name)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.paletteDot, { backgroundColor: p.primary, borderColor: accentPalette === p.name ? theme.colors.secondary[900] : 'transparent' }]} />
+              <Text style={[styles.paletteLabel, accentPalette === p.name && styles.paletteLabelActive]}>{p.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {/* 法的情報 */}
         <Text style={styles.sectionLabel}>法的情報</Text>
         <TouchableOpacity
@@ -217,6 +210,19 @@ export default function SettingsScreen() {
 
         {/* その他 */}
         <Text style={styles.sectionLabel}>その他</Text>
+        <TouchableOpacity
+          style={styles.row}
+          onPress={async () => {
+            await AsyncStorage.removeItem(ONBOARDING_COMPLETE_KEY);
+            showSuccessToast('オンボーディングをリセットしました');
+          }}
+          activeOpacity={0.6}
+        >
+          <View style={styles.rowLeft}>
+            <RotateCcw size={20} color={theme.colors.primary[600]} />
+            <Text style={styles.rowLabel}>オンボーディングをリセット</Text>
+          </View>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.row}
           onPress={handleLogout}
@@ -247,7 +253,7 @@ export default function SettingsScreen() {
       <Modal
         visible={showNameModal}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setShowNameModal(false)}
       >
         <View style={styles.modalOverlay}>
@@ -391,6 +397,33 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
     fontSize: theme.typography.fontSizes.base,
     fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.neutral.white,
+    fontFamily: 'ZenKaku-Bold',
+  },
+  paletteRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.sm,
+  },
+  paletteItem: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  paletteItemActive: {},
+  paletteDot: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 3,
+    borderColor: 'transparent',
+  },
+  paletteLabel: {
+    fontSize: 10,
+    color: theme.colors.secondary[500],
+    fontFamily: 'ZenKaku-Regular',
+  },
+  paletteLabelActive: {
+    color: theme.colors.secondary[900],
+    fontWeight: '600' as any,
     fontFamily: 'ZenKaku-Bold',
   },
 });

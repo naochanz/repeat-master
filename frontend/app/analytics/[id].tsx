@@ -1,6 +1,6 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { useQuizBookStore } from '@/stores/quizBookStore';
-import { quizBookApi } from '@/services/api';
+import { analyticsDomain, Analytics } from '@/domain/analyticsDomain';
 import React, { useCallback, useState, useMemo } from 'react';
 import {
   View,
@@ -44,14 +44,6 @@ interface SectionStats {
   correctAnswers: number;
 }
 
-interface Analytics {
-  quizBookId: string;
-  totalRounds: number;
-  roundStats: { round: number; correctRate: number; totalQuestions: number; correctAnswers: number }[];
-  chapterStats: ChapterStats[];
-  sectionStats: SectionStats[];
-}
-
 export default function DetailedAnalyticsScreen() {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -86,13 +78,9 @@ export default function DetailedAnalyticsScreen() {
   const loadData = async () => {
     setLoading(true);
     await fetchQuizBooks();
-    if (id) {
-      try {
-        const response = await quizBookApi.getAnalytics(id);
-        setAnalytics(response.data);
-      } catch (error) {
-        console.error('Failed to fetch analytics:', error);
-      }
+    const book = useQuizBookStore.getState().quizBooks.find(b => b.id === id);
+    if (book) {
+      setAnalytics(analyticsDomain.computeFromQuizBook(book));
     }
     setLoading(false);
   };

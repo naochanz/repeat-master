@@ -288,7 +288,7 @@ export default function QualificationDetailScreen() {
         <Modal
           visible={showCategoryMenu}
           transparent
-          animationType="fade"
+          animationType="slide"
           onRequestClose={() => setShowCategoryMenu(false)}
         >
           <Pressable style={styles.modalOverlay} onPress={() => setShowCategoryMenu(false)}>
@@ -309,7 +309,7 @@ export default function QualificationDetailScreen() {
         <Modal
           visible={showEditModal}
           transparent
-          animationType="fade"
+          animationType="slide"
           onRequestClose={() => setShowEditModal(false)}
         >
           <View style={styles.modalOverlay}>

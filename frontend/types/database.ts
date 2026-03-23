@@ -34,10 +34,12 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       categories: {
         Row: {
           id: string;
+          user_id: string;
           name: string;
           description: string | null;
           created_at: string;
@@ -45,6 +47,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          user_id: string;
           name: string;
           description?: string | null;
           created_at?: string;
@@ -52,11 +55,13 @@ export interface Database {
         };
         Update: {
           id?: string;
+          user_id?: string;
           name?: string;
           description?: string | null;
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       quiz_books: {
         Row: {
@@ -64,6 +69,9 @@ export interface Database {
           user_id: string;
           category_id: string | null;
           title: string;
+          isbn: string | null;
+          thumbnail_url: string | null;
+          completed_at: string | null;
           chapter_count: number;
           current_rate: number;
           use_sections: boolean;
@@ -76,6 +84,9 @@ export interface Database {
           user_id: string;
           category_id?: string | null;
           title: string;
+          isbn?: string | null;
+          thumbnail_url?: string | null;
+          completed_at?: string | null;
           chapter_count?: number;
           current_rate?: number;
           use_sections?: boolean;
@@ -88,6 +99,9 @@ export interface Database {
           user_id?: string;
           category_id?: string | null;
           title?: string;
+          isbn?: string | null;
+          thumbnail_url?: string | null;
+          completed_at?: string | null;
           chapter_count?: number;
           current_rate?: number;
           use_sections?: boolean;
@@ -95,6 +109,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       chapters: {
         Row: {
@@ -127,6 +142,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       sections: {
         Row: {
@@ -156,6 +172,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       question_answers: {
         Row: {
@@ -191,6 +208,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       study_records: {
         Row: {
@@ -229,6 +247,28 @@ export interface Database {
           answered_at?: string;
           created_at?: string;
         };
+        Relationships: [];
+      };
+      feedback: {
+        Row: {
+          id: string;
+          user_id: string;
+          message: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          message: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          message?: string;
+          created_at?: string;
+        };
+        Relationships: [];
       };
     };
     Views: {};
