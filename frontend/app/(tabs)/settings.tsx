@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Switch, Mo
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAppTheme } from '@/hooks/useAppTheme';
 import { router } from 'expo-router';
-import { LogOut, Crown, ChevronRight, RefreshCw, Trash2, Moon, User, Edit3, RotateCcw, Palette } from 'lucide-react-native';
+import { Bell, LogOut, Crown, ChevronRight, RefreshCw, Trash2, Moon, User, Edit3, RotateCcw, Palette } from 'lucide-react-native';
 import { accentPalettes } from '@/constants/colorPalettes';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { showSuccessToast, showErrorToast } from '@/utils/toast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ONBOARDING_COMPLETE_KEY } from '../onboarding';
+import { isNotificationEnabled, setNotificationEnabled } from '@/services/notificationService';
 
 export default function SettingsScreen() {
   const theme = useAppTheme();
@@ -27,9 +28,11 @@ export default function SettingsScreen() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [tempName, setTempName] = useState('');
   const [isUpdatingName, setIsUpdatingName] = useState(false);
+  const [notifEnabled, setNotifEnabled] = useState(true);
 
   useEffect(() => {
     refreshStatus();
+    isNotificationEnabled().then(setNotifEnabled);
   }, []);
 
   const handleLogout = async () => {
@@ -155,6 +158,24 @@ export default function SettingsScreen() {
             <Edit3 size={18} color={theme.colors.secondary[400]} />
           </View>
         </TouchableOpacity>
+
+        {/* 通知 */}
+        <Text style={styles.sectionLabel}>通知</Text>
+        <View style={styles.row}>
+          <View style={styles.rowLeft}>
+            <Bell size={20} color={theme.colors.primary[600]} />
+            <Text style={styles.rowLabel}>学習リマインダー</Text>
+          </View>
+          <Switch
+            value={notifEnabled}
+            onValueChange={async (v) => {
+              setNotifEnabled(v);
+              await setNotificationEnabled(v);
+            }}
+            trackColor={{ false: theme.colors.secondary[200], true: theme.colors.primary[400] }}
+            thumbColor={notifEnabled ? theme.colors.primary[600] : theme.colors.neutral.white}
+          />
+        </View>
 
         {/* 外観 */}
         <Text style={styles.sectionLabel}>外観</Text>

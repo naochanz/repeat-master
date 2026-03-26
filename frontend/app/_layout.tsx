@@ -19,6 +19,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useThemeStore } from '@/stores/themeStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
 import { ONBOARDING_COMPLETE_KEY } from './onboarding';
+import { scheduleReminders } from '@/services/notificationService';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -78,6 +79,7 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
       if (isAuthenticated) {
         fetchQuizBooks();
+        scheduleReminders().catch(() => {});
       }
     }
   }, [loaded, isLoading, isAuthenticated, hasSeenOnboarding]);

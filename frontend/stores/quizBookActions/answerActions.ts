@@ -1,4 +1,5 @@
 import { answerDomain } from '@/domain/answerDomain';
+import { answerRepository } from '@/repositories/answerRepository';
 import { chapterDomain } from '@/domain/chapterDomain';
 import { sectionDomain } from '@/domain/sectionDomain';
 import { QuestionAnswer } from '@/types/QuizBook';
@@ -118,7 +119,16 @@ export const createAnswerActions = (set: any, get: any) => ({
         if (chapter.id === chapterId) {
           const questionAnswers = sectionId ? chapter.sections?.find((s: any) => s.id === sectionId)?.questionAnswers : chapter.questionAnswers;
           const qa = questionAnswers?.find((q: any) => q.questionNumber === questionNumber);
-          if (qa && qa.id) { await get().updateMemo(book.id, qa.id, memo); return; }
+          if (qa) {
+            let answerId = qa.id;
+            if (!answerId) {
+              const serverRecord = await answerRepository.findByQuestion(questionNumber, chapterId, sectionId ?? undefined);
+              if (!serverRecord) return;
+              answerId = serverRecord.id;
+            }
+            await get().updateMemo(book.id, answerId, memo);
+            return;
+          }
         }
       }
     }

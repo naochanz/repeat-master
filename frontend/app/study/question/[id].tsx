@@ -6,6 +6,7 @@ import QuestionView from '@/src/components/study/question/QuestionView';
 import AnswerButtons from '@/src/components/study/question/AnswerButtons';
 import QuestionDotNav from '@/src/components/study/question/QuestionDotNav';
 import AnswerFeedback from '@/src/components/study/question/AnswerFeedback';
+import { recordStudySession } from '@/services/notificationService';
 import QuestionPickerSheet from '@/src/components/study/question/QuestionPickerSheet';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { X, Bookmark, Grid3x3, Trash2, Plus } from 'lucide-react-native';
@@ -91,6 +92,7 @@ const QuestionScreen = () => {
     try {
       await saveAnswer(bookId, currentQuestionNumber, result, chapterId, sectionId || undefined);
       setFeedbackResult(result);
+      recordStudySession().catch(() => {});
     } finally {
       setIsLoadingAnswer(false);
     }

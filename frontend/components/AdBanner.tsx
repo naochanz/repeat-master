@@ -26,9 +26,9 @@ try {
 export default function AdBanner() {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const isPremium = useSubscriptionStore(state => state.isPremium);
+  const isAdFree = useSubscriptionStore(state => state.isAdFree);
 
-  if (isPremium || !BannerAd) return null;
+  if (isAdFree || !BannerAd) return null;
 
   return (
     <View style={styles.container}>

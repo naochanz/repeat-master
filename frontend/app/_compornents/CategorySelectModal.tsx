@@ -66,7 +66,7 @@ const CategorySelectModal = ({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={handleClose}
     >
       <KeyboardAvoidingView
