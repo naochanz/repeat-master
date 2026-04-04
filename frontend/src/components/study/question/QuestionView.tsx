@@ -1,10 +1,11 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
+import FormattedMemoText from '@/src/components/memo/FormattedMemoText';
 import { Attempt } from '@/types/QuizBook';
 import { getCardColors, getQuestionColor } from '@/src/utils/questionHelpers';
 import { TrendingUp, TrendingDown, StickyNote, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface QuestionViewProps {
   questionNumber: number;
@@ -13,14 +14,15 @@ interface QuestionViewProps {
   chapterId?: string;
   sectionId?: string | null;
   readOnly?: boolean;
+  defaultMemoExpanded?: boolean;
 }
 
-const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, readOnly }: QuestionViewProps) => {
+const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, readOnly, defaultMemoExpanded = false }: QuestionViewProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const [memoExpanded, setMemoExpanded] = useState(false);
+  const [memoExpanded, setMemoExpanded] = useState(defaultMemoExpanded);
 
-  useEffect(() => { setMemoExpanded(false); }, [questionNumber]);
+  useEffect(() => { setMemoExpanded(defaultMemoExpanded); }, [questionNumber, defaultMemoExpanded]);
 
   const confirmedAttempts = attempts.filter(a => a.resultConfirmFlg);
   const cardColors = getCardColors(confirmedAttempts);
@@ -53,6 +55,10 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
 
   const handleEditMemo = () => {
     if (readOnly || !chapterId) return;
+    if (confirmedAttempts.length === 0) {
+      Alert.alert('メモを編集できません', '先に正誤登録をしてください。\n一周目の登録後にメモを保存できるようになります。');
+      return;
+    }
     router.push({
       pathname: '/memo-edit',
       params: { chapterId, sectionId: sectionId || '', questionNumber: String(questionNumber), initialMemo: memo || '' },
@@ -119,9 +125,12 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
             {memoExpanded && (
               <TouchableOpacity onPress={handleEditMemo} activeOpacity={readOnly ? 1 : 0.7}>
                 <ScrollView style={styles.memoScroll} nestedScrollEnabled>
-                  <Text style={memo ? styles.memoText : styles.memoPlaceholder}>
-                    {memo || 'タップしてメモを入力...'}
-                  </Text>
+                  <FormattedMemoText
+                    memo={memo || ''}
+                    style={styles.memoText}
+                    placeholderStyle={styles.memoPlaceholder}
+                    placeholder="タップしてメモを入力..."
+                  />
                 </ScrollView>
               </TouchableOpacity>
             )}
@@ -155,7 +164,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   memoHeaderLeft: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   memoHeaderText: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular' },
   memoHeaderTextActive: { color: theme.colors.primary[600], fontWeight: '600', fontFamily: 'ZenKaku-Bold' },
-  memoScroll: { maxHeight: 100 },
+  memoScroll: { maxHeight: 200 },
   memoText: { fontSize: 13, color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Regular', lineHeight: 20 },
   memoPlaceholder: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular' },
 });

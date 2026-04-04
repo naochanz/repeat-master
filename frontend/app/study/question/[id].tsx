@@ -9,14 +9,16 @@ import AnswerFeedback from '@/src/components/study/question/AnswerFeedback';
 import { recordStudySession } from '@/services/notificationService';
 import QuestionPickerSheet from '@/src/components/study/question/QuestionPickerSheet';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { X, Bookmark, Grid3x3, Trash2, Plus } from 'lucide-react-native';
-import React, { useCallback, useMemo, useState } from 'react';
+import { X, Bookmark, Grid3x3, Trash2, Plus, StickyNote } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import BottomSheet from '@/components/BottomSheet';
 import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
+const MEMO_DEFAULT_EXPANDED_KEY = '@repeat_master_memo_default_expanded';
 
 const QuestionScreen = () => {
   const theme = useAppTheme();
@@ -42,6 +44,19 @@ const QuestionScreen = () => {
   const [bulkAddCount, setBulkAddCount] = useState(5);
   const [isAdding, setIsAdding] = useState(false);
   const [feedbackResult, setFeedbackResult] = useState<'○' | '×' | null>(null);
+  const [memoDefaultExpanded, setMemoDefaultExpanded] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(MEMO_DEFAULT_EXPANDED_KEY).then(v => {
+      if (v === 'true') setMemoDefaultExpanded(true);
+    });
+  }, []);
+
+  const toggleMemoDefault = async () => {
+    const next = !memoDefaultExpanded;
+    setMemoDefaultExpanded(next);
+    await AsyncStorage.setItem(MEMO_DEFAULT_EXPANDED_KEY, String(next));
+  };
 
   useFocusEffect(useCallback(() => { fetchQuizBooks(); }, [fetchQuizBooks]));
 
@@ -133,6 +148,9 @@ const QuestionScreen = () => {
           </TouchableOpacity>
           <Text style={styles.navTitle} numberOfLines={1}>{title}</Text>
           <View style={styles.navRight}>
+            <TouchableOpacity onPress={toggleMemoDefault} hitSlop={8}>
+              <StickyNote size={20} color={memoDefaultExpanded ? theme.colors.primary[600] : theme.colors.secondary[400]} fill={memoDefaultExpanded ? theme.colors.primary[100] : 'none'} />
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => toggleBookmark(chapterId, sectionId, currentQuestionNumber)} hitSlop={8}>
               <Bookmark size={20} color={currentBookmarked ? theme.colors.primary[600] : theme.colors.secondary[400]} fill={currentBookmarked ? theme.colors.primary[600] : 'none'} />
             </TouchableOpacity>
@@ -168,7 +186,7 @@ const QuestionScreen = () => {
           </Pressable>
         ) : (
           <Pressable style={styles.mainArea} onPress={handleTapNavigation}>
-            <QuestionView questionNumber={currentQuestionNumber} attempts={currentAttempts} memo={getQuestionAnswers(chapterId, sectionId, currentQuestionNumber)?.memo || ''} chapterId={chapterId} sectionId={sectionId} readOnly={isCompleted} />
+            <QuestionView questionNumber={currentQuestionNumber} attempts={currentAttempts} memo={getQuestionAnswers(chapterId, sectionId, currentQuestionNumber)?.memo || ''} chapterId={chapterId} sectionId={sectionId} readOnly={isCompleted} defaultMemoExpanded={memoDefaultExpanded} />
           </Pressable>
         )}
 
