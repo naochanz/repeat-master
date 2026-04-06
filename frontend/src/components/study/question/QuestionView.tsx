@@ -8,8 +8,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// 画面高さ - 固定UI要素（ナビ52 + プログレス3 + 問番号エリア80 + カード内ヘッダー120 + ボトム130 + 余白50）
-const MEMO_MAX_HEIGHT = Dimensions.get('window').height - 435;
+// 画面高さ - 固定UI（ステータス62+ナビ52+プログレス3+padding50+問番号80+カードヘッダ120+ボトム130+タップ余白50）
+const MEMO_MAX_HEIGHT = Dimensions.get('window').height - 547;
 
 interface QuestionViewProps {
   questionNumber: number;
