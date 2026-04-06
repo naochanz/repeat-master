@@ -378,7 +378,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   progressBar: { height: 3, backgroundColor: theme.colors.secondary[200] },
   progressFill: { height: 3, backgroundColor: theme.colors.primary[600] },
 
-  mainArea: { flex: 1, alignItems: 'center', paddingHorizontal: 20, paddingTop: 50 },
+  mainArea: { flex: 1, alignItems: 'center', paddingHorizontal: 20, paddingTop: 50, overflow: 'hidden' },
 
   bottomArea: { gap: 16, paddingHorizontal: 20, paddingBottom: 40, alignItems: 'center' },
   answerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%' },
