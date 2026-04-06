@@ -48,6 +48,7 @@ const QuestionScreen = () => {
   const [feedbackResult, setFeedbackResult] = useState<'○' | '×' | null>(null);
   const [memoDefaultExpanded, setMemoDefaultExpanded] = useState(false);
   const [autoSkip, setAutoSkip] = useState(false);
+  const [memoExpanded, setMemoExpanded] = useState(false);
   const [heroVisible, setHeroVisible] = useState(true);
   const [showConfirmRoundModal, setShowConfirmRoundModal] = useState(false);
   const [unansweredWarning, setUnansweredWarning] = useState('');
@@ -275,24 +276,26 @@ const QuestionScreen = () => {
           </Pressable>
         ) : (
           <Pressable style={styles.mainArea} onPress={handleTapNavigation}>
-            <QuestionView questionNumber={currentQuestionNumber} attempts={currentAttempts} memo={getQuestionAnswers(chapterId, sectionId, currentQuestionNumber)?.memo || ''} chapterId={chapterId} sectionId={sectionId} readOnly={isCompleted} defaultMemoExpanded={memoDefaultExpanded} />
+            <QuestionView questionNumber={currentQuestionNumber} attempts={currentAttempts} memo={getQuestionAnswers(chapterId, sectionId, currentQuestionNumber)?.memo || ''} chapterId={chapterId} sectionId={sectionId} readOnly={isCompleted} defaultMemoExpanded={memoDefaultExpanded} onMemoExpandedChange={setMemoExpanded} />
           </Pressable>
         )}
 
-        {/* Bottom */}
-        <View style={styles.bottomArea}>
-          {!isCompleted && !isAtEnd && !showHero && (
-            <View style={styles.answerRow}>
-              <View style={{ flex: 1 }}>
-                <AnswerButtons onCorrect={() => handleAnswer('○')} onIncorrect={() => handleAnswer('×')} isLoading={isLoadingAnswer} />
+        {/* Bottom - hidden when memo expanded */}
+        {!memoExpanded && (
+          <View style={styles.bottomArea}>
+            {!isCompleted && !isAtEnd && !showHero && (
+              <View style={styles.answerRow}>
+                <View style={{ flex: 1 }}>
+                  <AnswerButtons onCorrect={() => handleAnswer('○')} onIncorrect={() => handleAnswer('×')} isLoading={isLoadingAnswer} />
+                </View>
+                <TouchableOpacity style={[styles.autoSkipBtn, autoSkip && styles.autoSkipBtnActive]} onPress={toggleAutoSkip} activeOpacity={0.7} hitSlop={4}>
+                  <SkipForward size={16} color={autoSkip ? theme.colors.primary[600] : theme.colors.secondary[400]} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity style={[styles.autoSkipBtn, autoSkip && styles.autoSkipBtnActive]} onPress={toggleAutoSkip} activeOpacity={0.7} hitSlop={4}>
-                <SkipForward size={16} color={autoSkip ? theme.colors.primary[600] : theme.colors.secondary[400]} />
-              </TouchableOpacity>
-            </View>
-          )}
-          <QuestionDotNav totalQuestions={questionCount} currentIndex={currentIndex} getAttempts={getAttempts} onSelect={setCurrentIndex} />
-        </View>
+            )}
+            <QuestionDotNav totalQuestions={questionCount} currentIndex={currentIndex} getAttempts={getAttempts} onSelect={setCurrentIndex} />
+          </View>
+        )}
 
         <LoadingOverlay visible={isLoading} />
 

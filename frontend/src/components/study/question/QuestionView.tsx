@@ -8,8 +8,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// 画面高さ - 固定UI（ステータス62+ナビ52+プログレス3+padding50+問番号80+カードヘッダ120+ボトム130+タップ余白50）
-const MEMO_MAX_HEIGHT = Dimensions.get('window').height - 547;
+// 画面高さ - 固定UI（ステータス62+ナビ52+プログレス3+padding50+問番号80+カードヘッダ120+タップ余白50）
+// ボトムボタンはメモ展開時に非表示になるため含めない
+const MEMO_MAX_HEIGHT = Dimensions.get('window').height - 417;
 
 interface QuestionViewProps {
   questionNumber: number;
@@ -19,9 +20,10 @@ interface QuestionViewProps {
   sectionId?: string | null;
   readOnly?: boolean;
   defaultMemoExpanded?: boolean;
+  onMemoExpandedChange?: (expanded: boolean) => void;
 }
 
-const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, readOnly, defaultMemoExpanded = false }: QuestionViewProps) => {
+const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, readOnly, defaultMemoExpanded = false, onMemoExpandedChange }: QuestionViewProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [memoExpanded, setMemoExpanded] = useState(defaultMemoExpanded);
@@ -131,7 +133,7 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
                     <Pencil size={18} color={theme.colors.primary[600]} />
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity onPress={() => setMemoExpanded(!memoExpanded)} style={styles.memoActionBtn} hitSlop={8} activeOpacity={0.7}>
+                <TouchableOpacity onPress={() => { const next = !memoExpanded; setMemoExpanded(next); onMemoExpandedChange?.(next); }} style={styles.memoActionBtn} hitSlop={8} activeOpacity={0.7}>
                   {memoExpanded ? <ChevronUp size={18} color={theme.colors.secondary[500]} /> : <ChevronDown size={18} color={theme.colors.secondary[500]} />}
                 </TouchableOpacity>
               </View>
