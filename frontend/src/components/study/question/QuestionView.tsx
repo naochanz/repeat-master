@@ -5,7 +5,7 @@ import { getCardColors, getQuestionColor } from '@/src/utils/questionHelpers';
 import { TrendingUp, TrendingDown, StickyNote, ChevronDown, ChevronUp, Pencil } from 'lucide-react-native';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 interface QuestionViewProps {
@@ -77,7 +77,7 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
       )}
 
       {/* Unified Card: History + Memo */}
-      <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+      <Pressable style={[styles.card, memoExpanded && styles.cardExpanded]} onPress={(e) => e.stopPropagation()}>
         {/* History Section */}
         {confirmedAttempts.length > 0 && (
           <>
@@ -134,12 +134,12 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
               </View>
             </View>
             {memoExpanded && (
-              <View>
+              <View style={{ flex: 1 }}>
                 <ScrollView
-                  style={styles.memoScroll}
+                  style={{ flex: 1 }}
                   nestedScrollEnabled
                   showsVerticalScrollIndicator
-                  onContentSizeChange={(_w, h) => setShowMemoFade(h > Dimensions.get('window').height * 0.5)}
+                  onContentSizeChange={(_w, h) => setShowMemoFade(h > 100)}
                   onScroll={({ nativeEvent }) => {
                     const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
                     setShowMemoFade(contentOffset.y + layoutMeasurement.height < contentSize.height - 4);
@@ -170,12 +170,13 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
 };
 
 const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
-  container: { width: '100%', alignItems: 'center', gap: 8 },
+  container: { width: '100%', alignItems: 'center', gap: 8, flexShrink: 1 },
   questionNum: { fontSize: 48, fontWeight: '800', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Bold', letterSpacing: -2 },
   roundBadge: { height: 22, borderRadius: 11, backgroundColor: theme.colors.primary[50], paddingHorizontal: 10, justifyContent: 'center' },
   roundText: { fontSize: 11, fontWeight: '600', color: theme.colors.primary[600], fontFamily: 'ZenKaku-Bold' },
 
-  card: { width: '100%', backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, paddingHorizontal: 18, gap: 12, borderWidth: 1, borderColor: theme.colors.secondary[200], marginTop: 8 },
+  card: { width: '100%', backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, paddingHorizontal: 18, gap: 12, borderWidth: 1, borderColor: theme.colors.secondary[200], marginTop: 8, flexShrink: 1 },
+  cardExpanded: { flex: 1 },
   sectionLabel: { fontSize: 11, fontWeight: '600', color: theme.colors.secondary[500], letterSpacing: 0.5 },
   dotRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 2 },
   dotItem: { alignItems: 'center', gap: 3 },
@@ -194,7 +195,6 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   memoHeaderText: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular' },
   memoHeaderTextActive: { color: theme.colors.primary[600], fontWeight: '600', fontFamily: 'ZenKaku-Bold' },
   memoActionBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: theme.colors.secondary[100], justifyContent: 'center', alignItems: 'center' },
-  memoScroll: { maxHeight: Dimensions.get('window').height * 0.5 },
   memoFade: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 32 },
   memoText: { fontSize: 13, color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Regular', lineHeight: 20 },
   memoPlaceholder: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular' },
