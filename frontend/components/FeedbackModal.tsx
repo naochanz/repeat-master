@@ -3,7 +3,11 @@ import { MessageCircle, Star, ThumbsDown, ThumbsUp, X } from 'lucide-react-nativ
 import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -128,8 +132,12 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
       animationType="slide"
       onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
-        <View style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <Pressable style={styles.overlay} onPress={Keyboard.dismiss}>
+          <Pressable style={styles.container} onPress={(e) => e.stopPropagation()}>
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             {/* @ts-ignore */}
             <X size={20} color={theme.colors.secondary[400]} />
@@ -221,8 +229,9 @@ export default function FeedbackModal({ visible, onClose }: FeedbackModalProps) 
               </TouchableOpacity>
             </>
           )}
-        </View>
-      </View>
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

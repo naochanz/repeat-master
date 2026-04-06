@@ -2,7 +2,7 @@ import { useAppTheme } from '@/hooks/useAppTheme';
 import FormattedMemoText from '@/src/components/memo/FormattedMemoText';
 import { Attempt } from '@/types/QuizBook';
 import { getCardColors, getQuestionColor } from '@/src/utils/questionHelpers';
-import { TrendingUp, TrendingDown, StickyNote, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { TrendingUp, TrendingDown, StickyNote, ChevronDown, ChevronUp, Pencil } from 'lucide-react-native';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -75,7 +75,7 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
       )}
 
       {/* Unified Card: History + Memo */}
-      <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+      <Pressable style={[styles.card, memoExpanded && styles.cardExpanded]} onPress={(e) => e.stopPropagation()}>
         {/* History Section */}
         {confirmedAttempts.length > 0 && (
           <>
@@ -115,24 +115,31 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
         {/* Memo Section */}
         {chapterId && (
           <>
-            <TouchableOpacity style={styles.memoHeader} onPress={() => setMemoExpanded(!memoExpanded)} activeOpacity={0.7}>
+            <View style={styles.memoHeader}>
               <View style={styles.memoHeaderLeft}>
                 <StickyNote size={14} color={memo ? theme.colors.primary[600] : theme.colors.secondary[400]} />
                 <Text style={[styles.memoHeaderText, memo && styles.memoHeaderTextActive]}>{memo ? 'メモ' : 'メモを表示'}</Text>
               </View>
-              {memoExpanded ? <ChevronUp size={14} color={theme.colors.secondary[400]} /> : <ChevronDown size={14} color={theme.colors.secondary[400]} />}
-            </TouchableOpacity>
+              <View style={styles.memoHeaderRight}>
+                {memoExpanded && !readOnly && (
+                  <TouchableOpacity onPress={handleEditMemo} style={styles.memoActionBtn} hitSlop={8} activeOpacity={0.7}>
+                    <Pencil size={18} color={theme.colors.primary[600]} />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => setMemoExpanded(!memoExpanded)} style={styles.memoActionBtn} hitSlop={8} activeOpacity={0.7}>
+                  {memoExpanded ? <ChevronUp size={18} color={theme.colors.secondary[500]} /> : <ChevronDown size={18} color={theme.colors.secondary[500]} />}
+                </TouchableOpacity>
+              </View>
+            </View>
             {memoExpanded && (
-              <TouchableOpacity onPress={handleEditMemo} activeOpacity={readOnly ? 1 : 0.7}>
-                <ScrollView style={styles.memoScroll} nestedScrollEnabled>
-                  <FormattedMemoText
-                    memo={memo || ''}
-                    style={styles.memoText}
-                    placeholderStyle={styles.memoPlaceholder}
-                    placeholder="タップしてメモを入力..."
-                  />
-                </ScrollView>
-              </TouchableOpacity>
+              <ScrollView style={{ flex: 1 }} nestedScrollEnabled>
+                <FormattedMemoText
+                  memo={memo || ''}
+                  style={styles.memoText}
+                  placeholderStyle={styles.memoPlaceholder}
+                  placeholder={readOnly ? 'メモなし' : '編集ボタンからメモを入力'}
+                />
+              </ScrollView>
             )}
           </>
         )}
@@ -148,6 +155,7 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   roundText: { fontSize: 11, fontWeight: '600', color: theme.colors.primary[600], fontFamily: 'ZenKaku-Bold' },
 
   card: { width: '100%', backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, paddingHorizontal: 18, gap: 12, borderWidth: 1, borderColor: theme.colors.secondary[200], marginTop: 8 },
+  cardExpanded: { flex: 1 },
   sectionLabel: { fontSize: 11, fontWeight: '600', color: theme.colors.secondary[500], letterSpacing: 0.5 },
   dotRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 2 },
   dotItem: { alignItems: 'center', gap: 3 },
@@ -162,9 +170,10 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
 
   memoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
   memoHeaderLeft: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  memoHeaderRight: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   memoHeaderText: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular' },
   memoHeaderTextActive: { color: theme.colors.primary[600], fontWeight: '600', fontFamily: 'ZenKaku-Bold' },
-  memoScroll: { maxHeight: 200 },
+  memoActionBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: theme.colors.secondary[100], justifyContent: 'center', alignItems: 'center' },
   memoText: { fontSize: 13, color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Regular', lineHeight: 20 },
   memoPlaceholder: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular' },
 });

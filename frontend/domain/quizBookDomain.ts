@@ -32,15 +32,16 @@ function calculateChapterRateForRound(chapter: Chapter, round: number): number {
 }
 
 function sortAndCalculateRates(quizBook: QuizBook): QuizBook {
-  const displayRound = (quizBook.currentRound || 0) + 1;
-
   quizBook.chapters = (quizBook.chapters || [])
     .sort((a, b) => a.chapterNumber - b.chapterNumber)
-    .map((chapter) => ({
-      ...chapter,
-      chapterRate: calculateChapterRateForRound(chapter, displayRound),
-      sections: (chapter.sections || []).sort((a, b) => a.sectionNumber - b.sectionNumber),
-    }));
+    .map((chapter) => {
+      const chapterDisplayRound = (chapter.currentRound || 0) + 1;
+      return {
+        ...chapter,
+        chapterRate: calculateChapterRateForRound(chapter, chapterDisplayRound),
+        sections: (chapter.sections || []).sort((a, b) => a.sectionNumber - b.sectionNumber),
+      };
+    });
 
   return quizBook;
 }

@@ -116,69 +116,74 @@ export function reconcileSpansWithText(
   oldText: string,
   newText: string,
   spans: MemoSpan[],
-  cursorPosition: number,
+  _cursorPosition: number,
 ): MemoSpan[] {
-  const diff = newText.length - oldText.length;
-  if (diff === 0 && newText === oldText) return spans;
+  if (newText === oldText) return spans;
 
-  const editPoint = diff > 0
-    ? cursorPosition - diff
-    : cursorPosition;
+  // Find edit region by comparing strings directly (reliable with IME/CJK input)
+  let prefixLen = 0;
+  const minLen = Math.min(oldText.length, newText.length);
+  while (prefixLen < minLen && oldText[prefixLen] === newText[prefixLen]) {
+    prefixLen++;
+  }
+
+  let suffixLen = 0;
+  const maxSuffix = Math.min(oldText.length - prefixLen, newText.length - prefixLen);
+  while (
+    suffixLen < maxSuffix &&
+    oldText[oldText.length - 1 - suffixLen] === newText[newText.length - 1 - suffixLen]
+  ) {
+    suffixLen++;
+  }
+
+  const oldEditStart = prefixLen;
+  const oldEditEnd = oldText.length - suffixLen;
+  const insertedText = newText.slice(prefixLen, newText.length - suffixLen);
 
   const result: MemoSpan[] = [];
   let offset = 0;
-  let editHandled = false;
+  let inserted = false;
 
   for (const span of spans) {
     const spanStart = offset;
     const spanEnd = offset + span.text.length;
     offset = spanEnd;
 
-    if (diff > 0) {
-      if (editHandled || spanEnd <= editPoint) {
-        result.push({ ...span });
-      } else if (spanStart > editPoint) {
-        if (!editHandled) {
-          result.push({ text: newText.slice(editPoint, editPoint + diff) });
-          editHandled = true;
-        }
-        result.push({ ...span });
-      } else {
-        const localEditStart = editPoint - spanStart;
-        const inserted = newText.slice(editPoint, editPoint + diff);
-        const before = span.text.slice(0, localEditStart);
-        const after = span.text.slice(localEditStart);
-        result.push({ text: before + inserted + after, bg: span.bg, color: span.color });
-        editHandled = true;
+    // Span entirely before edit region
+    if (spanEnd <= oldEditStart) {
+      result.push({ ...span });
+      continue;
+    }
+
+    // Span entirely after edit region
+    if (spanStart >= oldEditEnd) {
+      if (!inserted && insertedText.length > 0) {
+        result.push({ text: insertedText });
+        inserted = true;
       }
-    } else {
-      const deleteEnd = editPoint + (-diff);
-      if (spanEnd <= editPoint || spanStart >= deleteEnd) {
-        result.push({ ...span });
-      } else {
-        const delStartInSpan = Math.max(0, editPoint - spanStart);
-        const delEndInSpan = Math.min(span.text.length, deleteEnd - spanStart);
-        const remaining = span.text.slice(0, delStartInSpan) + span.text.slice(delEndInSpan);
-        if (remaining.length > 0) {
-          result.push({ text: remaining, bg: span.bg, color: span.color });
-        }
-      }
+      result.push({ ...span });
+      continue;
+    }
+
+    // Span overlaps with edit region — keep parts outside, insert new text once
+    if (spanStart < oldEditStart) {
+      result.push({ text: span.text.slice(0, oldEditStart - spanStart), bg: span.bg, color: span.color });
+    }
+
+    if (!inserted && insertedText.length > 0) {
+      result.push({ text: insertedText, bg: span.bg, color: span.color });
+      inserted = true;
+    }
+
+    if (spanEnd > oldEditEnd) {
+      result.push({ text: span.text.slice(oldEditEnd - spanStart), bg: span.bg, color: span.color });
     }
   }
 
-  if (diff > 0 && !editHandled) {
-    const inserted = newText.slice(editPoint, editPoint + diff);
-    if (result.length > 0) {
-      const lastSpan = result[result.length - 1];
-      lastSpan.text += inserted;
-    } else {
-      result.push({ text: inserted });
-    }
-  }
-
-  const resultText = result.map((s) => s.text).join('');
-  if (resultText !== newText) {
-    return [{ text: newText }];
+  // Appending at the end
+  if (!inserted && insertedText.length > 0) {
+    const lastSpan = result.length > 0 ? result[result.length - 1] : undefined;
+    result.push({ text: insertedText, bg: lastSpan?.bg, color: lastSpan?.color });
   }
 
   return mergeAdjacentSpans(result);

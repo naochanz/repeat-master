@@ -9,16 +9,17 @@ import AnswerFeedback from '@/src/components/study/question/AnswerFeedback';
 import { recordStudySession } from '@/services/notificationService';
 import QuestionPickerSheet from '@/src/components/study/question/QuestionPickerSheet';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { X, Bookmark, Grid3x3, Trash2, Plus, StickyNote } from 'lucide-react-native';
+import { AlertCircle, X, Bookmark, Grid3x3, Trash2, Plus, StickyNote, SkipForward } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Dimensions, Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import BottomSheet from '@/components/BottomSheet';
 import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const MEMO_DEFAULT_EXPANDED_KEY = '@repeat_master_memo_default_expanded';
+const AUTO_SKIP_KEY = '@repeat_master_auto_skip';
 
 const QuestionScreen = () => {
   const theme = useAppTheme();
@@ -35,6 +36,7 @@ const QuestionScreen = () => {
   const deleteLatestAttempt = useQuizBookStore(state => state.deleteLatestAttempt);
   const toggleBookmark = useQuizBookStore(state => state.toggleBookmark);
   const isBookmarkedFn = useQuizBookStore(state => state.isBookmarked);
+  const updateChapter = useQuizBookStore(state => state.updateChapter);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -45,10 +47,17 @@ const QuestionScreen = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [feedbackResult, setFeedbackResult] = useState<'○' | '×' | null>(null);
   const [memoDefaultExpanded, setMemoDefaultExpanded] = useState(false);
+  const [autoSkip, setAutoSkip] = useState(false);
+  const [heroVisible, setHeroVisible] = useState(true);
+  const [showConfirmRoundModal, setShowConfirmRoundModal] = useState(false);
+  const [unansweredWarning, setUnansweredWarning] = useState('');
 
   useEffect(() => {
     AsyncStorage.getItem(MEMO_DEFAULT_EXPANDED_KEY).then(v => {
       if (v === 'true') setMemoDefaultExpanded(true);
+    });
+    AsyncStorage.getItem(AUTO_SKIP_KEY).then(v => {
+      if (v === 'true') setAutoSkip(true);
     });
   }, []);
 
@@ -58,18 +67,24 @@ const QuestionScreen = () => {
     await AsyncStorage.setItem(MEMO_DEFAULT_EXPANDED_KEY, String(next));
   };
 
+  const toggleAutoSkip = async () => {
+    const next = !autoSkip;
+    setAutoSkip(next);
+    await AsyncStorage.setItem(AUTO_SKIP_KEY, String(next));
+  };
+
   useFocusEffect(useCallback(() => { fetchQuizBooks(); }, [fetchQuizBooks]));
 
   const displayInfo = useMemo(() => {
     for (const book of quizBooks) {
       for (const chapter of book.chapters) {
         if (chapter.id === id) {
-          return { bookId: book.id, chapterId: chapter.id, sectionId: null as string | null, title: chapter.title || `第${chapter.chapterNumber}章`, questionCount: chapter.questionCount || 0, displayRound: (book.currentRound || 0) + 1, isCompleted: !!book.completedAt };
+          return { bookId: book.id, chapterId: chapter.id, sectionId: null as string | null, title: chapter.title || `第${chapter.chapterNumber}章`, questionCount: chapter.questionCount || 0, displayRound: (chapter.currentRound || 0) + 1, isCompleted: !!book.completedAt };
         }
         if (chapter.sections) {
           for (const section of chapter.sections) {
             if (section.id === id) {
-              return { bookId: book.id, chapterId: chapter.id, sectionId: section.id, title: `第${chapter.chapterNumber}章 ${section.title || `第${section.sectionNumber}節`}`, questionCount: section.questionCount, displayRound: (book.currentRound || 0) + 1, isCompleted: !!book.completedAt };
+              return { bookId: book.id, chapterId: chapter.id, sectionId: section.id, title: `第${chapter.chapterNumber}章 ${section.title || `第${section.sectionNumber}節`}`, questionCount: section.questionCount, displayRound: (chapter.currentRound || 0) + 1, isCompleted: !!book.completedAt };
             }
           }
         }
@@ -83,6 +98,44 @@ const QuestionScreen = () => {
   }
 
   const { bookId, chapterId, sectionId, title, questionCount, displayRound, isCompleted } = displayInfo;
+  const isDirectChapter = !sectionId;
+  const showHero = isDirectChapter && heroVisible;
+
+  const chapterRoundStats = useMemo(() => {
+    if (!isDirectChapter) return null;
+    for (const book of quizBooks) {
+      const chapter = book.chapters.find(ch => ch.id === chapterId);
+      if (chapter) {
+        let answered = 0, correct = 0;
+        const processAnswers = (answers: any[]) => {
+          answers.forEach(qa => {
+            const attempt = qa.attempts?.find((a: any) => a.round === displayRound && a.resultConfirmFlg);
+            if (attempt) { answered++; if (attempt.result === '○') correct++; }
+          });
+        };
+        if (chapter.questionAnswers) processAnswers(chapter.questionAnswers);
+        return { answered, correct, total: chapter.questionCount || 0, currentRound: chapter.currentRound || 0 };
+      }
+    }
+    return null;
+  }, [quizBooks, chapterId, displayRound, isDirectChapter]);
+
+  const handleConfirmChapterRound = () => {
+    if (!chapterRoundStats) return;
+    const totalQ = chapterRoundStats.total;
+    const qaAnswered = chapterRoundStats.answered;
+    const unanswered = totalQ - qaAnswered;
+    setUnansweredWarning(unanswered > 0 ? `第${displayRound}周で未回答の問題が${unanswered}問あります。` : '');
+    setShowConfirmRoundModal(true);
+  };
+
+  const handleExecuteConfirmChapterRound = async () => {
+    if (!chapterRoundStats) return;
+    await updateChapter(bookId, chapterId, { currentRound: chapterRoundStats.currentRound + 1 });
+    setShowConfirmRoundModal(false);
+    setUnansweredWarning('');
+  };
+
   const currentQuestionNumber = currentIndex + 1;
 
   const getAttempts = (num: number): Attempt[] => {
@@ -93,8 +146,14 @@ const QuestionScreen = () => {
   const currentBookmarked = isBookmarkedFn(chapterId, sectionId, currentQuestionNumber);
 
   const isAtEnd = currentIndex >= questionCount;
-  const goNext = () => { if (currentIndex < questionCount) setCurrentIndex(currentIndex + 1); };
-  const goPrev = () => { if (currentIndex > 0) setCurrentIndex(currentIndex - 1); };
+  const goNext = () => {
+    if (showHero) { setHeroVisible(false); return; }
+    if (currentIndex < questionCount) setCurrentIndex(currentIndex + 1);
+  };
+  const goPrev = () => {
+    if (!showHero && currentIndex === 0 && isDirectChapter) { setHeroVisible(true); return; }
+    if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
+  };
 
   const handleTapNavigation = (e: any) => {
     const x = e.nativeEvent.locationX;
@@ -140,7 +199,7 @@ const QuestionScreen = () => {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <AnswerFeedback result={feedbackResult} onComplete={() => setFeedbackResult(null)} />
+        <AnswerFeedback result={feedbackResult} onComplete={() => { setFeedbackResult(null); if (autoSkip) goNext(); }} />
         {/* Nav Bar */}
         <View style={styles.navBar}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
@@ -176,7 +235,37 @@ const QuestionScreen = () => {
         </View>
 
         {/* Main Content */}
-        {isAtEnd ? (
+        {showHero && chapterRoundStats ? (
+          <Pressable style={styles.mainArea} onPress={(e) => { if (e.nativeEvent.locationX > SCREEN_WIDTH / 2) setHeroVisible(false); }}>
+            <View style={styles.chapterHeroCard}>
+              <Text style={styles.chapterHeroRound}>第{displayRound}周目</Text>
+              <View style={styles.chapterHeroProgressSection}>
+                <View style={styles.chapterHeroProgressRow}>
+                  <Text style={styles.chapterHeroLabel}>進捗</Text>
+                  <Text style={styles.chapterHeroValue}>{chapterRoundStats.answered} / {chapterRoundStats.total}</Text>
+                </View>
+                <View style={styles.chapterHeroProgressBg}>
+                  <View style={[styles.chapterHeroProgressFill, { width: chapterRoundStats.total > 0 ? `${(chapterRoundStats.answered / chapterRoundStats.total) * 100}%` : '0%' }]} />
+                </View>
+              </View>
+              <View style={styles.chapterHeroProgressSection}>
+                <View style={styles.chapterHeroProgressRow}>
+                  <Text style={styles.chapterHeroLabel}>正答率</Text>
+                  <Text style={styles.chapterHeroValue}>{chapterRoundStats.correct} / {chapterRoundStats.answered}</Text>
+                </View>
+                <View style={styles.chapterHeroProgressBg}>
+                  <View style={[styles.chapterHeroProgressFillSuccess, { width: chapterRoundStats.answered > 0 ? `${(chapterRoundStats.correct / chapterRoundStats.answered) * 100}%` : '0%' }]} />
+                </View>
+              </View>
+              {!isCompleted && (
+                <TouchableOpacity style={styles.chapterHeroConfirmBtn} onPress={handleConfirmChapterRound} activeOpacity={0.7}>
+                  <Text style={styles.chapterHeroConfirmBtnText}>この章の周回を確定する</Text>
+                </TouchableOpacity>
+              )}
+              <Text style={styles.chapterHeroGuide}>右側をタップして問題をスタート →</Text>
+            </View>
+          </Pressable>
+        ) : isAtEnd ? (
           <Pressable style={styles.mainArea} onPress={(e) => { if (e.nativeEvent.locationX < SCREEN_WIDTH / 2) goPrev(); }}>
             <Plus size={40} color={theme.colors.secondary[300]} />
             <Text style={styles.addEndTitle}>問題を追加</Text>
@@ -192,8 +281,15 @@ const QuestionScreen = () => {
 
         {/* Bottom */}
         <View style={styles.bottomArea}>
-          {!isCompleted && !isAtEnd && (
-            <AnswerButtons onCorrect={() => handleAnswer('○')} onIncorrect={() => handleAnswer('×')} isLoading={isLoadingAnswer} />
+          {!isCompleted && !isAtEnd && !showHero && (
+            <View style={styles.answerRow}>
+              <View style={{ flex: 1 }}>
+                <AnswerButtons onCorrect={() => handleAnswer('○')} onIncorrect={() => handleAnswer('×')} isLoading={isLoadingAnswer} />
+              </View>
+              <TouchableOpacity style={[styles.autoSkipBtn, autoSkip && styles.autoSkipBtnActive]} onPress={toggleAutoSkip} activeOpacity={0.7} hitSlop={4}>
+                <SkipForward size={16} color={autoSkip ? theme.colors.primary[600] : theme.colors.secondary[400]} />
+              </TouchableOpacity>
+            </View>
           )}
           <QuestionDotNav totalQuestions={questionCount} currentIndex={currentIndex} getAttempts={getAttempts} onSelect={setCurrentIndex} />
         </View>
@@ -219,6 +315,24 @@ const QuestionScreen = () => {
             <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setDeleteModalVisible(false)}>
               <Text style={styles.modalBtnCancelText}>キャンセル</Text>
             </TouchableOpacity>
+          </View>
+        </BottomSheet>
+
+        {/* Confirm Chapter Round */}
+        <BottomSheet visible={showConfirmRoundModal} onClose={() => setShowConfirmRoundModal(false)}>
+          <View style={{ gap: 16 }}>
+            <Text style={styles.modalTitle}>章の周回確定</Text>
+            <Text style={styles.chapterHeroModalMessage}>{title}の第{displayRound}周を確定しますか？</Text>
+            {unansweredWarning !== '' && (
+              <View style={styles.chapterHeroWarningBox}>
+                <AlertCircle size={18} color={theme.colors.warning[500]} />
+                <Text style={styles.chapterHeroWarningText}>{unansweredWarning}</Text>
+              </View>
+            )}
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.colors.secondary[100] }]} onPress={() => { setShowConfirmRoundModal(false); setUnansweredWarning(''); }}><Text style={styles.modalBtnText}>キャンセル</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, { backgroundColor: theme.colors.primary[600] }]} onPress={handleExecuteConfirmChapterRound}>{isLoading ? <ActivityIndicator size="small" color="#FFF" /> : <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF', fontFamily: 'ZenKaku-Bold' }}>確定</Text>}</TouchableOpacity>
+            </View>
           </View>
         </BottomSheet>
 
@@ -264,6 +378,9 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   mainArea: { flex: 1, alignItems: 'center', paddingHorizontal: 20, paddingTop: 50 },
 
   bottomArea: { gap: 16, paddingHorizontal: 20, paddingBottom: 40, alignItems: 'center' },
+  answerRow: { flexDirection: 'row', alignItems: 'center', gap: 8, width: '100%' },
+  autoSkipBtn: { width: 40, height: 56, borderRadius: 14, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.secondary[200], justifyContent: 'center', alignItems: 'center' },
+  autoSkipBtnActive: { borderColor: theme.colors.primary[600], backgroundColor: theme.colors.primary[50] },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   modalContent: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, width: '100%', maxWidth: 320, gap: 10 },
@@ -278,6 +395,22 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   addEndTitle: { fontSize: 16, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular', marginTop: 12 },
   addEndBtn: { marginTop: 16, paddingVertical: 14, paddingHorizontal: 32, borderRadius: 14, backgroundColor: theme.colors.primary[600] },
   addEndBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', fontFamily: 'ZenKaku-Bold' },
+
+  chapterHeroCard: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: theme.colors.secondary[200], gap: 12, width: '100%' },
+  chapterHeroRound: { fontSize: 13, fontWeight: '600', color: theme.colors.primary[600], fontFamily: 'ZenKaku-Bold' },
+  chapterHeroProgressSection: { gap: 6 },
+  chapterHeroProgressRow: { flexDirection: 'row' as const, justifyContent: 'space-between' as const, alignItems: 'center' as const },
+  chapterHeroLabel: { fontSize: 12, color: theme.colors.secondary[500], fontFamily: 'ZenKaku-Regular' },
+  chapterHeroValue: { fontSize: 12, fontWeight: '600', color: theme.colors.secondary[700], fontFamily: 'ZenKaku-Bold' },
+  chapterHeroProgressBg: { height: 8, borderRadius: 4, backgroundColor: theme.colors.secondary[200] },
+  chapterHeroProgressFill: { height: 8, borderRadius: 4, backgroundColor: theme.colors.primary[600] },
+  chapterHeroProgressFillSuccess: { height: 8, borderRadius: 4, backgroundColor: theme.colors.success[500] },
+  chapterHeroConfirmBtn: { backgroundColor: theme.colors.primary[600], borderRadius: 12, paddingVertical: 12, alignItems: 'center' as const, marginTop: 4 },
+  chapterHeroConfirmBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', fontFamily: 'ZenKaku-Bold' },
+  chapterHeroModalMessage: { fontSize: 14, color: theme.colors.secondary[600], fontFamily: 'ZenKaku-Regular', lineHeight: 22 },
+  chapterHeroWarningBox: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, backgroundColor: theme.colors.warning[50], padding: 12, borderRadius: 10 },
+  chapterHeroWarningText: { flex: 1, fontSize: 13, color: theme.colors.warning[500], fontFamily: 'ZenKaku-Regular' },
+  chapterHeroGuide: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular', textAlign: 'center', marginTop: 4 },
 
   pickerSheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, position: 'absolute' as const, bottom: 0, left: 0, right: 0 },
   pickerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.colors.secondary[200] },

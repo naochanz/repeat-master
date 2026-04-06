@@ -119,6 +119,7 @@ export interface Database {
           title: string | null;
           chapter_rate: number;
           question_count: number | null;
+          current_round: number;
           created_at: string;
           updated_at: string;
         };
@@ -129,6 +130,7 @@ export interface Database {
           title?: string | null;
           chapter_rate?: number;
           question_count?: number | null;
+          current_round?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -139,6 +141,7 @@ export interface Database {
           title?: string | null;
           chapter_rate?: number;
           question_count?: number | null;
+          current_round?: number;
           created_at?: string;
           updated_at?: string;
         };

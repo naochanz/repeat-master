@@ -3,7 +3,10 @@ import { Check, Highlighter, Type, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+export const RESET_FORMAT = '__reset__';
+
 const HIGHLIGHT_COLORS = [
+  { label: 'なし', value: RESET_FORMAT },
   { label: '黄', value: '#FFF9C4' },
   { label: '緑', value: '#C8E6C9' },
   { label: '青', value: '#BBDEFB' },
@@ -11,6 +14,7 @@ const HIGHLIGHT_COLORS = [
 ];
 
 const TEXT_COLORS = [
+  { label: 'デフォルト', value: RESET_FORMAT },
   { label: '赤', value: '#EF5350' },
   { label: '青', value: '#1E88E5' },
   { label: '緑', value: '#43A047' },
@@ -50,26 +54,35 @@ const MemoToolbar = ({ pendingFormat, onHighlightSelect, onTextColorSelect }: Me
 
   const activeColors = activePicker === 'highlight' ? HIGHLIGHT_COLORS : TEXT_COLORS;
   const pendingValue = activePicker === 'highlight' ? pendingFormat?.bg : pendingFormat?.color;
-  const hasPendingHighlight = !!pendingFormat?.bg;
-  const hasPendingTextColor = !!pendingFormat?.color;
+  const hasPendingHighlight = !!pendingFormat?.bg && pendingFormat.bg !== RESET_FORMAT;
+  const hasPendingTextColor = !!pendingFormat?.color && pendingFormat.color !== RESET_FORMAT;
 
   return (
     <View style={styles.container}>
       {activePicker && (
         <View style={styles.pickerRow}>
-          {activeColors.map((c) => (
-            <TouchableOpacity
-              key={c.value}
-              style={[styles.colorSwatch, { backgroundColor: c.value }, pendingValue === c.value && styles.colorSwatchSelected]}
-              onPress={() => handleColorSelect(c.value)}
-              activeOpacity={0.7}
-            >
-              {pendingValue === c.value && <Check size={16} color={theme.colors.secondary[700]} />}
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity style={styles.clearBtn} onPress={() => handleColorSelect(null)} activeOpacity={0.7}>
-            <X size={14} color={theme.colors.secondary[500]} />
-          </TouchableOpacity>
+          {activeColors.map((c) => {
+            const isReset = c.value === RESET_FORMAT;
+            const isSelected = pendingValue === c.value || (isReset && !pendingValue);
+            return (
+              <TouchableOpacity
+                key={c.value}
+                style={[
+                  styles.colorSwatch,
+                  isReset ? styles.resetSwatch : { backgroundColor: c.value },
+                  isSelected && styles.colorSwatchSelected,
+                ]}
+                onPress={() => handleColorSelect(c.value)}
+                activeOpacity={0.7}
+              >
+                {isReset ? (
+                  <X size={14} color={theme.colors.secondary[500]} />
+                ) : (
+                  isSelected && <Check size={16} color={theme.colors.secondary[700]} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
       )}
       <View style={styles.buttonRow}>
@@ -148,15 +161,8 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) =>
       borderWidth: 2.5,
       borderColor: theme.colors.primary[600],
     },
-    clearBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      borderWidth: 1.5,
-      borderColor: theme.colors.secondary[300],
+    resetSwatch: {
       backgroundColor: theme.colors.surface,
-      justifyContent: 'center',
-      alignItems: 'center',
     },
   });
 

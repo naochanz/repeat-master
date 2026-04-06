@@ -1,5 +1,5 @@
 import { useAppTheme } from '@/hooks/useAppTheme';
-import MemoToolbar, { type PendingFormat } from '@/src/components/memo/MemoToolbar';
+import MemoToolbar, { type PendingFormat, RESET_FORMAT } from '@/src/components/memo/MemoToolbar';
 import {
   type MemoSpan,
   applyFormat,
@@ -10,7 +10,6 @@ import {
 } from '@/src/utils/memoFormat';
 import { useQuizBookStore } from '@/stores/quizBookStore';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,7 +24,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function MemoEditScreen() {
   const theme = useAppTheme();
@@ -37,6 +36,7 @@ export default function MemoEditScreen() {
     initialMemo?: string;
   }>();
 
+  const insets = useSafeAreaInsets();
   const saveMemoAction = useQuizBookStore((state) => state.saveMemo);
   const [spans, setSpans] = useState<MemoSpan[]>(() => memoToSpans(initialMemo || ''));
   const [rawText, setRawText] = useState(() => spansToPlainText(memoToSpans(initialMemo || '')));
@@ -74,8 +74,8 @@ export default function MemoEditScreen() {
         let updated = reconcileSpansWithText(oldText, newText, prev, newCursor);
         if (diff > 0 && pf) {
           updated = applyFormat(updated, { start: oldCursorEnd, end: oldCursorEnd + diff }, {
-            bg: pf.bg ?? undefined,
-            color: pf.color ?? undefined,
+            bg: pf.bg === RESET_FORMAT ? null : (pf.bg ?? undefined),
+            color: pf.color === RESET_FORMAT ? null : (pf.color ?? undefined),
           });
         }
         return updated;
@@ -94,20 +94,18 @@ export default function MemoEditScreen() {
 
   const handleHighlightSelect = useCallback(
     (color: string | null) => {
+      const isReset = color === RESET_FORMAT;
       if (hasSelection) {
-        setSpans((prev) => applyFormat(prev, selectionRef.current, { bg: color }));
+        setSpans((prev) => applyFormat(prev, selectionRef.current, { bg: isReset ? null : color }));
         setPendingFormat(null);
       } else {
         setPendingFormat((prev) => {
-          if (color === null) {
-            if (!prev || !prev.color) return null;
-            return { color: prev.color };
-          }
+          if (isReset) return { ...prev, bg: RESET_FORMAT };
           if (prev?.bg === color) {
             if (!prev.color) return null;
             return { color: prev.color };
           }
-          return { ...prev, bg: color };
+          return { ...prev, bg: color ?? undefined };
         });
       }
     },
@@ -116,20 +114,18 @@ export default function MemoEditScreen() {
 
   const handleTextColorSelect = useCallback(
     (color: string | null) => {
+      const isReset = color === RESET_FORMAT;
       if (hasSelection) {
-        setSpans((prev) => applyFormat(prev, selectionRef.current, { color }));
+        setSpans((prev) => applyFormat(prev, selectionRef.current, { color: isReset ? null : color }));
         setPendingFormat(null);
       } else {
         setPendingFormat((prev) => {
-          if (color === null) {
-            if (!prev || !prev.bg) return null;
-            return { bg: prev.bg };
-          }
+          if (isReset) return { ...prev, color: RESET_FORMAT };
           if (prev?.color === color) {
             if (!prev.bg) return null;
             return { bg: prev.bg };
           }
-          return { ...prev, color };
+          return { ...prev, color: color ?? undefined };
         });
       }
     },
@@ -152,10 +148,18 @@ export default function MemoEditScreen() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <View style={styles.header}>
-          <Text style={styles.title}>メモを編集</Text>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-            <X size={24} color={theme.colors.secondary[500]} />
+        {/* iOS-style nav bar */}
+        <View style={styles.navBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.navBtn} hitSlop={8}>
+            <Text style={styles.navCancelText}>キャンセル</Text>
+          </TouchableOpacity>
+          <Text style={styles.navTitle}>メモ</Text>
+          <TouchableOpacity onPress={handleSave} disabled={isSaving} style={styles.navBtn} hitSlop={8} activeOpacity={0.7}>
+            {isSaving ? (
+              <ActivityIndicator size="small" color={theme.colors.primary[600]} />
+            ) : (
+              <Text style={styles.navSaveText}>保存</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -198,20 +202,13 @@ export default function MemoEditScreen() {
           </ScrollView>
         </View>
 
-        <MemoToolbar
-          pendingFormat={pendingFormat}
-          onHighlightSelect={handleHighlightSelect}
-          onTextColorSelect={handleTextColorSelect}
-        />
-
-        <View style={[styles.footer, keyboardHeight > 0 && { paddingBottom: keyboardHeight + 10 }]}>
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={isSaving} activeOpacity={0.7}>
-            {isSaving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.saveBtnText}>保存</Text>
-            )}
-          </TouchableOpacity>
+        {/* Toolbar docked above keyboard */}
+        <View style={[styles.toolbarDock, { paddingBottom: keyboardHeight > 0 ? keyboardHeight : insets.bottom }]}>
+          <MemoToolbar
+            pendingFormat={pendingFormat}
+            onHighlightSelect={handleHighlightSelect}
+            onTextColorSelect={handleTextColorSelect}
+          />
         </View>
       </SafeAreaView>
     </>
@@ -228,22 +225,36 @@ const SHARED_TEXT_STYLE = {
 const createStyles = (theme: ReturnType<typeof useAppTheme>) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
-    header: {
+    navBar: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: 20,
-      paddingBottom: 12,
+      paddingHorizontal: 20,
+      height: 44,
     },
-    title: {
-      fontSize: 20,
-      fontWeight: '700',
+    navBtn: { minWidth: 70 },
+    navCancelText: {
+      fontSize: 16,
+      color: theme.colors.secondary[500],
+      fontFamily: 'ZenKaku-Regular',
+    },
+    navTitle: {
+      fontSize: 17,
+      fontWeight: '600',
       color: theme.colors.secondary[900],
       fontFamily: 'ZenKaku-Bold',
+    },
+    navSaveText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.colors.primary[600],
+      fontFamily: 'ZenKaku-Bold',
+      textAlign: 'right',
     },
     editorContainer: {
       flex: 1,
       marginHorizontal: 20,
+      marginTop: 8,
       backgroundColor: theme.colors.surface,
       borderRadius: 14,
       borderWidth: 1,
@@ -268,18 +279,10 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) =>
       textAlignVertical: 'top',
       ...(Platform.OS === 'ios' ? { tintColor: theme.colors.secondary[900] } : { cursorColor: theme.colors.secondary[900] }),
     },
-    footer: { padding: 20, paddingBottom: 32 },
-    saveBtn: {
-      height: 54,
-      borderRadius: 14,
-      backgroundColor: theme.colors.primary[600],
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    saveBtnText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: '#FFFFFF',
-      fontFamily: 'ZenKaku-Bold',
+    toolbarDock: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.secondary[200],
+      backgroundColor: theme.colors.background,
+      paddingTop: 8,
     },
   });

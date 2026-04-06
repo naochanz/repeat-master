@@ -55,10 +55,11 @@ const StudyHome = () => {
   };
 
   const getChapterRate = (chapter: typeof quizBook.chapters[0]) => {
+    const chapterDisplayRound = (chapter.currentRound || 0) + 1;
     let total = 0, correct = 0;
     const processAnswers = (answers: any[]) => {
       answers.forEach(qa => {
-        const attempt = qa.attempts?.find((a: any) => a.round === displayRound && a.resultConfirmFlg);
+        const attempt = qa.attempts?.find((a: any) => a.round === chapterDisplayRound && a.resultConfirmFlg);
         if (attempt) { total++; if (attempt.result === '○') correct++; }
       });
     };

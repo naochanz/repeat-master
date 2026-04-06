@@ -41,13 +41,15 @@ export const createAnswerActions = (set: any, get: any) => ({
 
     set({ quizBooks: updatedQuizBooks });
 
-    answerDomain.createAnswer(quizBookId, questionNumber, result, chapterId, sectionId)
-      .then(() => useAnalyticsStore.getState().setNeedsRefresh(true))
-      .catch(async (error: any) => {
-        console.error('Failed to save answer:', error);
-        showErrorToast('回答の保存に失敗しました。再度お試しください。');
-        await get().fetchQuizBooks();
-      });
+    try {
+      await answerDomain.createAnswer(quizBookId, questionNumber, result, chapterId, sectionId);
+      useAnalyticsStore.getState().setNeedsRefresh(true);
+    } catch (error: any) {
+      console.error('Failed to save answer:', error);
+      showErrorToast('回答の保存に失敗しました。再度お試しください。');
+      await get().fetchQuizBooks();
+      throw error;
+    }
   },
 
   updateMemo: async (quizBookId: string, answerId: string, memo: string) => {

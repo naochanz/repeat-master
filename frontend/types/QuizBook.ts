@@ -29,6 +29,7 @@ export interface Chapter {
   title: string;
   chapterNumber: number;
   chapterRate: number;
+  currentRound: number;
   sections?: Section[];
   questionCount?: number;
   questionAnswers?: QuestionAnswer[];

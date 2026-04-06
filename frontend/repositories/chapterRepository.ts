@@ -10,7 +10,7 @@ export const chapterRepository = {
         quiz_book_id: quizBookId,
         chapter_number: chapterNumber,
         title: title || null,
-        question_count: questionCount ?? null,
+        question_count: questionCount ?? 0,
       })
       .select()
       .single();
@@ -24,6 +24,7 @@ export const chapterRepository = {
     if (updates.chapterNumber !== undefined) updateData.chapter_number = updates.chapterNumber;
     if (updates.title !== undefined) updateData.title = updates.title;
     if (updates.questionCount !== undefined) updateData.question_count = updates.questionCount;
+    if (updates.currentRound !== undefined) updateData.current_round = updates.currentRound;
 
     const { data, error } = await supabase
       .from('chapters')
