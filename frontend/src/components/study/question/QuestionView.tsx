@@ -6,8 +6,6 @@ import { TrendingUp, TrendingDown, StickyNote, ChevronDown, ChevronUp, Pencil } 
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-
 
 interface QuestionViewProps {
   questionNumber: number;
@@ -18,13 +16,18 @@ interface QuestionViewProps {
   readOnly?: boolean;
   defaultMemoExpanded?: boolean;
   onMemoExpandedChange?: (expanded: boolean) => void;
+  availableHeight?: number;
 }
 
-const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, readOnly, defaultMemoExpanded = false, onMemoExpandedChange }: QuestionViewProps) => {
+// card padding(28) + card border(2) + card marginTop(8) + container gap(8) + card内gap 1つ分(12)
+const CARD_OVERHEAD = 58;
+
+const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, readOnly, defaultMemoExpanded = false, onMemoExpandedChange, availableHeight = 0 }: QuestionViewProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [memoExpanded, setMemoExpanded] = useState(defaultMemoExpanded);
-  const [showMemoFade, setShowMemoFade] = useState(false);
+  const [topHeight, setTopHeight] = useState(0);
+  const [cardHeaderHeight, setCardHeaderHeight] = useState(0);
 
   useEffect(() => { setMemoExpanded(defaultMemoExpanded); }, [questionNumber, defaultMemoExpanded]);
 
@@ -69,56 +72,66 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
     });
   };
 
+  const toggleMemo = () => {
+    const next = !memoExpanded;
+    setMemoExpanded(next);
+    onMemoExpandedChange?.(next);
+  };
+
+  // ScrollView高さ = 親の利用可能高さ - 問番号エリア - カード内ヘッダー - 固定オーバーヘッド
+  const memoScrollHeight = (availableHeight > 0 && topHeight > 0 && cardHeaderHeight > 0)
+    ? availableHeight - topHeight - cardHeaderHeight - CARD_OVERHEAD
+    : 200;
+
   return (
-    <View style={[styles.container, memoExpanded && styles.containerExpanded]}>
-      <Text style={styles.questionNum}>問 {questionNumber}</Text>
-      {confirmedAttempts.length > 0 && (
-        <View style={styles.roundBadge}>
-          <Text style={styles.roundText}>{confirmedAttempts.length + 1}回目</Text>
-        </View>
-      )}
-
-      {/* Unified Card: History + Memo */}
-      <Pressable style={[styles.card, memoExpanded && styles.cardExpanded]} onPress={(e) => e.stopPropagation()}>
-        {/* History Section */}
+    <View style={styles.container}>
+      {/* 問番号 + バッジ → 高さ計測 */}
+      <View onLayout={(e) => setTopHeight(e.nativeEvent.layout.height)} style={styles.topSection}>
+        <Text style={styles.questionNum}>問 {questionNumber}</Text>
         {confirmedAttempts.length > 0 && (
-          <>
-            <Text style={styles.sectionLabel}>これまでの結果</Text>
-            <View style={styles.dotRow}>
-              {cardColors.map((color, i) => (
-                <React.Fragment key={i}>
-                  {i > 0 && <Text style={styles.arrow}>→</Text>}
-                  <View style={styles.dotItem}>
-                    <View style={[styles.dot, { backgroundColor: dotColor(color) }]} />
-                    <Text style={styles.dotLabel}>{i + 1}周</Text>
-                  </View>
-                </React.Fragment>
-              ))}
-              <Text style={styles.arrow}>→</Text>
-              <View style={styles.dotItem}>
-                <View style={[styles.dotNext, { borderColor: theme.colors.primary[600] }]} />
-                <Text style={[styles.dotLabel, { color: theme.colors.primary[600], fontWeight: '600' }]}>{confirmedAttempts.length + 1}周</Text>
-              </View>
-            </View>
-            {insight && (
-              <View style={[styles.insightBadge, { backgroundColor: insight.type === 'positive' ? theme.colors.success[50] : theme.colors.error[50] }]}>
-                {insight.type === 'positive'
-                  ? <TrendingUp size={13} color={theme.colors.success[500]} />
-                  : <TrendingDown size={13} color={theme.colors.error[500]} />}
-                <Text style={[styles.insightText, { color: insight.type === 'positive' ? theme.colors.success[500] : theme.colors.error[500] }]}>
-                  {insight.text}
-                </Text>
-              </View>
-            )}
-          </>
+          <View style={styles.roundBadge}>
+            <Text style={styles.roundText}>{confirmedAttempts.length + 1}回目</Text>
+          </View>
         )}
+      </View>
 
-        {/* Divider */}
-        {confirmedAttempts.length > 0 && chapterId && <View style={styles.divider} />}
+      <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+        {/* カード内のメモ以外 → 高さ計測 */}
+        <View onLayout={(e) => setCardHeaderHeight(e.nativeEvent.layout.height)} style={{ gap: 12 }}>
+          {confirmedAttempts.length > 0 && (
+            <>
+              <Text style={styles.sectionLabel}>これまでの結果</Text>
+              <View style={styles.dotRow}>
+                {cardColors.map((color, i) => (
+                  <React.Fragment key={i}>
+                    {i > 0 && <Text style={styles.arrow}>→</Text>}
+                    <View style={styles.dotItem}>
+                      <View style={[styles.dot, { backgroundColor: dotColor(color) }]} />
+                      <Text style={styles.dotLabel}>{i + 1}周</Text>
+                    </View>
+                  </React.Fragment>
+                ))}
+                <Text style={styles.arrow}>→</Text>
+                <View style={styles.dotItem}>
+                  <View style={[styles.dotNext, { borderColor: theme.colors.primary[600] }]} />
+                  <Text style={[styles.dotLabel, { color: theme.colors.primary[600], fontWeight: '600' }]}>{confirmedAttempts.length + 1}周</Text>
+                </View>
+              </View>
+              {insight && (
+                <View style={[styles.insightBadge, { backgroundColor: insight.type === 'positive' ? theme.colors.success[50] : theme.colors.error[50] }]}>
+                  {insight.type === 'positive'
+                    ? <TrendingUp size={13} color={theme.colors.success[500]} />
+                    : <TrendingDown size={13} color={theme.colors.error[500]} />}
+                  <Text style={[styles.insightText, { color: insight.type === 'positive' ? theme.colors.success[500] : theme.colors.error[500] }]}>
+                    {insight.text}
+                  </Text>
+                </View>
+              )}
+              {chapterId && <View style={styles.divider} />}
+            </>
+          )}
 
-        {/* Memo Section */}
-        {chapterId && (
-          <>
+          {chapterId && (
             <View style={styles.memoHeader}>
               <View style={styles.memoHeaderLeft}>
                 <StickyNote size={14} color={memo ? theme.colors.primary[600] : theme.colors.secondary[400]} />
@@ -130,41 +143,28 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
                     <Pencil size={18} color={theme.colors.primary[600]} />
                   </TouchableOpacity>
                 )}
-                <TouchableOpacity onPress={() => { const next = !memoExpanded; setMemoExpanded(next); onMemoExpandedChange?.(next); }} style={styles.memoActionBtn} hitSlop={8} activeOpacity={0.7}>
+                <TouchableOpacity onPress={toggleMemo} style={styles.memoActionBtn} hitSlop={8} activeOpacity={0.7}>
                   {memoExpanded ? <ChevronUp size={18} color={theme.colors.secondary[500]} /> : <ChevronDown size={18} color={theme.colors.secondary[500]} />}
                 </TouchableOpacity>
               </View>
             </View>
-            {memoExpanded && (
-              <View style={{ flex: 1 }}>
-                <ScrollView
-                  style={{ flex: 1 }}
-                  nestedScrollEnabled
-                  showsVerticalScrollIndicator
-                  onContentSizeChange={(_w, h) => setShowMemoFade(h > 100)}
-                  onScroll={({ nativeEvent }) => {
-                    const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
-                    setShowMemoFade(contentOffset.y + layoutMeasurement.height < contentSize.height - 4);
-                  }}
-                  scrollEventThrottle={16}
-                >
-                  <FormattedMemoText
-                    memo={memo || ''}
-                    style={styles.memoText}
-                    placeholderStyle={styles.memoPlaceholder}
-                    placeholder={readOnly ? 'メモなし' : '編集ボタンからメモを入力'}
-                  />
-                </ScrollView>
-                {showMemoFade && (
-                  <LinearGradient
-                    colors={['transparent', theme.colors.surface]}
-                    style={styles.memoFade}
-                    pointerEvents="none"
-                  />
-                )}
-              </View>
-            )}
-          </>
+          )}
+        </View>
+
+        {/* メモ本体 — 計測した高さで ScrollView を制約 */}
+        {memoExpanded && chapterId && (
+          <ScrollView
+            style={{ height: memoScrollHeight }}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
+          >
+            <FormattedMemoText
+              memo={memo || ''}
+              style={styles.memoText}
+              placeholderStyle={styles.memoPlaceholder}
+              placeholder={readOnly ? 'メモなし' : '編集ボタンからメモを入力'}
+            />
+          </ScrollView>
         )}
       </Pressable>
     </View>
@@ -173,13 +173,12 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
 
 const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.create({
   container: { width: '100%', alignItems: 'center', gap: 8 },
-  containerExpanded: { flex: 1 },
+  topSection: { alignItems: 'center', gap: 8 },
   questionNum: { fontSize: 48, fontWeight: '800', color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Bold', letterSpacing: -2 },
   roundBadge: { height: 22, borderRadius: 11, backgroundColor: theme.colors.primary[50], paddingHorizontal: 10, justifyContent: 'center' },
   roundText: { fontSize: 11, fontWeight: '600', color: theme.colors.primary[600], fontFamily: 'ZenKaku-Bold' },
 
   card: { width: '100%', backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, paddingHorizontal: 18, gap: 12, borderWidth: 1, borderColor: theme.colors.secondary[200], marginTop: 8 },
-  cardExpanded: { flex: 1, overflow: 'hidden' },
   sectionLabel: { fontSize: 11, fontWeight: '600', color: theme.colors.secondary[500], letterSpacing: 0.5 },
   dotRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 2 },
   dotItem: { alignItems: 'center', gap: 3 },
@@ -198,7 +197,6 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   memoHeaderText: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular' },
   memoHeaderTextActive: { color: theme.colors.primary[600], fontWeight: '600', fontFamily: 'ZenKaku-Bold' },
   memoActionBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: theme.colors.secondary[100], justifyContent: 'center', alignItems: 'center' },
-  memoFade: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 32 },
   memoText: { fontSize: 13, color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Regular', lineHeight: 20 },
   memoPlaceholder: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular' },
 });

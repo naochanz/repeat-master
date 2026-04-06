@@ -49,6 +49,7 @@ const QuestionScreen = () => {
   const [memoDefaultExpanded, setMemoDefaultExpanded] = useState(false);
   const [autoSkip, setAutoSkip] = useState(false);
   const [memoExpanded, setMemoExpanded] = useState(false);
+  const [mainAreaHeight, setMainAreaHeight] = useState(0);
   const [heroVisible, setHeroVisible] = useState(true);
   const [showConfirmRoundModal, setShowConfirmRoundModal] = useState(false);
   const [unansweredWarning, setUnansweredWarning] = useState('');
@@ -275,8 +276,8 @@ const QuestionScreen = () => {
             </TouchableOpacity>
           </Pressable>
         ) : (
-          <Pressable style={styles.mainArea} onPress={handleTapNavigation}>
-            <QuestionView questionNumber={currentQuestionNumber} attempts={currentAttempts} memo={getQuestionAnswers(chapterId, sectionId, currentQuestionNumber)?.memo || ''} chapterId={chapterId} sectionId={sectionId} readOnly={isCompleted} defaultMemoExpanded={memoDefaultExpanded} onMemoExpandedChange={setMemoExpanded} />
+          <Pressable style={styles.mainArea} onPress={handleTapNavigation} onLayout={(e) => setMainAreaHeight(e.nativeEvent.layout.height)}>
+            <QuestionView questionNumber={currentQuestionNumber} attempts={currentAttempts} memo={getQuestionAnswers(chapterId, sectionId, currentQuestionNumber)?.memo || ''} chapterId={chapterId} sectionId={sectionId} readOnly={isCompleted} defaultMemoExpanded={memoDefaultExpanded} onMemoExpandedChange={setMemoExpanded} availableHeight={mainAreaHeight} />
           </Pressable>
         )}
 
