@@ -11,7 +11,7 @@ import QuestionPickerSheet from '@/src/components/study/question/QuestionPickerS
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { AlertCircle, X, Bookmark, Grid3x3, Trash2, Plus, StickyNote, SkipForward } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Dimensions, Modal, Platform, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import BottomSheet from '@/components/BottomSheet';
 import { Picker } from '@react-native-picker/picker';
@@ -66,6 +66,7 @@ const QuestionScreen = () => {
   const toggleMemoDefault = async () => {
     const next = !memoDefaultExpanded;
     setMemoDefaultExpanded(next);
+    setMemoExpanded(next);
     await AsyncStorage.setItem(MEMO_DEFAULT_EXPANDED_KEY, String(next));
   };
 
@@ -161,6 +162,22 @@ const QuestionScreen = () => {
     const x = e.nativeEvent.locationX;
     if (x > SCREEN_WIDTH / 2) goNext();
     else goPrev();
+  };
+
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const handleTouchStart = (e: any) => {
+    touchStartRef.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+  };
+  const handleTouchEnd = (e: any) => {
+    if (!touchStartRef.current) return;
+    const dx = Math.abs(e.nativeEvent.pageX - touchStartRef.current.x);
+    const dy = Math.abs(e.nativeEvent.pageY - touchStartRef.current.y);
+    // 指がほぼ動いてなければタップ
+    if (dx < 10 && dy < 10) {
+      if (e.nativeEvent.pageX > SCREEN_WIDTH / 2) goNext();
+      else goPrev();
+    }
+    touchStartRef.current = null;
   };
 
   const handleAnswer = async (result: '○' | '×') => {
@@ -276,9 +293,9 @@ const QuestionScreen = () => {
             </TouchableOpacity>
           </Pressable>
         ) : (
-          <Pressable style={styles.mainArea} onPress={handleTapNavigation} onLayout={(e) => setMainAreaHeight(e.nativeEvent.layout.height)}>
+          <View style={styles.mainArea} onLayout={(e) => setMainAreaHeight(e.nativeEvent.layout.height)} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
             <QuestionView questionNumber={currentQuestionNumber} attempts={currentAttempts} memo={getQuestionAnswers(chapterId, sectionId, currentQuestionNumber)?.memo || ''} chapterId={chapterId} sectionId={sectionId} readOnly={isCompleted} defaultMemoExpanded={memoDefaultExpanded} onMemoExpandedChange={setMemoExpanded} availableHeight={mainAreaHeight} />
-          </Pressable>
+          </View>
         )}
 
         {/* Bottom - hidden when memo expanded */}

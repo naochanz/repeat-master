@@ -16,13 +16,14 @@ interface QuestionViewProps {
   readOnly?: boolean;
   defaultMemoExpanded?: boolean;
   onMemoExpandedChange?: (expanded: boolean) => void;
+  onTapNavigation?: (e: any) => void;
   availableHeight?: number;
 }
 
 // card padding(28) + card border(2) + card marginTop(8) + container gap(8) + card内gap 1つ分(12)
 const CARD_OVERHEAD = 58;
 
-const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, readOnly, defaultMemoExpanded = false, onMemoExpandedChange, availableHeight = 0 }: QuestionViewProps) => {
+const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, readOnly, defaultMemoExpanded = false, onMemoExpandedChange, onTapNavigation, availableHeight = 0 }: QuestionViewProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [memoExpanded, setMemoExpanded] = useState(defaultMemoExpanded);
@@ -95,7 +96,7 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
         )}
       </View>
 
-      <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
+      <View style={styles.card} onTouchEnd={(e) => e.stopPropagation()}>
         {/* カード内のメモ以外 → 高さ計測 */}
         <View onLayout={(e) => setCardHeaderHeight(e.nativeEvent.layout.height)} style={{ gap: 12 }}>
           {confirmedAttempts.length > 0 && (
@@ -151,22 +152,21 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
           )}
         </View>
 
-        {/* メモ本体 — 計測した高さで ScrollView を制約 */}
+        {/* メモ本体 — 固定高さの View で ScrollView を包んで制約 */}
         {memoExpanded && chapterId && (
-          <ScrollView
-            style={{ height: memoScrollHeight }}
-            nestedScrollEnabled
-            showsVerticalScrollIndicator
-          >
-            <FormattedMemoText
-              memo={memo || ''}
-              style={styles.memoText}
-              placeholderStyle={styles.memoPlaceholder}
-              placeholder={readOnly ? 'メモなし' : '編集ボタンからメモを入力'}
-            />
-          </ScrollView>
+          <View style={{ height: availableHeight * 0.4 }}>
+            <ScrollView style={{ flex: 1 }} nestedScrollEnabled showsVerticalScrollIndicator>
+              <FormattedMemoText
+                memo={memo || ''}
+                style={styles.memoText}
+                placeholderStyle={styles.memoPlaceholder}
+                placeholder={readOnly ? 'メモなし' : '編集ボタンからメモを入力'}
+              />
+            </ScrollView>
+          </View>
         )}
-      </Pressable>
+      </View>
+
     </View>
   );
 };
