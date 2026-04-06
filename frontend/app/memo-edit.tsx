@@ -65,15 +65,19 @@ export default function MemoEditScreen() {
 
   const handleTextChange = useCallback(
     (newText: string) => {
-      const oldCursorEnd = selectionRef.current.end;
       const pf = pendingFormatRef.current;
       setSpans((prev) => {
         const oldText = spansToPlainText(prev);
         const diff = newText.length - oldText.length;
-        const newCursor = oldCursorEnd + diff;
-        let updated = reconcileSpansWithText(oldText, newText, prev, newCursor);
+        let updated = reconcileSpansWithText(oldText, newText, prev, 0);
         if (diff > 0 && pf) {
-          updated = applyFormat(updated, { start: oldCursorEnd, end: oldCursorEnd + diff }, {
+          // Find insertion range by text diff (consistent with reconcileSpansWithText)
+          let prefixLen = 0;
+          const minLen = Math.min(oldText.length, newText.length);
+          while (prefixLen < minLen && oldText[prefixLen] === newText[prefixLen]) {
+            prefixLen++;
+          }
+          updated = applyFormat(updated, { start: prefixLen, end: prefixLen + diff }, {
             bg: pf.bg === RESET_FORMAT ? null : (pf.bg ?? undefined),
             color: pf.color === RESET_FORMAT ? null : (pf.color ?? undefined),
           });

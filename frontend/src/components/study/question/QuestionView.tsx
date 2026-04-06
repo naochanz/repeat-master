@@ -5,7 +5,8 @@ import { getCardColors, getQuestionColor } from '@/src/utils/questionHelpers';
 import { TrendingUp, TrendingDown, StickyNote, ChevronDown, ChevronUp, Pencil } from 'lucide-react-native';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface QuestionViewProps {
   questionNumber: number;
@@ -21,6 +22,7 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [memoExpanded, setMemoExpanded] = useState(defaultMemoExpanded);
+  const [showMemoFade, setShowMemoFade] = useState(false);
 
   useEffect(() => { setMemoExpanded(defaultMemoExpanded); }, [questionNumber, defaultMemoExpanded]);
 
@@ -75,7 +77,7 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
       )}
 
       {/* Unified Card: History + Memo */}
-      <Pressable style={[styles.card, memoExpanded && styles.cardExpanded]} onPress={(e) => e.stopPropagation()}>
+      <Pressable style={styles.card} onPress={(e) => e.stopPropagation()}>
         {/* History Section */}
         {confirmedAttempts.length > 0 && (
           <>
@@ -132,14 +134,33 @@ const QuestionView = ({ questionNumber, attempts, memo, chapterId, sectionId, re
               </View>
             </View>
             {memoExpanded && (
-              <ScrollView style={{ flex: 1 }} nestedScrollEnabled>
-                <FormattedMemoText
-                  memo={memo || ''}
-                  style={styles.memoText}
-                  placeholderStyle={styles.memoPlaceholder}
-                  placeholder={readOnly ? 'メモなし' : '編集ボタンからメモを入力'}
-                />
-              </ScrollView>
+              <View>
+                <ScrollView
+                  style={styles.memoScroll}
+                  nestedScrollEnabled
+                  showsVerticalScrollIndicator
+                  onContentSizeChange={(_w, h) => setShowMemoFade(h > Dimensions.get('window').height * 0.5)}
+                  onScroll={({ nativeEvent }) => {
+                    const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+                    setShowMemoFade(contentOffset.y + layoutMeasurement.height < contentSize.height - 4);
+                  }}
+                  scrollEventThrottle={16}
+                >
+                  <FormattedMemoText
+                    memo={memo || ''}
+                    style={styles.memoText}
+                    placeholderStyle={styles.memoPlaceholder}
+                    placeholder={readOnly ? 'メモなし' : '編集ボタンからメモを入力'}
+                  />
+                </ScrollView>
+                {showMemoFade && (
+                  <LinearGradient
+                    colors={['transparent', theme.colors.surface]}
+                    style={styles.memoFade}
+                    pointerEvents="none"
+                  />
+                )}
+              </View>
             )}
           </>
         )}
@@ -155,7 +176,6 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   roundText: { fontSize: 11, fontWeight: '600', color: theme.colors.primary[600], fontFamily: 'ZenKaku-Bold' },
 
   card: { width: '100%', backgroundColor: theme.colors.surface, borderRadius: 16, padding: 14, paddingHorizontal: 18, gap: 12, borderWidth: 1, borderColor: theme.colors.secondary[200], marginTop: 8 },
-  cardExpanded: { flex: 1 },
   sectionLabel: { fontSize: 11, fontWeight: '600', color: theme.colors.secondary[500], letterSpacing: 0.5 },
   dotRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 2 },
   dotItem: { alignItems: 'center', gap: 3 },
@@ -174,6 +194,8 @@ const createStyles = (theme: ReturnType<typeof useAppTheme>) => StyleSheet.creat
   memoHeaderText: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular' },
   memoHeaderTextActive: { color: theme.colors.primary[600], fontWeight: '600', fontFamily: 'ZenKaku-Bold' },
   memoActionBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: theme.colors.secondary[100], justifyContent: 'center', alignItems: 'center' },
+  memoScroll: { maxHeight: Dimensions.get('window').height * 0.5 },
+  memoFade: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 32 },
   memoText: { fontSize: 13, color: theme.colors.secondary[900], fontFamily: 'ZenKaku-Regular', lineHeight: 20 },
   memoPlaceholder: { fontSize: 13, color: theme.colors.secondary[400], fontFamily: 'ZenKaku-Regular' },
 });
